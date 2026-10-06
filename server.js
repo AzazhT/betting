@@ -656,6 +656,7 @@ app.post("/api/bets/place", async (req, res) => {
   } finally {
 
     client.release();
+
   }
 });
 
@@ -716,6 +717,290 @@ app.get("/api/bets/history", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Could not load bet history."
+    });
+  }
+});
+
+/*
+|--------------------------------------------------------------------------
+| Deposit Request
+|--------------------------------------------------------------------------
+*/
+
+app.post("/api/deposit/request", async (req, res) => {
+
+  const client = await pool.connect();
+
+  try {
+
+    const {
+      telegram_id,
+      amount,
+      method,
+      reference
+    } = req.body;
+
+    /*
+    | Validate Telegram ID
+    */
+
+    if (!telegram_id) {
+
+      return res.status(400).json({
+        success: false,
+        message: "telegram_id is required."
+      });
+    }
+
+    /*
+    | Validate amount
+    */
+
+    const depositAmount = Number(amount);
+
+    if (
+      !Number.isFinite(depositAmount) ||
+      depositAmount <= 0
+    ) {
+
+      return res.status(400).json({
+        success: false,
+        message: "Invalid deposit amount."
+      });
+    }
+
+    /*
+    | Validate payment method
+    */
+
+    if (!method) {
+
+      return res.status(400).json({
+        success: false,
+        message: "Payment method is required."
+      });
+    }
+
+    /*
+    | Get minimum deposit
+    */
+
+    const minimumDepositResult =
+      await pool.query(
+        `
+        SELECT value
+        FROM settings
+        WHERE key = 'minimum_deposit'
+        `
+      );
+
+    const minimumDeposit =
+      minimumDepositResult.rows.length > 0
+        ? Number(
+            minimumDepositResult.rows[0].value
+          )
+        : 51;
+
+    if (depositAmount < minimumDeposit) {
+
+      return res.status(400).json({
+        success: false,
+        message:
+          `Minimum deposit is ${minimumDeposit} ETB.`
+      });
+    }
+
+    await client.query("BEGIN");
+
+    /*
+    | Find user
+    */
+
+    const userResult = await client.query(
+      `
+      SELECT *
+      FROM users
+      WHERE telegram_id = $1
+      FOR UPDATE
+      `,
+      [telegram_id]
+    );
+
+    if (userResult.rows.length === 0) {
+
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        success: false,
+        message: "User not found."
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    /*
+    | Check account status
+    */
+
+    if (!user.is_active) {
+
+      await client.query("ROLLBACK");
+
+      return res.status(403).json({
+        success: false,
+        message: "User account is inactive."
+      });
+    }
+
+    /*
+    | Generate unique platform reference
+    */
+
+    const cleanReference =
+      reference &&
+      String(reference).trim()
+        ? String(reference).trim()
+        : null;
+
+    const platformReference =
+      `DEP-${user.id}-${Date.now()}-${Math.floor(
+        Math.random() * 100000
+      )}`;
+
+    /*
+    | Store payment reference in description
+    */
+
+    const description =
+      cleanReference
+        ? `${method} deposit request | Payment reference: ${cleanReference}`
+        : `${method} deposit request`;
+
+    /*
+    | Create pending transaction
+    |
+    | IMPORTANT:
+    | Deposit is NOT added to balance here.
+    | Admin/payment verification must approve it first.
+    */
+
+    const transactionResult =
+      await client.query(
+        `
+        INSERT INTO transactions
+          (
+            user_id,
+            type,
+            amount,
+            status,
+            reference,
+            description
+          )
+        VALUES
+          ($1, $2, $3, $4, $5, $6)
+        RETURNING *
+        `,
+        [
+          user.id,
+          "deposit",
+          depositAmount,
+          "pending",
+          platformReference,
+          description
+        ]
+      );
+
+    await client.query("COMMIT");
+
+    res.json({
+      success: true,
+      message:
+        "Deposit request submitted successfully.",
+      transaction:
+        transactionResult.rows[0]
+    });
+
+  } catch (error) {
+
+    await client.query("ROLLBACK");
+
+    console.error(
+      "Deposit request error:",
+      error.message
+    );
+
+    res.status(500).json({
+      success: false,
+      message:
+        "Could not create deposit request."
+    });
+
+  } finally {
+
+    client.release();
+
+  }
+});
+
+/*
+|--------------------------------------------------------------------------
+| Wallet Transactions
+|--------------------------------------------------------------------------
+*/
+
+app.get("/api/wallet/transactions", async (req, res) => {
+
+  try {
+
+    const {
+      telegram_id
+    } = req.query;
+
+    if (!telegram_id) {
+
+      return res.status(400).json({
+        success: false,
+        message: "telegram_id is required."
+      });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT
+        t.id,
+        t.type,
+        t.amount,
+        t.status,
+        t.reference,
+        t.description,
+        t.created_at,
+        t.updated_at
+      FROM transactions t
+      INNER JOIN users u
+        ON u.id = t.user_id
+      WHERE u.telegram_id = $1
+      ORDER BY t.created_at DESC
+      LIMIT 100
+      `,
+      [telegram_id]
+    );
+
+    res.json({
+      success: true,
+      transactions: result.rows
+    });
+
+  } catch (error) {
+
+    console.error(
+      "Wallet transactions error:",
+      error.message
+    );
+
+    res.status(500).json({
+      success: false,
+      message:
+        "Could not load wallet transactions."
     });
   }
 });
