@@ -436,6 +436,88 @@ app.get("/api/user-test", async (req, res) => {
 | Betting - Place Bet
 |--------------------------------------------------------------------------
 */
+// ===============================
+// MATCH API
+// ===============================
+
+// Get all matches
+app.get("/api/matches", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        id,
+        external_id,
+        home_team,
+        away_team,
+        status,
+        home_score,
+        away_score,
+        result,
+        started_at,
+        finished_at
+      FROM matches
+      ORDER BY started_at ASC NULLS LAST, id ASC
+    `);
+
+    res.json({
+      success: true,
+      matches: result.rows
+    });
+  } catch (error) {
+    console.error("Get matches error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to load matches."
+    });
+  }
+});
+
+
+// Get one match
+app.get("/api/matches/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `
+      SELECT
+        id,
+        external_id,
+        home_team,
+        away_team,
+        status,
+        home_score,
+        away_score,
+        result,
+        started_at,
+        finished_at
+      FROM matches
+      WHERE id = $1
+      `,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Match not found."
+      });
+    }
+
+    res.json({
+      success: true,
+      match: result.rows[0]
+    });
+  } catch (error) {
+    console.error("Get match error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to load match."
+    });
+  }
+});
 
 app.post("/api/bets/place", async (req, res) => {
 
