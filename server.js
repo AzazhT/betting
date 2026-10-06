@@ -70,7 +70,11 @@ async function initializeDatabase() {
     console.log("✅ Database tables initialized successfully.");
 
   } catch (error) {
-    console.error("❌ Database initialization failed:", error.message);
+    console.error(
+      "❌ Database initialization failed:",
+      error.message
+    );
+
     throw error;
   }
 }
@@ -97,7 +101,9 @@ app.get("/", (req, res) => {
 
 app.get("/api/health", async (req, res) => {
   try {
-    const result = await pool.query("SELECT NOW() AS time");
+    const result = await pool.query(
+      "SELECT NOW() AS time"
+    );
 
     res.json({
       success: true,
@@ -107,7 +113,10 @@ app.get("/api/health", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Health check error:", error.message);
+    console.error(
+      "Health check error:",
+      error.message
+    );
 
     res.status(500).json({
       success: false,
@@ -139,7 +148,10 @@ app.get("/api/database-test", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Database connection error:", error.message);
+    console.error(
+      "Database connection error:",
+      error.message
+    );
 
     res.status(500).json({
       success: false,
@@ -165,11 +177,16 @@ app.get("/api/tables-test", async (req, res) => {
 
     res.json({
       success: true,
-      tables: result.rows.map(row => row.table_name)
+      tables: result.rows.map(
+        row => row.table_name
+      )
     });
 
   } catch (error) {
-    console.error("Tables test error:", error.message);
+    console.error(
+      "Tables test error:",
+      error.message
+    );
 
     res.status(500).json({
       success: false,
@@ -286,8 +303,10 @@ app.post("/api/user", async (req, res) => {
     });
 
   } catch (error) {
-
-    console.error("User account error:", error.message);
+    console.error(
+      "User account error:",
+      error.message
+    );
 
     res.status(500).json({
       success: false,
@@ -396,7 +415,10 @@ app.get("/api/user-test", async (req, res) => {
 
   } catch (error) {
 
-    console.error("User test error:", error.message);
+    console.error(
+      "User test error:",
+      error.message
+    );
 
     res.status(500).json({
       success: false,
@@ -404,9 +426,10 @@ app.get("/api/user-test", async (req, res) => {
     });
   }
 });
+
 /*
 |--------------------------------------------------------------------------
-| Betting
+| Betting - Place Bet
 |--------------------------------------------------------------------------
 */
 
@@ -414,6 +437,7 @@ app.post("/api/bets/place", async (req, res) => {
   const client = await pool.connect();
 
   try {
+
     const {
       telegram_id,
       game,
@@ -435,7 +459,10 @@ app.post("/api/bets/place", async (req, res) => {
       });
     }
 
-    if (!Array.isArray(selections) || selections.length === 0) {
+    if (
+      !Array.isArray(selections) ||
+      selections.length === 0
+    ) {
       return res.status(400).json({
         success: false,
         message: "At least one selection is required."
@@ -444,7 +471,10 @@ app.post("/api/bets/place", async (req, res) => {
 
     const amount = Number(stake);
 
-    if (!Number.isFinite(amount) || amount <= 0) {
+    if (
+      !Number.isFinite(amount) ||
+      amount <= 0
+    ) {
       return res.status(400).json({
         success: false,
         message: "Invalid stake amount."
@@ -464,6 +494,7 @@ app.post("/api/bets/place", async (req, res) => {
     );
 
     if (userResult.rows.length === 0) {
+
       await client.query("ROLLBACK");
 
       return res.status(404).json({
@@ -475,6 +506,7 @@ app.post("/api/bets/place", async (req, res) => {
     const user = userResult.rows[0];
 
     if (!user.is_active) {
+
       await client.query("ROLLBACK");
 
       return res.status(403).json({
@@ -486,6 +518,7 @@ app.post("/api/bets/place", async (req, res) => {
     const balance = Number(user.balance);
 
     if (balance < amount) {
+
       await client.query("ROLLBACK");
 
       return res.status(400).json({
@@ -497,12 +530,14 @@ app.post("/api/bets/place", async (req, res) => {
     let totalOdds = 1;
 
     for (const selection of selections) {
+
       const odd = Number(selection.odd);
 
       if (
         !Number.isFinite(odd) ||
         odd <= 1
       ) {
+
         await client.query("ROLLBACK");
 
         return res.status(400).json({
@@ -514,10 +549,13 @@ app.post("/api/bets/place", async (req, res) => {
       totalOdds *= odd;
     }
 
-    totalOdds = Number(totalOdds.toFixed(4));
+    totalOdds =
+      Number(totalOdds.toFixed(4));
 
     const potentialWin =
-      Number((amount * totalOdds).toFixed(2));
+      Number(
+        (amount * totalOdds).toFixed(2)
+      );
 
     const betResult = await client.query(
       `
@@ -550,7 +588,9 @@ app.post("/api/bets/place", async (req, res) => {
     );
 
     const newBalance =
-      Number((balance - amount).toFixed(2));
+      Number(
+        (balance - amount).toFixed(2)
+      );
 
     await client.query(
       `
@@ -614,9 +654,72 @@ app.post("/api/bets/place", async (req, res) => {
     });
 
   } finally {
+
     client.release();
   }
 });
+
+/*
+|--------------------------------------------------------------------------
+| Bet History
+|--------------------------------------------------------------------------
+*/
+
+app.get("/api/bets/history", async (req, res) => {
+
+  try {
+
+    const { telegram_id } = req.query;
+
+    if (!telegram_id) {
+
+      return res.status(400).json({
+        success: false,
+        message: "telegram_id is required."
+      });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT
+        b.id,
+        b.game,
+        b.stake,
+        b.potential_win,
+        b.actual_win,
+        b.status,
+        b.result,
+        b.created_at,
+        b.settled_at
+      FROM bets b
+      INNER JOIN users u
+        ON u.id = b.user_id
+      WHERE u.telegram_id = $1
+      ORDER BY b.created_at DESC
+      LIMIT 50
+      `,
+      [telegram_id]
+    );
+
+    res.json({
+      success: true,
+      bets: result.rows
+    });
+
+  } catch (error) {
+
+    console.error(
+      "Bet history error:",
+      error.message
+    );
+
+    res.status(500).json({
+      success: false,
+      message: "Could not load bet history."
+    });
+  }
+});
+
 /*
 |--------------------------------------------------------------------------
 | Socket.IO
@@ -625,14 +728,21 @@ app.post("/api/bets/place", async (req, res) => {
 
 io.on("connection", (socket) => {
 
-  console.log(`Client connected: ${socket.id}`);
+  console.log(
+    `Client connected: ${socket.id}`
+  );
 
   socket.emit("serverMessage", {
-    message: "Connected to Ethiopia Betting server."
+    message:
+      "Connected to Ethiopia Betting server."
   });
 
   socket.on("disconnect", () => {
-    console.log(`Client disconnected: ${socket.id}`);
+
+    console.log(
+      `Client disconnected: ${socket.id}`
+    );
+
   });
 
 });
@@ -649,15 +759,23 @@ async function startServer() {
 
     await initializeDatabase();
 
-    server.listen(PORT, "0.0.0.0", () => {
-      console.log(
-        `Ethiopia Betting server running on port ${PORT}`
-      );
-    });
+    server.listen(
+      PORT,
+      "0.0.0.0",
+      () => {
+
+        console.log(
+          `Ethiopia Betting server running on port ${PORT}`
+        );
+
+      }
+    );
 
   } catch (error) {
 
-    console.error("❌ Server startup failed.");
+    console.error(
+      "❌ Server startup failed."
+    );
 
     process.exit(1);
   }
