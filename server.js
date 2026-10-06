@@ -5,6 +5,7 @@ const { Server } = require("socket.io");
 const { Pool } = require("pg");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 require("dotenv").config();
 
 const app = express();
@@ -203,6 +204,7 @@ app.get("/api/tables-test", async (req, res) => {
 
 app.post("/api/user", async (req, res) => {
   try {
+
     const {
       telegram_id,
       name,
@@ -227,6 +229,7 @@ app.post("/api/user", async (req, res) => {
     );
 
     if (existingUser.rows.length > 0) {
+
       return res.json({
         success: true,
         new_user: false,
@@ -303,6 +306,7 @@ app.post("/api/user", async (req, res) => {
     });
 
   } catch (error) {
+
     console.error(
       "User account error:",
       error.message
@@ -434,6 +438,7 @@ app.get("/api/user-test", async (req, res) => {
 */
 
 app.post("/api/bets/place", async (req, res) => {
+
   const client = await pool.connect();
 
   try {
@@ -446,6 +451,7 @@ app.post("/api/bets/place", async (req, res) => {
     } = req.body;
 
     if (!telegram_id) {
+
       return res.status(400).json({
         success: false,
         message: "telegram_id is required."
@@ -453,6 +459,7 @@ app.post("/api/bets/place", async (req, res) => {
     }
 
     if (!game) {
+
       return res.status(400).json({
         success: false,
         message: "game is required."
@@ -463,6 +470,7 @@ app.post("/api/bets/place", async (req, res) => {
       !Array.isArray(selections) ||
       selections.length === 0
     ) {
+
       return res.status(400).json({
         success: false,
         message: "At least one selection is required."
@@ -475,6 +483,7 @@ app.post("/api/bets/place", async (req, res) => {
       !Number.isFinite(amount) ||
       amount <= 0
     ) {
+
       return res.status(400).json({
         success: false,
         message: "Invalid stake amount."
@@ -662,6 +671,312 @@ app.post("/api/bets/place", async (req, res) => {
 
 /*
 |--------------------------------------------------------------------------
+| TEST ONLY - Automatic Bet Settlement
+|--------------------------------------------------------------------------
+|
+| This endpoint is for testing only.
+|
+| It randomly settles ONE pending bet as:
+|
+| Won  -> potential_win is credited
+| Lost -> nothing is credited
+|
+| It uses crypto.randomInt so the result is not
+| based on the player, stake, or balance.
+|
+| Remove/restrict this endpoint before production.
+|
+|--------------------------------------------------------------------------
+*/
+
+app.post("/api/test/settle-bet", async (req, res) => {
+
+  const client = await pool.connect();
+
+  try {
+
+    const requestedBetId =
+      req.body && req.body.bet_id
+        ? Number(req.body.bet_id)
+        : null;
+
+    await client.query("BEGIN");
+
+    /*
+    | Find pending bet
+    */
+
+    let betResult;
+
+    if (
+      requestedBetId &&
+      Number.isInteger(requestedBetId) &&
+      requestedBetId > 0
+    ) {
+
+      betResult = await client.query(
+        `
+        SELECT
+          b.*,
+          u.telegram_id,
+          u.balance
+        FROM bets b
+        INNER JOIN users u
+          ON u.id = b.user_id
+        WHERE b.id = $1
+          AND b.status = 'pending'
+        FOR UPDATE OF b
+        `,
+        [requestedBetId]
+      );
+
+    } else {
+
+      betResult = await client.query(
+        `
+        SELECT
+          b.*,
+          u.telegram_id,
+          u.balance
+        FROM bets b
+        INNER JOIN users u
+          ON u.id = b.user_id
+        WHERE b.status = 'pending'
+        ORDER BY b.id ASC
+        LIMIT 1
+        FOR UPDATE OF b
+        `
+      );
+    }
+
+    if (betResult.rows.length === 0) {
+
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        success: false,
+        message: "No pending bet found."
+      });
+    }
+
+    const bet = betResult.rows[0];
+
+    /*
+    | Lock user row too
+    */
+
+    const userResult = await client.query(
+      `
+      SELECT *
+      FROM users
+      WHERE id = $1
+      FOR UPDATE
+      `,
+      [bet.user_id]
+    );
+
+    if (userResult.rows.length === 0) {
+
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        success: false,
+        message: "Bet user not found."
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    /*
+    | Fair random test result
+    |
+    | 0 = Lost
+    | 1 = Won
+    */
+
+    const randomResult =
+      crypto.randomInt(0, 2);
+
+    const won =
+      randomResult === 1;
+
+    const status =
+      won
+        ? "won"
+        : "lost";
+
+    const actualWin =
+      won
+        ? Number(bet.potential_win)
+        : 0;
+
+    const currentBalance =
+      Number(user.balance);
+
+    const newBalance =
+      won
+        ? Number(
+            (currentBalance + actualWin).toFixed(2)
+          )
+        : currentBalance;
+
+    /*
+    | Save result
+    */
+
+    const resultData = {
+      test_mode: true,
+      outcome: status,
+      settled_by: "automatic_test_settlement",
+      settled_at: new Date().toISOString()
+    };
+
+    await client.query(
+      `
+      UPDATE bets
+      SET
+        actual_win = $1,
+        status = $2,
+        result = COALESCE(result, '{}'::jsonb) || $3::jsonb,
+        settled_at = NOW()
+      WHERE id = $4
+        AND status = 'pending'
+      `,
+      [
+        actualWin,
+        status,
+        JSON.stringify(resultData),
+        bet.id
+      ]
+    );
+
+    /*
+    | Credit winnings only if Won
+    */
+
+    if (won) {
+
+      await client.query(
+        `
+        UPDATE users
+        SET
+          balance = $1,
+          updated_at = NOW()
+        WHERE id = $2
+        `,
+        [
+          newBalance,
+          user.id
+        ]
+      );
+
+      /*
+      | Record winning transaction
+      */
+
+      await client.query(
+        `
+        INSERT INTO transactions
+          (
+            user_id,
+            type,
+            amount,
+            status,
+            reference,
+            description
+          )
+        VALUES
+          ($1, $2, $3, $4, $5, $6)
+        `,
+        [
+          user.id,
+          "bet_win",
+          actualWin,
+          "completed",
+          `WIN-${bet.id}`,
+          `Bet #${bet.id} winning payout`
+        ]
+      );
+
+    } else {
+
+      /*
+      | Record losing settlement
+      */
+
+      await client.query(
+        `
+        INSERT INTO transactions
+          (
+            user_id,
+            type,
+            amount,
+            status,
+            reference,
+            description
+          )
+        VALUES
+          ($1, $2, $3, $4, $5, $6)
+        `,
+        [
+          user.id,
+          "bet_loss",
+          0,
+          "completed",
+          `LOSS-${bet.id}`,
+          `Bet #${bet.id} lost`
+        ]
+      );
+    }
+
+    await client.query("COMMIT");
+
+    res.json({
+      success: true,
+      message:
+        won
+          ? "Bet settled as WON."
+          : "Bet settled as LOST.",
+      bet_id: bet.id,
+      telegram_id: bet.telegram_id,
+      status,
+      stake: Number(bet.stake),
+      potential_win: Number(bet.potential_win),
+      actual_win: actualWin,
+      balance: newBalance
+    });
+
+  } catch (error) {
+
+    try {
+      await client.query("ROLLBACK");
+    } catch (rollbackError) {
+      console.error(
+        "Settlement rollback error:",
+        rollbackError.message
+      );
+    }
+
+    console.error(
+      "Automatic settlement error:",
+      error.message
+    );
+
+    res.status(500).json({
+      success: false,
+      message:
+        "Could not settle bet."
+    });
+
+  } finally {
+
+    client.release();
+
+  }
+});
+
+/*
+|--------------------------------------------------------------------------
 | Bet History
 |--------------------------------------------------------------------------
 */
@@ -670,7 +985,9 @@ app.get("/api/bets/history", async (req, res) => {
 
   try {
 
-    const { telegram_id } = req.query;
+    const {
+      telegram_id
+    } = req.query;
 
     if (!telegram_id) {
 
@@ -882,7 +1199,14 @@ app.post("/api/deposit/request", async (req, res) => {
 
   } catch (error) {
 
-    await client.query("ROLLBACK");
+    try {
+      await client.query("ROLLBACK");
+    } catch (rollbackError) {
+      console.error(
+        "Deposit rollback error:",
+        rollbackError.message
+      );
+    }
 
     console.error(
       "Deposit request error:",
@@ -1096,9 +1420,6 @@ app.post("/api/withdraw/request", async (req, res) => {
 
     /*
     | Reserve money immediately
-    |
-    | Balance is reduced while withdrawal
-    | is pending.
     */
 
     const newBalance =
@@ -1151,7 +1472,7 @@ app.post("/api/withdraw/request", async (req, res) => {
       );
 
     /*
-    | Complete database transaction
+    | Complete transaction
     */
 
     await client.query("COMMIT");
@@ -1167,7 +1488,14 @@ app.post("/api/withdraw/request", async (req, res) => {
 
   } catch (error) {
 
-    await client.query("ROLLBACK");
+    try {
+      await client.query("ROLLBACK");
+    } catch (rollbackError) {
+      console.error(
+        "Withdrawal rollback error:",
+        rollbackError.message
+      );
+    }
 
     console.error(
       "Withdrawal request error:",
