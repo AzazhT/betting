@@ -76,7 +76,7 @@ async function initializeDatabase() {
 
 /*
 |--------------------------------------------------------------------------
-| Basic Server
+| Home
 |--------------------------------------------------------------------------
 */
 
@@ -149,7 +149,7 @@ app.get("/api/database-test", async (req, res) => {
 
 /*
 |--------------------------------------------------------------------------
-| Table Test
+| Tables Test
 |--------------------------------------------------------------------------
 */
 
@@ -173,6 +173,233 @@ app.get("/api/tables-test", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Could not read database tables."
+    });
+  }
+});
+
+/*
+|--------------------------------------------------------------------------
+| User Account
+|--------------------------------------------------------------------------
+*/
+
+app.post("/api/user", async (req, res) => {
+  try {
+    const {
+      telegram_id,
+      name,
+      username,
+      phone
+    } = req.body;
+
+    if (!telegram_id) {
+      return res.status(400).json({
+        success: false,
+        message: "telegram_id is required."
+      });
+    }
+
+    /*
+    | Check existing user
+    */
+
+    const existingUser = await pool.query(
+      "SELECT * FROM users WHERE telegram_id = $1",
+      [telegram_id]
+    );
+
+    if (existingUser.rows.length > 0) {
+      return res.json({
+        success: true,
+        new_user: false,
+        user: existingUser.rows[0]
+      });
+    }
+
+    /*
+    | New user
+    */
+
+    const signupBonus = 50.00;
+
+    const result = await pool.query(
+      `
+      INSERT INTO users
+        (
+          telegram_id,
+          name,
+          username,
+          phone,
+          balance,
+          bonus_balance
+        )
+      VALUES
+        ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+      `,
+      [
+        telegram_id,
+        name || "Player",
+        username || "",
+        phone || "",
+        signupBonus,
+        signupBonus
+      ]
+    );
+
+    const user = result.rows[0];
+
+    /*
+    | Record signup bonus
+    */
+
+    await pool.query(
+      `
+      INSERT INTO transactions
+        (
+          user_id,
+          type,
+          amount,
+          status,
+          reference,
+          description
+        )
+      VALUES
+        ($1, $2, $3, $4, $5, $6)
+      `,
+      [
+        user.id,
+        "signup_bonus",
+        signupBonus,
+        "completed",
+        `SIGNUP-${user.id}`,
+        "50 ETB signup bonus"
+      ]
+    );
+
+    res.json({
+      success: true,
+      new_user: true,
+      message: "Account created successfully.",
+      user
+    });
+
+  } catch (error) {
+
+    console.error("User account error:", error.message);
+
+    res.status(500).json({
+      success: false,
+      message: "Could not create user account."
+    });
+  }
+});
+
+/*
+|--------------------------------------------------------------------------
+| User Test
+|--------------------------------------------------------------------------
+*/
+
+app.get("/api/user-test", async (req, res) => {
+  try {
+
+    const telegramId = "TEST_USER_001";
+
+    /*
+    | Check test user
+    */
+
+    let result = await pool.query(
+      "SELECT * FROM users WHERE telegram_id = $1",
+      [telegramId]
+    );
+
+    /*
+    | Create test user if not found
+    */
+
+    if (result.rows.length === 0) {
+
+      const signupBonus = 50.00;
+
+      result = await pool.query(
+        `
+        INSERT INTO users
+          (
+            telegram_id,
+            name,
+            username,
+            balance,
+            bonus_balance
+          )
+        VALUES
+          ($1, $2, $3, $4, $5)
+        RETURNING *
+        `,
+        [
+          telegramId,
+          "Test Player",
+          "test_player",
+          signupBonus,
+          signupBonus
+        ]
+      );
+
+      const user = result.rows[0];
+
+      /*
+      | Record test bonus
+      */
+
+      await pool.query(
+        `
+        INSERT INTO transactions
+          (
+            user_id,
+            type,
+            amount,
+            status,
+            reference,
+            description
+          )
+        VALUES
+          ($1, $2, $3, $4, $5, $6)
+        `,
+        [
+          user.id,
+          "signup_bonus",
+          signupBonus,
+          "completed",
+          `TEST-SIGNUP-${user.id}`,
+          "Test 50 ETB signup bonus"
+        ]
+      );
+
+      return res.json({
+        success: true,
+        new_user: true,
+        user
+      });
+    }
+
+    /*
+    | Existing test user
+    */
+
+    res.json({
+      success: true,
+      new_user: false,
+      user: result.rows[0]
+    });
+
+  } catch (error) {
+
+    console.error("User test error:", error.message);
+
+    res.status(500).json({
+      success: false,
+      message: "User test failed."
     });
   }
 });
@@ -204,19 +431,22 @@ io.on("connection", (socket) => {
 */
 
 async function startServer() {
+
   try {
 
     await initializeDatabase();
 
     server.listen(PORT, "0.0.0.0", () => {
-      console.log(`Ethiopia Betting server running on port ${PORT}`);
+      console.log(
+        `Ethiopia Betting server running on port ${PORT}`
+      );
     });
 
   } catch (error) {
 
     console.error("❌ Server startup failed.");
-    process.exit(1);
 
+    process.exit(1);
   }
 }
 
