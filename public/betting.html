@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>Betting - Ethiopia Betting</title>
 
   <style>
@@ -19,8 +20,12 @@
       min-height: 100vh;
     }
 
-    button {
+    button,
+    input {
       font: inherit;
+    }
+
+    button {
       cursor: pointer;
     }
 
@@ -141,6 +146,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 15px;
       color: #91a8bb;
       font-size: 13px;
     }
@@ -148,6 +154,10 @@
     .league {
       color: #fff;
       font-weight: bold;
+    }
+
+    .match-time {
+      white-space: nowrap;
     }
 
     .match-body {
@@ -182,6 +192,7 @@
       gap: 8px;
       overflow-x: auto;
       margin-bottom: 12px;
+      scrollbar-width: thin;
     }
 
     .market-tab {
@@ -198,7 +209,7 @@
       border-bottom-color: #16db8b;
     }
 
-    .odds {
+    .market-content {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 8px;
@@ -212,6 +223,7 @@
       padding: 11px 8px;
       text-align: left;
       transition: .15s;
+      min-height: 60px;
     }
 
     .odd:hover {
@@ -230,11 +242,21 @@
       font-size: 12px;
       opacity: .75;
       margin-bottom: 4px;
+      line-height: 1.3;
     }
 
     .odd-value {
       font-size: 16px;
       font-weight: bold;
+    }
+
+    .no-odds {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 20px;
+      color: #718ba0;
+      border: 1px dashed #29465d;
+      border-radius: 9px;
     }
 
     .slip {
@@ -295,13 +317,14 @@
     .selection-name {
       font-size: 13px;
       font-weight: bold;
+      line-height: 1.4;
     }
 
     .remove {
       border: 0;
       background: transparent;
       color: #7891a5;
-      font-size: 16px;
+      font-size: 18px;
     }
 
     .selection-info {
@@ -314,6 +337,7 @@
       color: #7891a5;
       font-size: 11px;
       margin-top: 4px;
+      line-height: 1.4;
     }
 
     .bet-controls {
@@ -380,6 +404,46 @@
       cursor: not-allowed;
     }
 
+    .loading {
+      background: #0a1b2c;
+      border: 1px solid #1c3850;
+      border-radius: 15px;
+      padding: 40px 20px;
+      text-align: center;
+      color: #8fa6b9;
+    }
+
+    .error-box {
+      background: #27151a;
+      border: 1px solid #69333c;
+      border-radius: 12px;
+      padding: 20px;
+      color: #ffb4bd;
+      line-height: 1.6;
+    }
+
+    .retry-btn {
+      margin-top: 15px;
+      border: 0;
+      background: #16d98a;
+      color: #03150d;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+
+    .refresh-btn {
+      border: 1px solid #29465d;
+      background: #0b1c2c;
+      color: #c3d2de;
+      padding: 9px 13px;
+      border-radius: 9px;
+    }
+
+    .refresh-btn:hover {
+      border-color: #16d98a;
+    }
+
     .notice {
       margin-top: 12px;
       color: #718ba0;
@@ -407,8 +471,16 @@
         padding: 20px 12px 45px;
       }
 
+      .title-row {
+        align-items: flex-start;
+      }
+
       .title-row h1 {
         font-size: 25px;
+      }
+
+      .title-row p {
+        font-size: 13px;
       }
 
       .balance {
@@ -420,12 +492,23 @@
         display: none;
       }
 
-      .odds {
+      .match-head {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .market-content {
         grid-template-columns: repeat(3, minmax(90px, 1fr));
+        overflow-x: auto;
       }
 
       .match-body {
         padding: 14px;
+      }
+
+      .team {
+        font-size: 15px;
       }
     }
   </style>
@@ -434,932 +517,97 @@
 <body>
 
 <header class="header">
+
   <div class="logo">
     Ethiopia <span>Betting</span>
   </div>
 
   <div class="header-right">
-    <button class="back-btn" onclick="location.href='/'">
+
+    <button
+      class="back-btn"
+      type="button"
+      onclick="location.href='/'">
       ← Home
     </button>
 
-    <div class="balance" id="balanceDisplay">
-      50.00 ETB
+    <div
+      class="balance"
+      id="balanceDisplay">
+      0.00 ETB
     </div>
+
   </div>
+
 </header>
 
 
 <main class="page">
 
   <div class="title-row">
+
     <div>
       <h1>⚽ Sports Betting</h1>
-      <p>Choose your market and build your bet slip.</p>
+
+      <p>
+        Real football matches and available betting odds.
+      </p>
     </div>
+
+    <button
+      class="refresh-btn"
+      id="refreshBtn"
+      type="button">
+      ↻ Refresh
+    </button>
+
   </div>
 
 
   <div class="sports">
-    <button class="sport active">⚽ Football</button>
-    <button class="sport">🏀 Basketball</button>
-    <button class="sport">🎾 Tennis</button>
-    <button class="sport">🏐 Volleyball</button>
+
+    <button class="sport active" type="button">
+      ⚽ Football
+    </button>
+
+    <button class="sport" type="button">
+      🏀 Basketball
+    </button>
+
+    <button class="sport" type="button">
+      🎾 Tennis
+    </button>
+
+    <button class="sport" type="button">
+      🏐 Volleyball
+    </button>
+
   </div>
 
 
   <div class="layout">
 
-    <section class="matches">
-
-
-      <!-- =====================================================
-           MATCH 1
-      ====================================================== -->
-
-      <article class="match" data-match="match1">
-
-        <div class="match-head">
-          <span class="league">⚽ Demo Football League</span>
-          <span>Today · 18:00</span>
-        </div>
-
-        <div class="match-body">
-
-          <div class="teams">
-            <div class="team">Addis United</div>
-            <div class="vs">VS</div>
-            <div class="team right">Nile FC</div>
-          </div>
-
-
-          <div class="markets">
-
-            <button class="market-tab active"
-                    onclick="showMarket(this,'1x2')">
-              1X2
-            </button>
-
-            <button class="market-tab"
-                    onclick="showMarket(this,'double')">
-              Double Chance
-            </button>
-
-            <button class="market-tab"
-                    onclick="showMarket(this,'overunder')">
-              Over / Under
-            </button>
-
-            <button class="market-tab"
-                    onclick="showMarket(this,'btts')">
-              BTTS
-            </button>
-
-            <button class="market-tab"
-                    onclick="showMarket(this,'handicap')">
-              Handicap
-            </button>
-
-          </div>
-
-
-          <!-- 1X2 -->
-          <div class="odds market-content"
-               data-market="1x2">
-
-            <button class="odd"
-                    data-match="match1"
-                    data-market="1x2"
-                    data-name="Addis United"
-                    data-odd="1.85">
-
-              <span class="odd-name">Home</span>
-              <span class="odd-value">1.85</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match1"
-                    data-market="1x2"
-                    data-name="Draw"
-                    data-odd="3.40">
-
-              <span class="odd-name">Draw</span>
-              <span class="odd-value">3.40</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match1"
-                    data-market="1x2"
-                    data-name="Nile FC"
-                    data-odd="4.10">
-
-              <span class="odd-name">Away</span>
-              <span class="odd-value">4.10</span>
-
-            </button>
-
-          </div>
-
-
-          <!-- DOUBLE CHANCE -->
-          <div class="odds market-content"
-               data-market="double"
-               style="display:none">
-
-            <button class="odd"
-                    data-match="match1"
-                    data-market="double"
-                    data-name="Addis United or Draw"
-                    data-odd="1.32">
-
-              <span class="odd-name">1X</span>
-              <span class="odd-value">1.32</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match1"
-                    data-market="double"
-                    data-name="Draw or Nile FC"
-                    data-odd="1.72">
-
-              <span class="odd-name">X2</span>
-              <span class="odd-value">1.72</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match1"
-                    data-market="double"
-                    data-name="Addis United or Nile FC"
-                    data-odd="1.28">
-
-              <span class="odd-name">12</span>
-              <span class="odd-value">1.28</span>
-
-            </button>
-
-          </div>
-
-
-          <!-- OVER UNDER -->
-          <div class="odds market-content"
-               data-market="overunder"
-               style="display:none">
-
-            <button class="odd"
-                    data-match="match1"
-                    data-market="overunder"
-                    data-name="Over 1.5 Goals"
-                    data-odd="1.42">
-
-              <span class="odd-name">Over 1.5</span>
-              <span class="odd-value">1.42</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match1"
-                    data-market="overunder"
-                    data-name="Over 2.5 Goals"
-                    data-odd="1.88">
-
-              <span class="odd-name">Over 2.5</span>
-              <span class="odd-value">1.88</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match1"
-                    data-market="overunder"
-                    data-name="Under 2.5 Goals"
-                    data-odd="1.82">
-
-              <span class="odd-name">Under 2.5</span>
-              <span class="odd-value">1.82</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match1"
-                    data-market="overunder"
-                    data-name="Over 3.5 Goals"
-                    data-odd="2.65">
-
-              <span class="odd-name">Over 3.5</span>
-              <span class="odd-value">2.65</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match1"
-                    data-market="overunder"
-                    data-name="Under 3.5 Goals"
-                    data-odd="1.40">
-
-              <span class="odd-name">Under 3.5</span>
-              <span class="odd-value">1.40</span>
-
-            </button>
-
-          </div>
-
-
-          <!-- BTTS -->
-          <div class="odds market-content"
-               data-market="btts"
-               style="display:none">
-
-            <button class="odd"
-                    data-match="match1"
-                    data-market="btts"
-                    data-name="Both Teams To Score - Yes"
-                    data-odd="1.75">
-
-              <span class="odd-name">BTTS Yes</span>
-              <span class="odd-value">1.75</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match1"
-                    data-market="btts"
-                    data-name="Both Teams To Score - No"
-                    data-odd="1.95">
-
-              <span class="odd-name">BTTS No</span>
-              <span class="odd-value">1.95</span>
-
-            </button>
-
-          </div>
-
-
-          <!-- HANDICAP -->
-          <div class="odds market-content"
-               data-market="handicap"
-               style="display:none">
-
-            <button class="odd"
-                    data-match="match1"
-                    data-market="handicap"
-                    data-name="Addis United -0.5"
-                    data-odd="1.72">
-
-              <span class="odd-name">Home -0.5</span>
-              <span class="odd-value">1.72</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match1"
-                    data-market="handicap"
-                    data-name="Addis United -1.0"
-                    data-odd="2.10">
-
-              <span class="odd-name">Home -1.0</span>
-              <span class="odd-value">2.10</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match1"
-                    data-market="handicap"
-                    data-name="Nile FC +0.5"
-                    data-odd="2.05">
-
-              <span class="odd-name">Away +0.5</span>
-              <span class="odd-value">2.05</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match1"
-                    data-market="handicap"
-                    data-name="Nile FC +1.0"
-                    data-odd="1.68">
-
-              <span class="odd-name">Away +1.0</span>
-              <span class="odd-value">1.68</span>
-
-            </button>
-
-          </div>
-
-        </div>
-
-      </article>
-
-
-      <!-- =====================================================
-           MATCH 2
-      ====================================================== -->
-
-      <article class="match" data-match="match2">
-
-        <div class="match-head">
-          <span class="league">⚽ Demo Premier League</span>
-          <span>Today · 20:30</span>
-        </div>
-
-        <div class="match-body">
-
-          <div class="teams">
-            <div class="team">Capital FC</div>
-            <div class="vs">VS</div>
-            <div class="team right">Highland FC</div>
-          </div>
-
-
-          <div class="markets">
-
-            <button class="market-tab active"
-                    onclick="showMarket(this,'1x2')">
-              1X2
-            </button>
-
-            <button class="market-tab"
-                    onclick="showMarket(this,'double')">
-              Double Chance
-            </button>
-
-            <button class="market-tab"
-                    onclick="showMarket(this,'overunder')">
-              Over / Under
-            </button>
-
-            <button class="market-tab"
-                    onclick="showMarket(this,'btts')">
-              BTTS
-            </button>
-
-            <button class="market-tab"
-                    onclick="showMarket(this,'handicap')">
-              Handicap
-            </button>
-
-          </div>
-
-
-          <!-- 1X2 -->
-          <div class="odds market-content"
-               data-market="1x2">
-
-            <button class="odd"
-                    data-match="match2"
-                    data-market="1x2"
-                    data-name="Capital FC"
-                    data-odd="2.05">
-
-              <span class="odd-name">Home</span>
-              <span class="odd-value">2.05</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match2"
-                    data-market="1x2"
-                    data-name="Draw"
-                    data-odd="3.20">
-
-              <span class="odd-name">Draw</span>
-              <span class="odd-value">3.20</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match2"
-                    data-market="1x2"
-                    data-name="Highland FC"
-                    data-odd="3.55">
-
-              <span class="odd-name">Away</span>
-              <span class="odd-value">3.55</span>
-
-            </button>
-
-          </div>
-
-
-          <!-- DOUBLE -->
-          <div class="odds market-content"
-               data-market="double"
-               style="display:none">
-
-            <button class="odd"
-                    data-match="match2"
-                    data-market="double"
-                    data-name="Capital FC or Draw"
-                    data-odd="1.35">
-
-              <span class="odd-name">1X</span>
-              <span class="odd-value">1.35</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match2"
-                    data-market="double"
-                    data-name="Draw or Highland FC"
-                    data-odd="1.70">
-
-              <span class="odd-name">X2</span>
-              <span class="odd-value">1.70</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match2"
-                    data-market="double"
-                    data-name="Capital FC or Highland FC"
-                    data-odd="1.30">
-
-              <span class="odd-name">12</span>
-              <span class="odd-value">1.30</span>
-
-            </button>
-
-          </div>
-
-
-          <!-- OVER UNDER -->
-          <div class="odds market-content"
-               data-market="overunder"
-               style="display:none">
-
-            <button class="odd"
-                    data-match="match2"
-                    data-market="overunder"
-                    data-name="Over 1.5 Goals"
-                    data-odd="1.40">
-
-              <span class="odd-name">Over 1.5</span>
-              <span class="odd-value">1.40</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match2"
-                    data-market="overunder"
-                    data-name="Over 2.5 Goals"
-                    data-odd="1.85">
-
-              <span class="odd-name">Over 2.5</span>
-              <span class="odd-value">1.85</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match2"
-                    data-market="overunder"
-                    data-name="Under 2.5 Goals"
-                    data-odd="1.85">
-
-              <span class="odd-name">Under 2.5</span>
-              <span class="odd-value">1.85</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match2"
-                    data-market="overunder"
-                    data-name="Over 3.5 Goals"
-                    data-odd="2.60">
-
-              <span class="odd-name">Over 3.5</span>
-              <span class="odd-value">2.60</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match2"
-                    data-market="overunder"
-                    data-name="Under 3.5 Goals"
-                    data-odd="1.42">
-
-              <span class="odd-name">Under 3.5</span>
-              <span class="odd-value">1.42</span>
-
-            </button>
-
-          </div>
-
-
-          <!-- BTTS -->
-          <div class="odds market-content"
-               data-market="btts"
-               style="display:none">
-
-            <button class="odd"
-                    data-match="match2"
-                    data-market="btts"
-                    data-name="Both Teams To Score - Yes"
-                    data-odd="1.75">
-
-              <span class="odd-name">BTTS Yes</span>
-              <span class="odd-value">1.75</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match2"
-                    data-market="btts"
-                    data-name="Both Teams To Score - No"
-                    data-odd="1.95">
-
-              <span class="odd-name">BTTS No</span>
-              <span class="odd-value">1.95</span>
-
-            </button>
-
-          </div>
-
-
-          <!-- HANDICAP -->
-          <div class="odds market-content"
-               data-market="handicap"
-               style="display:none">
-
-            <button class="odd"
-                    data-match="match2"
-                    data-market="handicap"
-                    data-name="Capital FC -0.5"
-                    data-odd="1.80">
-
-              <span class="odd-name">Home -0.5</span>
-              <span class="odd-value">1.80</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match2"
-                    data-market="handicap"
-                    data-name="Capital FC -1.0"
-                    data-odd="2.15">
-
-              <span class="odd-name">Home -1.0</span>
-              <span class="odd-value">2.15</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match2"
-                    data-market="handicap"
-                    data-name="Highland FC +0.5"
-                    data-odd="1.95">
-
-              <span class="odd-name">Away +0.5</span>
-              <span class="odd-value">1.95</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match2"
-                    data-market="handicap"
-                    data-name="Highland FC +1.0"
-                    data-odd="1.65">
-
-              <span class="odd-name">Away +1.0</span>
-              <span class="odd-value">1.65</span>
-
-            </button>
-
-          </div>
-
-        </div>
-
-      </article>
-
-
-      <!-- =====================================================
-           MATCH 3
-      ====================================================== -->
-
-      <article class="match" data-match="match3">
-
-        <div class="match-head">
-          <span class="league">⚽ Demo Championship</span>
-          <span>Tomorrow · 17:00</span>
-        </div>
-
-        <div class="match-body">
-
-          <div class="teams">
-            <div class="team">Lion FC</div>
-            <div class="vs">VS</div>
-            <div class="team right">Blue Stars</div>
-          </div>
-
-
-          <div class="markets">
-
-            <button class="market-tab active"
-                    onclick="showMarket(this,'1x2')">
-              1X2
-            </button>
-
-            <button class="market-tab"
-                    onclick="showMarket(this,'double')">
-              Double Chance
-            </button>
-
-            <button class="market-tab"
-                    onclick="showMarket(this,'overunder')">
-              Over / Under
-            </button>
-
-            <button class="market-tab"
-                    onclick="showMarket(this,'btts')">
-              BTTS
-            </button>
-
-            <button class="market-tab"
-                    onclick="showMarket(this,'handicap')">
-              Handicap
-            </button>
-
-          </div>
-
-
-          <!-- 1X2 -->
-          <div class="odds market-content"
-               data-market="1x2">
-
-            <button class="odd"
-                    data-match="match3"
-                    data-market="1x2"
-                    data-name="Lion FC"
-                    data-odd="1.70">
-
-              <span class="odd-name">Home</span>
-              <span class="odd-value">1.70</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match3"
-                    data-market="1x2"
-                    data-name="Draw"
-                    data-odd="3.60">
-
-              <span class="odd-name">Draw</span>
-              <span class="odd-value">3.60</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match3"
-                    data-market="1x2"
-                    data-name="Blue Stars"
-                    data-odd="4.80">
-
-              <span class="odd-name">Away</span>
-              <span class="odd-value">4.80</span>
-
-            </button>
-
-          </div>
-
-
-          <!-- DOUBLE -->
-          <div class="odds market-content"
-               data-market="double"
-               style="display:none">
-
-            <button class="odd"
-                    data-match="match3"
-                    data-market="double"
-                    data-name="Lion FC or Draw"
-                    data-odd="1.30">
-
-              <span class="odd-name">1X</span>
-              <span class="odd-value">1.30</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match3"
-                    data-market="double"
-                    data-name="Draw or Blue Stars"
-                    data-odd="1.75">
-
-              <span class="odd-name">X2</span>
-              <span class="odd-value">1.75</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match3"
-                    data-market="double"
-                    data-name="Lion FC or Blue Stars"
-                    data-odd="1.25">
-
-              <span class="odd-name">12</span>
-              <span class="odd-value">1.25</span>
-
-            </button>
-
-          </div>
-
-
-          <!-- OVER UNDER -->
-          <div class="odds market-content"
-               data-market="overunder"
-               style="display:none">
-
-            <button class="odd"
-                    data-match="match3"
-                    data-market="overunder"
-                    data-name="Over 1.5 Goals"
-                    data-odd="1.45">
-
-              <span class="odd-name">Over 1.5</span>
-              <span class="odd-value">1.45</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match3"
-                    data-market="overunder"
-                    data-name="Over 2.5 Goals"
-                    data-odd="1.90">
-
-              <span class="odd-name">Over 2.5</span>
-              <span class="odd-value">1.90</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match3"
-                    data-market="overunder"
-                    data-name="Under 2.5 Goals"
-                    data-odd="1.80">
-
-              <span class="odd-name">Under 2.5</span>
-              <span class="odd-value">1.80</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match3"
-                    data-market="overunder"
-                    data-name="Over 3.5 Goals"
-                    data-odd="2.70">
-
-              <span class="odd-name">Over 3.5</span>
-              <span class="odd-value">2.70</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match3"
-                    data-market="overunder"
-                    data-name="Under 3.5 Goals"
-                    data-odd="1.38">
-
-              <span class="odd-name">Under 3.5</span>
-              <span class="odd-value">1.38</span>
-
-            </button>
-
-          </div>
-
-
-          <!-- BTTS -->
-          <div class="odds market-content"
-               data-market="btts"
-               style="display:none">
-
-            <button class="odd"
-                    data-match="match3"
-                    data-market="btts"
-                    data-name="Both Teams To Score - Yes"
-                    data-odd="1.75">
-
-              <span class="odd-name">BTTS Yes</span>
-              <span class="odd-value">1.75</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match3"
-                    data-market="btts"
-                    data-name="Both Teams To Score - No"
-                    data-odd="1.95">
-
-              <span class="odd-name">BTTS No</span>
-              <span class="odd-value">1.95</span>
-
-            </button>
-
-          </div>
-
-
-          <!-- HANDICAP -->
-          <div class="odds market-content"
-               data-market="handicap"
-               style="display:none">
-
-            <button class="odd"
-                    data-match="match3"
-                    data-market="handicap"
-                    data-name="Lion FC -0.5"
-                    data-odd="1.74">
-
-              <span class="odd-name">Home -0.5</span>
-              <span class="odd-value">1.74</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match3"
-                    data-market="handicap"
-                    data-name="Lion FC -1.0"
-                    data-odd="2.05">
-
-              <span class="odd-name">Home -1.0</span>
-              <span class="odd-value">2.05</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match3"
-                    data-market="handicap"
-                    data-name="Blue Stars +0.5"
-                    data-odd="2.00">
-
-              <span class="odd-name">Away +0.5</span>
-              <span class="odd-value">2.00</span>
-
-            </button>
-
-
-            <button class="odd"
-                    data-match="match3"
-                    data-market="handicap"
-                    data-name="Blue Stars +1.0"
-                    data-odd="1.70">
-
-              <span class="odd-name">Away +1.0</span>
-              <span class="odd-value">1.70</span>
-
-            </button>
-
-          </div>
-
-        </div>
-
-      </article>
+    <section class="matches" id="matches">
+
+      <div class="loading">
+        Loading real football matches...
+      </div>
 
     </section>
 
 
-    <!-- =====================================================
-         BET SLIP
-    ====================================================== -->
-
     <aside class="slip">
 
       <div class="slip-head">
+
         <h2>🎫 Bet Slip</h2>
-        <span class="count" id="count">0</span>
+
+        <span
+          class="count"
+          id="count">
+          0
+        </span>
+
       </div>
 
 
@@ -1367,7 +615,7 @@
 
         <div id="selections">
 
-          <div class="empty" id="empty">
+          <div class="empty">
             Your bet slip is empty.<br>
             Select an odd to add it here.
           </div>
@@ -1410,17 +658,21 @@
 
           <div class="summary-row">
             <span>Stake</span>
-            <strong id="stakeDisplay">10.00 ETB</strong>
+            <strong id="stakeDisplay">
+              10.00 ETB
+            </strong>
           </div>
 
 
           <div class="summary-row">
             <span>Potential Win</span>
+
             <strong
               class="potential"
               id="potentialWin">
               0.00 ETB
             </strong>
+
           </div>
 
 
@@ -1433,8 +685,8 @@
 
 
           <div class="notice">
-            Odds shown here are demo values for testing the interface.
-            Final betting logic will be handled securely by the server.
+            Odds are supplied by the server.
+            Final validation is performed server-side.
           </div>
 
         </div>
@@ -1452,12 +704,36 @@
 
   /*
    * =========================================================
-   * BET SLIP STATE
+   * USER
+   * =========================================================
+   */
+
+  const TEST_USER_ID = "TEST_USER_001";
+
+
+  /*
+   * =========================================================
+   * STATE
    * =========================================================
    */
 
   const selections = [];
 
+
+  /*
+   * =========================================================
+   * ELEMENTS
+   * =========================================================
+   */
+
+  const matchesContainer =
+    document.getElementById("matches");
+
+  const refreshBtn =
+    document.getElementById("refreshBtn");
+
+  const balanceDisplay =
+    document.getElementById("balanceDisplay");
 
   const selectionContainer =
     document.getElementById("selections");
@@ -1486,36 +762,850 @@
 
   /*
    * =========================================================
-   * MARKET SWITCHING
+   * LOAD USER
    * =========================================================
    */
 
-  function showMarket(button, market) {
+  async function loadUser() {
 
-    const match =
-      button.closest(".match");
+    try {
 
-    if (!match) {
-      return;
+      const response =
+        await fetch(
+          "/api/user",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body: JSON.stringify({
+
+              telegram_id:
+                TEST_USER_ID,
+
+              name:
+                "Test Player",
+
+              username:
+                "test_player"
+
+            })
+          }
+        );
+
+
+      const data =
+        await response.json();
+
+
+      if (
+        data &&
+        data.success &&
+        data.user
+      ) {
+
+        balanceDisplay.textContent =
+          Number(
+            data.user.balance || 0
+          ).toFixed(2) +
+          " ETB";
+
+      }
+
+    } catch (error) {
+
+      console.error(
+        "User loading error:",
+        error
+      );
+
     }
 
-    match
-      .querySelectorAll(".market-tab")
-      .forEach(tab => {
-        tab.classList.remove("active");
+  }
+
+
+  /*
+   * =========================================================
+   * LOAD REAL MATCHES
+   * =========================================================
+   */
+
+  async function loadMatches() {
+
+    matchesContainer.innerHTML = `
+      <div class="loading">
+        Loading real football matches...
+      </div>
+    `;
+
+
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = "Loading...";
+
+
+    try {
+
+      const response =
+        await fetch(
+          "/api/football/upcoming",
+          {
+            cache: "no-store"
+          }
+        );
+
+
+      const data =
+        await response.json();
+
+
+      if (!response.ok || !data.success) {
+
+        throw new Error(
+          data.message ||
+          "Could not load football matches."
+        );
+
+      }
+
+
+      const matches =
+        Array.isArray(data.matches)
+          ? data.matches
+          : [];
+
+
+      if (matches.length === 0) {
+
+        matchesContainer.innerHTML = `
+          <div class="loading">
+
+            <div style="font-size:35px;margin-bottom:10px;">
+              ⚽
+            </div>
+
+            <div>
+              No upcoming football matches
+              are currently available.
+            </div>
+
+            <button
+              class="retry-btn"
+              type="button"
+              onclick="loadMatches()">
+              Try Again
+            </button>
+
+          </div>
+        `;
+
+        return;
+      }
+
+
+      renderMatches(matches);
+
+    } catch (error) {
+
+      console.error(
+        "Football loading error:",
+        error
+      );
+
+
+      matchesContainer.innerHTML = `
+        <div class="error-box">
+
+          <strong>
+            Could not load football matches.
+          </strong>
+
+          <div style="margin-top:8px;">
+            ${escapeHtml(error.message)}
+          </div>
+
+          <button
+            class="retry-btn"
+            type="button"
+            onclick="loadMatches()">
+            Try Again
+          </button>
+
+        </div>
+      `;
+
+    } finally {
+
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = "↻ Refresh";
+
+    }
+
+  }
+
+
+  /*
+   * =========================================================
+   * RENDER MATCHES
+   * =========================================================
+   */
+
+  function renderMatches(matches) {
+
+    matchesContainer.innerHTML = "";
+
+
+    matches.forEach(
+      (match, matchIndex) => {
+
+        const article =
+          document.createElement("article");
+
+        article.className =
+          "match";
+
+
+        article.dataset.match =
+          String(
+            match.id ||
+            match.external_id ||
+            matchIndex
+          );
+
+
+        const league =
+          match.league ||
+          match.league_name ||
+          "Football";
+
+
+        const home =
+          match.home_team ||
+          match.home ||
+          "Home";
+
+
+        const away =
+          match.away_team ||
+          match.away ||
+          "Away";
+
+
+        const date =
+          match.start_time ||
+          match.started_at ||
+          match.date ||
+          null;
+
+
+        const formattedDate =
+          formatMatchDate(date);
+
+
+        const odds =
+          normalizeOdds(match);
+
+
+        article.innerHTML = `
+
+          <div class="match-head">
+
+            <span class="league">
+              ⚽ ${escapeHtml(league)}
+            </span>
+
+            <span class="match-time">
+              ${escapeHtml(formattedDate)}
+            </span>
+
+          </div>
+
+
+          <div class="match-body">
+
+            <div class="teams">
+
+              <div class="team">
+                ${escapeHtml(home)}
+              </div>
+
+              <div class="vs">
+                VS
+              </div>
+
+              <div class="team right">
+                ${escapeHtml(away)}
+              </div>
+
+            </div>
+
+
+            <div class="markets">
+
+              <button
+                class="market-tab active"
+                type="button"
+                data-market-tab="1x2">
+                1X2
+              </button>
+
+              <button
+                class="market-tab"
+                type="button"
+                data-market-tab="double">
+                Double Chance
+              </button>
+
+              <button
+                class="market-tab"
+                type="button"
+                data-market-tab="overunder">
+                Over / Under
+              </button>
+
+              <button
+                class="market-tab"
+                type="button"
+                data-market-tab="btts">
+                BTTS
+              </button>
+
+              <button
+                class="market-tab"
+                type="button"
+                data-market-tab="handicap">
+                Handicap
+              </button>
+
+            </div>
+
+
+            ${renderMarket(
+              match,
+              "1x2",
+              odds["1x2"],
+              true
+            )}
+
+            ${renderMarket(
+              match,
+              "double",
+              odds.double,
+              false
+            )}
+
+            ${renderMarket(
+              match,
+              "overunder",
+              odds.overunder,
+              false
+            )}
+
+            ${renderMarket(
+              match,
+              "btts",
+              odds.btts,
+              false
+            )}
+
+            ${renderMarket(
+              match,
+              "handicap",
+              odds.handicap,
+              false
+            )}
+
+          </div>
+
+        `;
+
+
+        matchesContainer
+          .appendChild(article);
+
+      }
+    );
+
+
+    attachMatchEvents();
+
+  }
+
+
+  /*
+   * =========================================================
+   * RENDER MARKET
+   * =========================================================
+   */
+
+  function renderMarket(
+    match,
+    market,
+    marketOdds,
+    visible
+  ) {
+
+    const display =
+      visible
+        ? "grid"
+        : "none";
+
+
+    if (
+      !Array.isArray(marketOdds) ||
+      marketOdds.length === 0
+    ) {
+
+      return `
+        <div
+          class="market-content"
+          data-market="${escapeHtml(market)}"
+          style="display:${display};">
+
+          <div class="no-odds">
+            No odds available for this market.
+          </div>
+
+        </div>
+      `;
+
+    }
+
+
+    const matchId =
+      String(
+        match.id ||
+        match.external_id ||
+        ""
+      );
+
+
+    return `
+
+      <div
+        class="market-content"
+        data-market="${escapeHtml(market)}"
+        style="display:${display};">
+
+        ${marketOdds.map(
+          item => {
+
+            const odd =
+              Number(item.odd);
+
+
+            if (
+              !Number.isFinite(odd) ||
+              odd <= 1
+            ) {
+              return "";
+            }
+
+
+            return `
+
+              <button
+                class="odd"
+                type="button"
+
+                data-match="${escapeHtml(matchId)}"
+
+                data-market="${escapeHtml(market)}"
+
+                data-name="${escapeHtml(item.name)}"
+
+                data-label="${escapeHtml(item.label || item.name)}"
+
+                data-odd="${odd}"
+
+                data-line="${escapeHtml(item.line || "")}">
+
+                <span class="odd-name">
+                  ${escapeHtml(
+                    item.label ||
+                    item.name
+                  )}
+                </span>
+
+                <span class="odd-value">
+                  ${odd.toFixed(2)}
+                </span>
+
+              </button>
+
+            `;
+
+          }
+        ).join("")}
+
+      </div>
+
+    `;
+
+  }
+
+
+  /*
+   * =========================================================
+   * NORMALIZE ODDS
+   *
+   * Supports several backend shapes.
+   * =========================================================
+   */
+
+  function normalizeOdds(match) {
+
+    const result = {
+
+      "1x2": [],
+      "double": [],
+      "overunder": [],
+      "btts": [],
+      "handicap": []
+
+    };
+
+
+    const source =
+      match.odds ||
+      match.markets ||
+      match.betting_odds ||
+      {};
+
+
+    /*
+     * Already normalized backend:
+     */
+
+    if (
+      Array.isArray(source["1x2"])
+    ) {
+
+      result["1x2"] =
+        source["1x2"];
+
+    }
+
+
+    if (
+      Array.isArray(source.double)
+    ) {
+
+      result.double =
+        source.double;
+
+    }
+
+
+    if (
+      Array.isArray(source.overunder)
+    ) {
+
+      result.overunder =
+        source.overunder;
+
+    }
+
+
+    if (
+      Array.isArray(source.btts)
+    ) {
+
+      result.btts =
+        source.btts;
+
+    }
+
+
+    if (
+      Array.isArray(source.handicap)
+    ) {
+
+      result.handicap =
+        source.handicap;
+
+    }
+
+
+    /*
+     * Common API-Football style markets.
+     */
+
+    if (
+      result["1x2"].length === 0 &&
+      Array.isArray(source)
+    ) {
+
+      source.forEach(market => {
+
+        const name =
+          String(
+            market.name ||
+            market.market ||
+            ""
+          ).toLowerCase();
+
+
+        const values =
+          Array.isArray(market.values)
+            ? market.values
+            : [];
+
+
+        if (
+          name.includes("match winner") ||
+          name.includes("1x2")
+        ) {
+
+          result["1x2"] =
+            values.map(value => ({
+
+              name:
+                value.value || "",
+
+              label:
+                convertWinnerLabel(
+                  value.value,
+                  match
+                ),
+
+              odd:
+                Number(value.odd)
+
+            }));
+
+        }
+
+
+        if (
+          name.includes("double chance")
+        ) {
+
+          result.double =
+            values.map(value => ({
+
+              name:
+                value.value || "",
+
+              label:
+                value.value || "",
+
+              odd:
+                Number(value.odd)
+
+            }));
+
+        }
+
+
+        if (
+          name.includes("over/under") ||
+          name.includes("goals over") ||
+          name.includes("goals")
+        ) {
+
+          result.overunder =
+            values.map(value => ({
+
+              name:
+                value.value || "",
+
+              label:
+                value.value || "",
+
+              odd:
+                Number(value.odd),
+
+              line:
+                value.value || ""
+
+            }));
+
+        }
+
+
+        if (
+          name.includes("both teams") ||
+          name.includes("btts")
+        ) {
+
+          result.btts =
+            values.map(value => ({
+
+              name:
+                value.value || "",
+
+              label:
+                value.value || "",
+
+              odd:
+                Number(value.odd)
+
+            }));
+
+        }
+
+
+        if (
+          name.includes("handicap")
+        ) {
+
+          result.handicap =
+            values.map(value => ({
+
+              name:
+                value.value || "",
+
+              label:
+                value.value || "",
+
+              odd:
+                Number(value.odd),
+
+              line:
+                value.value || ""
+
+            }));
+
+        }
+
       });
 
-    button.classList.add("active");
+    }
 
 
+    return result;
+
+  }
+
+
+  /*
+   * =========================================================
+   * CONVERT 1X2 LABEL
+   * =========================================================
+   */
+
+  function convertWinnerLabel(
+    value,
     match
-      .querySelectorAll(".market-content")
-      .forEach(content => {
+  ) {
 
-        content.style.display =
-          content.dataset.market === market
-            ? "grid"
-            : "none";
+    const text =
+      String(value || "")
+        .toLowerCase();
+
+
+    if (
+      text === "home" ||
+      text === "1"
+    ) {
+
+      return "Home";
+
+    }
+
+
+    if (
+      text === "draw" ||
+      text === "x"
+    ) {
+
+      return "Draw";
+
+    }
+
+
+    if (
+      text === "away" ||
+      text === "2"
+    ) {
+
+      return "Away";
+
+    }
+
+
+    return String(value || "");
+
+  }
+
+
+  /*
+   * =========================================================
+   * ATTACH MATCH EVENTS
+   * =========================================================
+   */
+
+  function attachMatchEvents() {
+
+    document
+      .querySelectorAll(".market-tab")
+      .forEach(button => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            const match =
+              button.closest(".match");
+
+
+            if (!match) {
+              return;
+            }
+
+
+            const market =
+              button.dataset.marketTab;
+
+
+            match
+              .querySelectorAll(".market-tab")
+              .forEach(tab => {
+
+                tab.classList.remove(
+                  "active"
+                );
+
+              });
+
+
+            button.classList.add("active");
+
+
+            match
+              .querySelectorAll(
+                ".market-content"
+              )
+              .forEach(content => {
+
+                content.style.display =
+                  content.dataset.market === market
+                    ? "grid"
+                    : "none";
+
+              });
+
+          }
+        );
+
+      });
+
+
+    document
+      .querySelectorAll(".odd")
+      .forEach(button => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            selectOdd(button);
+
+          }
+        );
 
       });
 
@@ -1524,117 +1614,144 @@
 
   /*
    * =========================================================
-   * ODDS CLICK
+   * SELECT ODD
    * =========================================================
    */
 
-  document
-    .querySelectorAll(".odd")
-    .forEach(button => {
+  function selectOdd(button) {
 
-      button.addEventListener("click", () => {
-
-        const match =
-          button.dataset.match;
-
-        const market =
-          button.dataset.market;
-
-        const name =
-          button.dataset.name;
-
-        const odd =
-          Number(button.dataset.odd);
+    const match =
+      button.dataset.match;
 
 
-        if (
-          !match ||
-          !market ||
-          !name ||
-          !Number.isFinite(odd) ||
-          odd <= 1
-        ) {
-          return;
-        }
+    const market =
+      button.dataset.market;
 
 
-        /*
-         * Find selection from SAME match + SAME market.
-         *
-         * Example:
-         * Addis United + Draw
-         * in same 1X2 market
-         * cannot both be selected.
-         */
-
-        const existingSameMarket =
-          selections.find(
-            item =>
-              item.match === match &&
-              item.market === market
-          );
+    const name =
+      button.dataset.name;
 
 
-        /*
-         * Clicking the already selected odd
-         * removes it.
-         */
-
-        if (
-          existingSameMarket &&
-          existingSameMarket.button === button
-        ) {
-
-          existingSameMarket.button
-            .classList.remove("selected");
-
-          const index =
-            selections.indexOf(existingSameMarket);
-
-          selections.splice(index, 1);
-
-          renderSlip();
-
-          return;
-        }
+    const label =
+      button.dataset.label ||
+      name;
 
 
-        /*
-         * If another selection exists
-         * in the same market, replace it.
-         */
-
-        if (existingSameMarket) {
-
-          existingSameMarket.button
-            .classList.remove("selected");
-
-          const index =
-            selections.indexOf(existingSameMarket);
-
-          selections.splice(index, 1);
-        }
+    const odd =
+      Number(button.dataset.odd);
 
 
-        /*
-         * Add new selection.
-         */
+    const line =
+      button.dataset.line || "";
 
-        selections.push({
-          match,
-          market,
-          name,
-          odd,
-          button
-        });
 
-        button.classList.add("selected");
+    if (
+      !match ||
+      !market ||
+      !name ||
+      !Number.isFinite(odd) ||
+      odd <= 1
+    ) {
 
-        renderSlip();
+      return;
 
-      });
+    }
+
+
+    const existing =
+      selections.find(
+        item =>
+          item.match === match &&
+          item.market === market
+      );
+
+
+    /*
+     * Click selected odd = remove.
+     */
+
+    if (
+      existing &&
+      existing.button === button
+    ) {
+
+      existing.button
+        .classList
+        .remove("selected");
+
+
+      const index =
+        selections.indexOf(existing);
+
+
+      selections.splice(
+        index,
+        1
+      );
+
+
+      renderSlip();
+
+      return;
+
+    }
+
+
+    /*
+     * Same match + market:
+     * replace old selection.
+     */
+
+    if (existing) {
+
+      existing.button
+        .classList
+        .remove("selected");
+
+
+      const index =
+        selections.indexOf(existing);
+
+
+      selections.splice(
+        index,
+        1
+      );
+
+    }
+
+
+    /*
+     * Add new selection.
+     */
+
+    selections.push({
+
+      match,
+
+      market,
+
+      name,
+
+      label,
+
+      odd,
+
+      line,
+
+      button
 
     });
+
+
+    button.classList.add(
+      "selected"
+    );
+
+
+    renderSlip();
+
+  }
 
 
   /*
@@ -1648,72 +1765,101 @@
     selectionContainer.innerHTML = "";
 
 
-    if (selections.length === 0) {
+    if (
+      selections.length === 0
+    ) {
 
       selectionContainer.innerHTML = `
+
         <div class="empty">
           Your bet slip is empty.<br>
           Select an odd to add it here.
         </div>
+
       `;
 
     } else {
 
-      selections.forEach((item, index) => {
+      selections.forEach(
+        (item, index) => {
 
-        const div =
-          document.createElement("div");
+          const div =
+            document.createElement(
+              "div"
+            );
 
-        div.className =
-          "selection";
+
+          div.className =
+            "selection";
 
 
-        div.innerHTML = `
-          <div class="selection-top">
+          div.innerHTML = `
 
-            <div class="selection-name">
-              ${escapeHtml(item.name)}
+            <div class="selection-top">
+
+              <div class="selection-name">
+                ${escapeHtml(
+                  item.label ||
+                  item.name
+                )}
+              </div>
+
+              <button
+                class="remove"
+                type="button"
+                data-remove-index="${index}">
+                ×
+              </button>
+
             </div>
 
-            <button
-              class="remove"
-              type="button"
-              data-remove-index="${index}">
-              ×
-            </button>
 
-          </div>
-
-          <div class="selection-info">
-            Odds: ${item.odd.toFixed(2)}
-          </div>
-
-          <div class="selection-match">
-            ${escapeHtml(item.market.toUpperCase())}
-            · ${escapeHtml(item.match)}
-          </div>
-
-        `;
+            <div class="selection-info">
+              Odds: ${item.odd.toFixed(2)}
+            </div>
 
 
-        selectionContainer
-          .appendChild(div);
+            <div class="selection-match">
+              ${escapeHtml(
+                item.market.toUpperCase()
+              )}
+              · Match ID:
+              ${escapeHtml(item.match)}
+            </div>
 
-      });
+          `;
+
+
+          selectionContainer
+            .appendChild(div);
+
+        }
+      );
 
 
       selectionContainer
-        .querySelectorAll("[data-remove-index]")
+        .querySelectorAll(
+          "[data-remove-index]"
+        )
         .forEach(button => {
 
-          button.addEventListener("click", () => {
+          button.addEventListener(
+            "click",
+            () => {
 
-            const index =
-              Number(button.dataset.removeIndex);
+              const index =
+                Number(
+                  button.dataset
+                    .removeIndex
+                );
 
-            removeSelection(index);
 
-          });
+              removeSelection(
+                index
+              );
+
+            }
+          );
 
         });
 
@@ -1736,6 +1882,7 @@
     const item =
       selections[index];
 
+
     if (!item) {
       return;
     }
@@ -1750,7 +1897,11 @@
     }
 
 
-    selections.splice(index, 1);
+    selections.splice(
+      index,
+      1
+    );
+
 
     renderSlip();
 
@@ -1769,7 +1920,9 @@
       selections.reduce(
         (value, item) =>
           value * item.odd,
-        selections.length ? 1 : 0
+        selections.length
+          ? 1
+          : 0
       );
 
 
@@ -1786,6 +1939,7 @@
 
     count.textContent =
       selections.length;
+
 
     selectionCount.textContent =
       selections.length;
@@ -1814,7 +1968,7 @@
 
   /*
    * =========================================================
-   * STAKE INPUT
+   * STAKE
    * =========================================================
    */
 
@@ -1834,8 +1988,12 @@
     "click",
     async () => {
 
-      if (selections.length === 0) {
+      if (
+        selections.length === 0
+      ) {
+
         return;
+
       }
 
 
@@ -1853,18 +2011,24 @@
         );
 
         return;
+
       }
 
 
       /*
        * IMPORTANT:
-       * This is TEST USER for now.
+       *
+       * The frontend sends the current
+       * selection information.
+       *
+       * Production backend MUST validate
+       * match + market + odd server-side.
        */
 
       const payload = {
 
         telegram_id:
-          "TEST_USER_001",
+          TEST_USER_ID,
 
         game:
           "football",
@@ -1884,6 +2048,12 @@
             name:
               item.name,
 
+            label:
+              item.label,
+
+            line:
+              item.line,
+
             odd:
               item.odd
 
@@ -1895,6 +2065,7 @@
       placeBet.disabled =
         true;
 
+
       placeBet.textContent =
         "Placing Bet...";
 
@@ -1905,15 +2076,22 @@
           await fetch(
             "/api/bets/place",
             {
-              method: "POST",
+
+              method:
+                "POST",
 
               headers: {
+
                 "Content-Type":
                   "application/json"
+
               },
 
               body:
-                JSON.stringify(payload)
+                JSON.stringify(
+                  payload
+                )
+
             }
           );
 
@@ -1922,22 +2100,29 @@
           await response.json();
 
 
-        if (!data.success) {
+        if (
+          !response.ok ||
+          !data.success
+        ) {
 
-          alert(
+          throw new Error(
             data.message ||
             "Bet failed."
           );
 
-          return;
         }
 
 
+        const bet =
+          data.bet || {};
+
+
         alert(
+
           "Bet placed successfully!\n\n" +
 
           "Bet ID: " +
-          data.bet.id +
+          (bet.id || "-") +
 
           "\nStake: " +
           amount.toFixed(2) +
@@ -1945,53 +2130,54 @@
 
           "\nPotential Win: " +
           Number(
-            data.bet.potential_win
+            bet.potential_win || 0
           ).toFixed(2) +
           " ETB" +
 
           "\nNew Balance: " +
           Number(
-            data.balance
+            data.balance || 0
           ).toFixed(2) +
           " ETB"
+
         );
 
 
-        /*
-         * Update balance display.
-         */
-
-        document
-          .getElementById(
-            "balanceDisplay"
-          )
-          .textContent =
-            Number(
-              data.balance
-            ).toFixed(2) +
-            " ETB";
+        balanceDisplay.textContent =
+          Number(
+            data.balance || 0
+          ).toFixed(2) +
+          " ETB";
 
 
         /*
-         * Clear selected buttons.
+         * Clear selections.
          */
 
-        selections.forEach(item => {
+        selections.forEach(
+          item => {
 
-          if (item.button) {
+            if (
+              item.button
+            ) {
 
-            item.button
-              .classList
-              .remove("selected");
+              item.button
+                .classList
+                .remove(
+                  "selected"
+                );
+
+            }
 
           }
-
-        });
+        );
 
 
         selections.length = 0;
 
+
         renderSlip();
+
 
       } catch (error) {
 
@@ -2000,13 +2186,16 @@
           error
         );
 
+
         alert(
+          error.message ||
           "Server connection failed."
         );
 
       } finally {
 
         updateSummary();
+
 
         placeBet.textContent =
           "Place Bet";
@@ -2019,29 +2208,120 @@
 
   /*
    * =========================================================
-   * SIMPLE HTML ESCAPE
+   * DATE FORMAT
    * =========================================================
    */
 
-  function escapeHtml(value) {
+  function formatMatchDate(
+    value
+  ) {
 
-    return String(value)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+    if (!value) {
+
+      return "Time unavailable";
+
+    }
+
+
+    const date =
+      new Date(value);
+
+
+    if (
+      Number.isNaN(
+        date.getTime()
+      )
+    ) {
+
+      return String(value);
+
+    }
+
+
+    return date.toLocaleString(
+      undefined,
+      {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      }
+    );
 
   }
 
 
   /*
    * =========================================================
-   * INITIAL RENDER
+   * HTML ESCAPE
    * =========================================================
    */
 
-  renderSlip();
+  function escapeHtml(
+    value
+  ) {
+
+    return String(
+      value ?? ""
+    )
+      .replaceAll(
+        "&",
+        "&amp;"
+      )
+      .replaceAll(
+        "<",
+        "&lt;"
+      )
+      .replaceAll(
+        ">",
+        "&gt;"
+      )
+      .replaceAll(
+        '"',
+        "&quot;"
+      )
+      .replaceAll(
+        "'",
+        "&#039;"
+      );
+
+  }
+
+
+  /*
+   * =========================================================
+   * REFRESH
+   * =========================================================
+   */
+
+  refreshBtn.addEventListener(
+    "click",
+    async () => {
+
+      await loadMatches();
+
+    }
+  );
+
+
+  /*
+   * =========================================================
+   * INITIAL LOAD
+   * =========================================================
+   */
+
+  async function init() {
+
+    renderSlip();
+
+    await loadUser();
+
+    await loadMatches();
+
+  }
+
+
+  init();
 
 </script>
 
