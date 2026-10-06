@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Bet History - Ethiopia Betting</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: #07111f;
+      color: #ffffff;
+      min-height: 100vh;
+    }
+
+    button {
+      font-family: inherit;
+    }
+
+    .page {
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* HEADER */
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: #18c77b;
+      color: #06121d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .brand-text h1 {
+      font-size: 21px;
+      font-weight: 800;
+    }
+
+    .brand-text p {
+      margin-top: 3px;
+      color: #8ea0b5;
+      font-size: 13px;
+    }
+
+    .back-btn {
+      border: 1px solid #22344a;
+      background: #0d1a2b;
+      color: #ffffff;
+      padding: 11px 17px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .back-btn:hover {
+      background: #14253a;
+    }
+
+    /* BALANCE */
+
+    .balance-card {
+      background: linear-gradient(
+        135deg,
+        #102338,
+        #0d1a2b
+      );
+
+      border: 1px solid #20344b;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .balance-label {
+      color: #8ea0b5;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .balance-value {
+      font-size: 29px;
+      font-weight: 800;
+    }
+
+    .bonus {
+      color: #18c77b;
+      font-size: 13px;
+      margin-top: 6px;
+    }
+
+    /* TITLE */
+
+    .history-title {
+      margin-bottom: 15px;
+    }
+
+    .history-title h2 {
+      font-size: 23px;
+      margin-bottom: 5px;
+    }
+
+    .history-title p {
+      color: #8ea0b5;
+      font-size: 14px;
+    }
+
+    /* FILTER */
+
+    .filter-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .filter-btn {
+      background: #0d1a2b;
+      border: 1px solid #22344a;
+      color: #b8c5d4;
+      padding: 10px 16px;
+      border-radius: 9px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .filter-btn.active {
+      background: #18c77b;
+      color: #06121d;
+      border-color: #18c77b;
+      font-weight: 700;
+    }
+
+    /* LOADING */
+
+    .loading {
+      text-align: center;
+      padding: 45px 20px;
+      color: #8ea0b5;
+      display: none;
+    }
+
+    .spinner {
+      width: 30px;
+      height: 30px;
+      border: 3px solid #24364a;
+      border-top-color: #18c77b;
+      border-radius: 50%;
+      margin: 0 auto 12px;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* EMPTY */
+
+    .empty {
+      background: #0d1a2b;
+      border: 1px solid #1d3046;
+      border-radius: 15px;
+      padding: 45px 20px;
+      text-align: center;
+      display: none;
+    }
+
+    .empty-icon {
+      font-size: 42px;
+      margin-bottom: 12px;
+    }
+
+    .empty h3 {
+      font-size: 18px;
+      margin-bottom: 7px;
+    }
+
+    .empty p {
+      color: #8ea0b5;
+      font-size: 14px;
+    }
+
+    /* BET LIST */
+
+    .bet-list {
+      display: grid;
+      gap: 13px;
+    }
+
+    .bet-card {
+      background: #0d1a2b;
+      border: 1px solid #1d3046;
+      border-radius: 15px;
+      padding: 17px;
+    }
+
+    .bet-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .bet-id {
+      font-size: 14px;
+      color: #dce5ef;
+      font-weight: 700;
+    }
+
+    .bet-game {
+      color: #8ea0b5;
+      font-size: 12px;
+      margin-top: 4px;
+      text-transform: capitalize;
+    }
+
+    .status {
+      padding: 6px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .status.pending {
+      background: #3a2e12;
+      color: #f5c95b;
+    }
+
+    .status.won {
+      background: #103b29;
+      color: #18c77b;
+    }
+
+    .status.lost {
+      background: #3b1820;
+      color: #ff7181;
+    }
+
+    .status.cancelled {
+      background: #2b3040;
+      color: #aeb9c8;
+    }
+
+    /* SELECTIONS */
+
+    .selections {
+      background: #091625;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+
+    .selection-title {
+      color: #7f92a8;
+      font-size: 11px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .selection-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 7px 0;
+      border-bottom: 1px solid #17283b;
+      font-size: 13px;
+    }
+
+    .selection-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .selection-name {
+      color: #e8eef5;
+      min-width: 0;
+      word-break: break-word;
+    }
+
+    .selection-odd {
+      color: #18c77b;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    /* DETAILS */
+
+    .details {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .detail {
+      background: #101f31;
+      border-radius: 9px;
+      padding: 11px;
+    }
+
+    .detail-label {
+      color: #778ba2;
+      font-size: 10px;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
+
+    .detail-value {
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .win-value {
+      color: #18c77b;
+    }
+
+    .date {
+      color: #6f8298;
+      font-size: 11px;
+      margin-top: 12px;
+    }
+
+    /* ERROR */
+
+    .error {
+      background: #351821;
+      border: 1px solid #63303b;
+      color: #ff8795;
+      padding: 14px;
+      border-radius: 11px;
+      margin-bottom: 15px;
+      display: none;
+      font-size: 13px;
+    }
+
+    .retry-btn {
+      margin-top: 10px;
+      border: none;
+      background: #18c77b;
+      color: #06121d;
+      padding: 9px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    /* MOBILE */
+
+    @media (max-width: 700px) {
+
+      .page {
+        padding: 14px;
+      }
+
+      .header {
+        align-items: flex-start;
+      }
+
+      .brand-text h1 {
+        font-size: 18px;
+      }
+
+      .back-btn {
+        padding: 9px 12px;
+      }
+
+      .balance-value {
+        font-size: 25px;
+      }
+
+      .history-title h2 {
+        font-size: 20px;
+      }
+
+      .details {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .detail:last-child {
+        grid-column: span 2;
+      }
+    }
+
+    @media (max-width: 420px) {
+
+      .header {
+        flex-direction: column;
+      }
+
+      .back-btn {
+        width: 100%;
+      }
+
+      .bet-top {
+        align-items: flex-start;
+      }
+
+      .details {
+        grid-template-columns: 1fr;
+      }
+
+      .detail:last-child {
+        grid-column: span 1;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="page">
+
+    <!-- HEADER -->
+
+    <header class="header">
+
+      <div class="brand">
+
+        <div class="brand-icon">
+          EB
+        </div>
+
+        <div class="brand-text">
+          <h1>Ethiopia Betting</h1>
+          <p>Bet History</p>
+        </div>
+
+      </div>
+
+      <button
+        class="back-btn"
+        id="backBtn"
+        type="button"
+      >
+        ← Back
+      </button>
+
+    </header>
+
+
+    <!-- BALANCE -->
+
+    <section class="balance-card">
+
+      <div class="balance-label">
+        Available Balance
+      </div>
+
+      <div
+        class="balance-value"
+        id="balance"
+      >
+        0.00 ETB
+      </div>
+
+      <div
+        class="bonus"
+        id="bonus"
+      >
+        Bonus: 0.00 ETB
+      </div>
+
+    </section>
+
+
+    <!-- TITLE -->
+
+    <section class="history-title">
+
+      <h2>
+        Betting History
+      </h2>
+
+      <p>
+        View your recent betting activity
+      </p>
+
+    </section>
+
+
+    <!-- FILTER -->
+
+    <div class="filter-row">
+
+      <button
+        class="filter-btn active"
+        data-filter="all"
+        type="button"
+      >
+        All
+      </button>
+
+      <button
+        class="filter-btn"
+        data-filter="pending"
+        type="button"
+      >
+        Pending
+      </button>
+
+      <button
+        class="filter-btn"
+        data-filter="won"
+        type="button"
+      >
+        Won
+      </button>
+
+      <button
+        class="filter-btn"
+        data-filter="lost"
+        type="button"
+      >
+        Lost
+      </button>
+
+    </div>
+
+
+    <!-- ERROR -->
+
+    <div
+      class="error"
+      id="errorBox"
+    >
+      <div id="errorMessage">
+        Could not load bet history.
+      </div>
+
+      <button
+        class="retry-btn"
+        id="retryBtn"
+        type="button"
+      >
+        Try Again
+      </button>
+
+    </div>
+
+
+    <!-- LOADING -->
+
+    <div
+      class="loading"
+      id="loading"
+    >
+
+      <div class="spinner"></div>
+
+      <div>
+        Loading betting history...
+      </div>
+
+    </div>
+
+
+    <!-- EMPTY -->
+
+    <div
+      class="empty"
+      id="empty"
+    >
+
+      <div class="empty-icon">
+        📋
+      </div>
+
+      <h3>
+        No Bets Found
+      </h3>
+
+      <p>
+        You haven't placed any bets yet.
+      </p>
+
+    </div>
+
+
+    <!-- BET LIST -->
+
+    <div
+      class="bet-list"
+      id="betList"
+    ></div>
+
+  </div>
+
+
+  <script>
+
+    /*
+    |--------------------------------------------------------------------------
+    | TEST USER
+    |--------------------------------------------------------------------------
+    */
+
+    const TEST_USER = {
+      telegram_id: "TEST_USER_001"
+    };
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | STATE
+    |--------------------------------------------------------------------------
+    */
+
+    let allBets = [];
+
+    let currentFilter = "all";
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | ELEMENTS
+    |--------------------------------------------------------------------------
+    */
+
+    const betList =
+      document.getElementById("betList");
+
+    const loading =
+      document.getElementById("loading");
+
+    const empty =
+      document.getElementById("empty");
+
+    const errorBox =
+      document.getElementById("errorBox");
+
+    const errorMessage =
+      document.getElementById("errorMessage");
+
+    const balance =
+      document.getElementById("balance");
+
+    const bonus =
+      document.getElementById("bonus");
+
+    const retryBtn =
+      document.getElementById("retryBtn");
+
+    const backBtn =
+      document.getElementById("backBtn");
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | LOAD USER
+    |--------------------------------------------------------------------------
+    */
+
+    async function loadUser() {
+
+      try {
+
+        const response =
+          await fetch("/api/user", {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body: JSON.stringify({
+              telegram_id:
+                TEST_USER.telegram_id,
+
+              name: "Test Player",
+
+              username: "test_player"
+            })
+          });
+
+        const data =
+          await response.json();
+
+        if (
+          data.success &&
+          data.user
+        ) {
+
+          balance.textContent =
+            `${Number(
+              data.user.balance || 0
+            ).toFixed(2)} ETB`;
+
+          bonus.textContent =
+            `Bonus: ${Number(
+              data.user.bonus_balance || 0
+            ).toFixed(2)} ETB`;
+        }
+
+      } catch (error) {
+
+        console.error(
+          "User loading error:",
+          error
+        );
+      }
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | LOAD BET HISTORY
+    |--------------------------------------------------------------------------
+    */
+
+    async function loadHistory() {
+
+      loading.style.display =
+        "block";
+
+      empty.style.display =
+        "none";
+
+      errorBox.style.display =
+        "none";
+
+      betList.innerHTML = "";
+
+      try {
+
+        const response =
+          await fetch(
+            `/api/bets/history?telegram_id=${encodeURIComponent(
+              TEST_USER.telegram_id
+            )}`
+          );
+
+        const data =
+          await response.json();
+
+        if (!response.ok || !data.success) {
+
+          throw new Error(
+            data.message ||
+            "Could not load bet history."
+          );
+        }
+
+        allBets =
+          Array.isArray(data.bets)
+            ? data.bets
+            : [];
+
+        loading.style.display =
+          "none";
+
+        renderBets();
+
+      } catch (error) {
+
+        console.error(
+          "History loading error:",
+          error
+        );
+
+        loading.style.display =
+          "none";
+
+        errorMessage.textContent =
+          error.message ||
+          "Could not load bet history.";
+
+        errorBox.style.display =
+          "block";
+      }
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | RENDER BETS
+    |--------------------------------------------------------------------------
+    */
+
+    function renderBets() {
+
+      betList.innerHTML = "";
+
+      let filteredBets =
+        allBets.filter((bet) => {
+
+          if (currentFilter === "all") {
+            return true;
+          }
+
+          return (
+            String(bet.status || "")
+              .toLowerCase() ===
+            currentFilter
+          );
+        });
+
+
+      if (filteredBets.length === 0) {
+
+        empty.style.display =
+          "block";
+
+        return;
+      }
+
+      empty.style.display =
+        "none";
+
+
+      filteredBets.forEach((bet) => {
+
+        betList.appendChild(
+          createBetCard(bet)
+        );
+
+      });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | CREATE BET CARD
+    |--------------------------------------------------------------------------
+    */
+
+    function createBetCard(bet) {
+
+      const card =
+        document.createElement("div");
+
+      card.className =
+        "bet-card";
+
+
+      const status =
+        String(
+          bet.status || "pending"
+        ).toLowerCase();
+
+
+      const game =
+        escapeHTML(
+          bet.game || "Unknown"
+        );
+
+
+      const stake =
+        formatMoney(bet.stake);
+
+
+      const potentialWin =
+        formatMoney(
+          bet.potential_win
+        );
+
+
+      const actualWin =
+        formatMoney(
+          bet.actual_win
+        );
+
+
+      const createdAt =
+        formatDate(
+          bet.created_at
+        );
+
+
+      let selections = [];
+
+      if (
+        bet.result &&
+        Array.isArray(
+          bet.result.selections
+        )
+      ) {
+
+        selections =
+          bet.result.selections;
+      }
+
+
+      let selectionsHTML = "";
+
+      if (selections.length > 0) {
+
+        selectionsHTML =
+          selections.map(
+            (selection) => {
+
+              const name =
+                escapeHTML(
+                  selection.name ||
+                  "Selection"
+                );
+
+              const odd =
+                Number(
+                  selection.odd || 0
+                ).toFixed(2);
+
+              return `
+                <div class="selection-item">
+
+                  <span class="selection-name">
+                    ${name}
+                  </span>
+
+                  <span class="selection-odd">
+                    ${odd}
+                  </span>
+
+                </div>
+              `;
+            }
+          ).join("");
+
+      } else {
+
+        selectionsHTML = `
+          <div class="selection-item">
+            <span class="selection-name">
+              No selection details
+            </span>
+          </div>
+        `;
+      }
+
+
+      card.innerHTML = `
+
+        <div class="bet-top">
+
+          <div>
+
+            <div class="bet-id">
+              Bet #${escapeHTML(
+                String(bet.id)
+              )}
+            </div>
+
+            <div class="bet-game">
+              ${game}
+            </div>
+
+          </div>
+
+          <div class="status ${getStatusClass(status)}">
+            ${escapeHTML(
+              formatStatus(status)
+            )}
+          </div>
+
+        </div>
+
+
+        <div class="selections">
+
+          <div class="selection-title">
+            Selections
+          </div>
+
+          ${selectionsHTML}
+
+        </div>
+
+
+        <div class="details">
+
+          <div class="detail">
+
+            <div class="detail-label">
+              Stake
+            </div>
+
+            <div class="detail-value">
+              ${stake} ETB
+            </div>
+
+          </div>
+
+
+          <div class="detail">
+
+            <div class="detail-label">
+              Potential Win
+            </div>
+
+            <div class="detail-value win-value">
+              ${potentialWin} ETB
+            </div>
+
+          </div>
+
+
+          <div class="detail">
+
+            <div class="detail-label">
+              Actual Win
+            </div>
+
+            <div class="detail-value win-value">
+              ${actualWin} ETB
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="date">
+          ${createdAt}
+        </div>
+
+      `;
+
+
+      return card;
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | FORMAT MONEY
+    |--------------------------------------------------------------------------
+    */
+
+    function formatMoney(value) {
+
+      const number =
+        Number(value);
+
+      if (
+        !Number.isFinite(number)
+      ) {
+
+        return "0.00";
+      }
+
+      return number.toFixed(2);
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | FORMAT DATE
+    |--------------------------------------------------------------------------
+    */
+
+    function formatDate(value) {
+
+      if (!value) {
+        return "Date unavailable";
+      }
+
+      const date =
+        new Date(value);
+
+      if (
+        Number.isNaN(
+          date.getTime()
+        )
+      ) {
+
+        return "Date unavailable";
+      }
+
+      return date.toLocaleString(
+        "en-US",
+        {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        }
+      );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | FORMAT STATUS
+    |--------------------------------------------------------------------------
+    */
+
+    function formatStatus(status) {
+
+      if (status === "pending") {
+        return "Pending";
+      }
+
+      if (status === "won") {
+        return "Won";
+      }
+
+      if (status === "lost") {
+        return "Lost";
+      }
+
+      if (status === "cancelled") {
+        return "Cancelled";
+      }
+
+      return status || "Pending";
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | STATUS CLASS
+    |--------------------------------------------------------------------------
+    */
+
+    function getStatusClass(status) {
+
+      if (
+        status === "pending" ||
+        status === "won" ||
+        status === "lost" ||
+        status === "cancelled"
+      ) {
+
+        return status;
+      }
+
+      return "pending";
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | ESCAPE HTML
+    |--------------------------------------------------------------------------
+    */
+
+    function escapeHTML(value) {
+
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | FILTER BUTTONS
+    |--------------------------------------------------------------------------
+    */
+
+    document
+      .querySelectorAll(".filter-btn")
+      .forEach((button) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            document
+              .querySelectorAll(
+                ".filter-btn"
+              )
+              .forEach((btn) => {
+
+                btn.classList.remove(
+                  "active"
+                );
+
+              });
+
+            button.classList.add(
+              "active"
+            );
+
+            currentFilter =
+              button.dataset.filter;
+
+            renderBets();
+          }
+        );
+
+      });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | RETRY
+    |--------------------------------------------------------------------------
+    */
+
+    retryBtn.addEventListener(
+      "click",
+      () => {
+
+        loadHistory();
+
+      }
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | BACK
+    |--------------------------------------------------------------------------
+    */
+
+    backBtn.addEventListener(
+      "click",
+      () => {
+
+        window.location.href =
+          "/";
+
+      }
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | START
+    |--------------------------------------------------------------------------
+    */
+
+    loadUser();
+    loadHistory();
+
+  </script>
+
+</body>
+</html>
