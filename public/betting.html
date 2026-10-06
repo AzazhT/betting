@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Betting - Ethiopia Betting</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #06111d;
+      color: #fff;
+      min-height: 100vh;
+    }
+
+    button {
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .header {
+      height: 70px;
+      background: #091a2b;
+      border-bottom: 1px solid #1b354d;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 5%;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    .logo {
+      font-size: 21px;
+      font-weight: 800;
+    }
+
+    .logo span {
+      color: #16d98a;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .balance {
+      background: #0c263b;
+      border: 1px solid #21445f;
+      padding: 10px 15px;
+      border-radius: 10px;
+      color: #18df91;
+      font-weight: bold;
+    }
+
+    .back-btn {
+      color: #fff;
+      background: transparent;
+      border: 1px solid #29465d;
+      padding: 9px 13px;
+      border-radius: 9px;
+    }
+
+    .page {
+      max-width: 1250px;
+      margin: auto;
+      padding: 28px 20px 60px;
+    }
+
+    .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 22px;
+    }
+
+    .title-row h1 {
+      font-size: 30px;
+    }
+
+    .title-row p {
+      color: #86a0b8;
+      margin-top: 7px;
+    }
+
+    .sports {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      margin-bottom: 22px;
+    }
+
+    .sport {
+      border: 1px solid #25435b;
+      background: #0b1c2c;
+      color: #b7c9d8;
+      padding: 11px 18px;
+      border-radius: 10px;
+      white-space: nowrap;
+    }
+
+    .sport.active {
+      background: #16cf83;
+      color: #04130d;
+      border-color: #16cf83;
+      font-weight: bold;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 350px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .matches {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .match {
+      background: #0a1b2c;
+      border: 1px solid #1c3850;
+      border-radius: 15px;
+      overflow: hidden;
+    }
+
+    .match-head {
+      background: #0d2337;
+      padding: 14px 17px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #91a8bb;
+      font-size: 13px;
+    }
+
+    .league {
+      color: #fff;
+      font-weight: bold;
+    }
+
+    .match-body {
+      padding: 18px;
+    }
+
+    .teams {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 18px;
+    }
+
+    .team {
+      font-size: 17px;
+      font-weight: bold;
+    }
+
+    .team.right {
+      text-align: right;
+    }
+
+    .vs {
+      color: #718ba0;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .markets {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      margin-bottom: 12px;
+    }
+
+    .market-tab {
+      background: transparent;
+      color: #8ea7ba;
+      border: 0;
+      padding: 8px 10px;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+    }
+
+    .market-tab.active {
+      color: #16db8b;
+      border-bottom-color: #16db8b;
+    }
+
+    .odds {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .odd {
+      background: #10283d;
+      border: 1px solid #24445d;
+      color: #fff;
+      border-radius: 9px;
+      padding: 11px 8px;
+      text-align: left;
+      transition: .15s;
+    }
+
+    .odd:hover {
+      border-color: #16d98a;
+      background: #12344a;
+    }
+
+    .odd.selected {
+      background: #16d98a;
+      color: #04130d;
+      border-color: #16d98a;
+    }
+
+    .odd-name {
+      display: block;
+      font-size: 12px;
+      opacity: .75;
+      margin-bottom: 4px;
+    }
+
+    .odd-value {
+      font-size: 16px;
+      font-weight: bold;
+    }
+
+    .slip {
+      background: #091a2b;
+      border: 1px solid #1c3850;
+      border-radius: 15px;
+      position: sticky;
+      top: 90px;
+      overflow: hidden;
+    }
+
+    .slip-head {
+      padding: 17px;
+      border-bottom: 1px solid #1c3850;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .slip-head h2 {
+      font-size: 18px;
+    }
+
+    .count {
+      background: #16d98a;
+      color: #03150d;
+      border-radius: 20px;
+      padding: 3px 9px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .slip-content {
+      padding: 15px;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 35px 15px;
+      color: #718ba0;
+      line-height: 1.6;
+    }
+
+    .selection {
+      background: #0e2437;
+      border: 1px solid #203f57;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+
+    .selection-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .selection-name {
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    .remove {
+      border: 0;
+      background: transparent;
+      color: #7891a5;
+      font-size: 16px;
+    }
+
+    .selection-info {
+      color: #16d98a;
+      font-size: 13px;
+      margin-top: 7px;
+    }
+
+    .bet-controls {
+      margin-top: 15px;
+    }
+
+    .bet-controls label {
+      display: block;
+      color: #91a8bb;
+      font-size: 13px;
+      margin-bottom: 7px;
+    }
+
+    .stake {
+      width: 100%;
+      padding: 12px;
+      background: #071625;
+      color: #fff;
+      border: 1px solid #28475f;
+      border-radius: 9px;
+      outline: none;
+    }
+
+    .stake:focus {
+      border-color: #16d98a;
+    }
+
+    .summary {
+      border-top: 1px solid #1c3850;
+      margin-top: 15px;
+      padding-top: 15px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      color: #9ab0c1;
+      font-size: 14px;
+    }
+
+    .summary-row strong {
+      color: #fff;
+    }
+
+    .potential {
+      color: #16d98a !important;
+      font-size: 17px;
+    }
+
+    .place-btn {
+      width: 100%;
+      margin-top: 8px;
+      border: 0;
+      background: #16d98a;
+      color: #03150d;
+      font-weight: 800;
+      padding: 14px;
+      border-radius: 10px;
+    }
+
+    .place-btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .notice {
+      margin-top: 12px;
+      color: #718ba0;
+      font-size: 11px;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .slip {
+        position: static;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .header {
+        padding: 0 14px;
+      }
+
+      .page {
+        padding: 20px 12px 45px;
+      }
+
+      .title-row h1 {
+        font-size: 25px;
+      }
+
+      .balance {
+        padding: 8px 10px;
+        font-size: 12px;
+      }
+
+      .back-btn {
+        display: none;
+      }
+
+      .odds {
+        grid-template-columns: repeat(3, minmax(90px, 1fr));
+      }
+
+      .match-body {
+        padding: 14px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header class="header">
+  <div class="logo">
+    Ethiopia <span>Betting</span>
+  </div>
+
+  <div class="header-right">
+    <button class="back-btn" onclick="location.href='/'">
+      ← Home
+    </button>
+
+    <div class="balance">
+      50.00 ETB
+    </div>
+  </div>
+</header>
+
+<main class="page">
+
+  <div class="title-row">
+    <div>
+      <h1>⚽ Sports Betting</h1>
+      <p>Choose your market and build your bet slip.</p>
+    </div>
+  </div>
+
+  <div class="sports">
+    <button class="sport active">⚽ Football</button>
+    <button class="sport">🏀 Basketball</button>
+    <button class="sport">🎾 Tennis</button>
+    <button class="sport">🏐 Volleyball</button>
+  </div>
+
+  <div class="layout">
+
+    <section class="matches">
+
+      <!-- Match 1 -->
+      <article class="match">
+
+        <div class="match-head">
+          <span class="league">⚽ Demo Football League</span>
+          <span>Today · 18:00</span>
+        </div>
+
+        <div class="match-body">
+
+          <div class="teams">
+            <div class="team">Addis United</div>
+            <div class="vs">VS</div>
+            <div class="team right">Nile FC</div>
+          </div>
+
+          <div class="markets">
+            <button class="market-tab active">1X2</button>
+            <button class="market-tab">Double Chance</button>
+            <button class="market-tab">Over / Under</button>
+            <button class="market-tab">BTTS</button>
+            <button class="market-tab">Handicap</button>
+          </div>
+
+          <div class="odds">
+
+            <button class="odd" data-name="Addis United" data-odd="1.85">
+              <span class="odd-name">Home</span>
+              <span class="odd-value">1.85</span>
+            </button>
+
+            <button class="odd" data-name="Draw" data-odd="3.40">
+              <span class="odd-name">Draw</span>
+              <span class="odd-value">3.40</span>
+            </button>
+
+            <button class="odd" data-name="Nile FC" data-odd="4.10">
+              <span class="odd-name">Away</span>
+              <span class="odd-value">4.10</span>
+            </button>
+
+          </div>
+
+        </div>
+      </article>
+
+
+      <!-- Match 2 -->
+      <article class="match">
+
+        <div class="match-head">
+          <span class="league">⚽ Demo Premier League</span>
+          <span>Today · 20:30</span>
+        </div>
+
+        <div class="match-body">
+
+          <div class="teams">
+            <div class="team">Capital FC</div>
+            <div class="vs">VS</div>
+            <div class="team right">Highland FC</div>
+          </div>
+
+          <div class="markets">
+            <button class="market-tab active">1X2</button>
+            <button class="market-tab">Double Chance</button>
+            <button class="market-tab">Over / Under</button>
+            <button class="market-tab">BTTS</button>
+            <button class="market-tab">Handicap</button>
+          </div>
+
+          <div class="odds">
+
+            <button class="odd" data-name="Capital FC" data-odd="2.05">
+              <span class="odd-name">Home</span>
+              <span class="odd-value">2.05</span>
+            </button>
+
+            <button class="odd" data-name="Draw" data-odd="3.20">
+              <span class="odd-name">Draw</span>
+              <span class="odd-value">3.20</span>
+            </button>
+
+            <button class="odd" data-name="Highland FC" data-odd="3.55">
+              <span class="odd-name">Away</span>
+              <span class="odd-value">3.55</span>
+            </button>
+
+          </div>
+
+        </div>
+      </article>
+
+
+      <!-- Match 3 -->
+      <article class="match">
+
+        <div class="match-head">
+          <span class="league">⚽ Demo Championship</span>
+          <span>Tomorrow · 17:00</span>
+        </div>
+
+        <div class="match-body">
+
+          <div class="teams">
+            <div class="team">Lion FC</div>
+            <div class="vs">VS</div>
+            <div class="team right">Blue Stars</div>
+          </div>
+
+          <div class="markets">
+            <button class="market-tab active">1X2</button>
+            <button class="market-tab">Double Chance</button>
+            <button class="market-tab">Over / Under</button>
+            <button class="market-tab">BTTS</button>
+            <button class="market-tab">Handicap</button>
+          </div>
+
+          <div class="odds">
+
+            <button class="odd" data-name="Lion FC" data-odd="1.70">
+              <span class="odd-name">Home</span>
+              <span class="odd-value">1.70</span>
+            </button>
+
+            <button class="odd" data-name="Draw" data-odd="3.60">
+              <span class="odd-name">Draw</span>
+              <span class="odd-value">3.60</span>
+            </button>
+
+            <button class="odd" data-name="Blue Stars" data-odd="4.80">
+              <span class="odd-name">Away</span>
+              <span class="odd-value">4.80</span>
+            </button>
+
+          </div>
+
+        </div>
+      </article>
+
+    </section>
+
+
+    <!-- BET SLIP -->
+    <aside class="slip">
+
+      <div class="slip-head">
+        <h2>🎫 Bet Slip</h2>
+        <span class="count" id="count">0</span>
+      </div>
+
+      <div class="slip-content">
+
+        <div id="selections">
+
+          <div class="empty" id="empty">
+            Your bet slip is empty.<br>
+            Select an odd to add it here.
+          </div>
+
+        </div>
+
+        <div class="bet-controls">
+
+          <label for="stake">
+            Stake (ETB)
+          </label>
+
+          <input
+            id="stake"
+            class="stake"
+            type="number"
+            min="1"
+            step="1"
+            value="10"
+            placeholder="Enter stake"
+          />
+
+        </div>
+
+        <div class="summary">
+
+          <div class="summary-row">
+            <span>Selections</span>
+            <strong id="selectionCount">0</strong>
+          </div>
+
+          <div class="summary-row">
+            <span>Total Odds</span>
+            <strong id="totalOdds">0.00</strong>
+          </div>
+
+          <div class="summary-row">
+            <span>Stake</span>
+            <strong id="stakeDisplay">10.00 ETB</strong>
+          </div>
+
+          <div class="summary-row">
+            <span>Potential Win</span>
+            <strong class="potential" id="potentialWin">
+              0.00 ETB
+            </strong>
+          </div>
+
+          <button
+            class="place-btn"
+            id="placeBet"
+            disabled
+          >
+            Place Bet
+          </button>
+
+          <div class="notice">
+            Odds shown here are demo values for testing the interface.
+            Final betting logic will be handled securely by the server.
+          </div>
+
+        </div>
+
+      </div>
+
+    </aside>
+
+  </div>
+
+</main>
+
+
+<script>
+
+  const selections = [];
+
+  const selectionContainer =
+    document.getElementById("selections");
+
+  const empty =
+    document.getElementById("empty");
+
+  const count =
+    document.getElementById("count");
+
+  const selectionCount =
+    document.getElementById("selectionCount");
+
+  const totalOdds =
+    document.getElementById("totalOdds");
+
+  const stake =
+    document.getElementById("stake");
+
+  const stakeDisplay =
+    document.getElementById("stakeDisplay");
+
+  const potentialWin =
+    document.getElementById("potentialWin");
+
+  const placeBet =
+    document.getElementById("placeBet");
+
+
+  document.querySelectorAll(".odd").forEach(button => {
+
+    button.addEventListener("click", () => {
+
+      const name =
+        button.dataset.name;
+
+      const odd =
+        Number(button.dataset.odd);
+
+      const existing =
+        selections.find(
+          item => item.name === name
+        );
+
+      if (existing) {
+
+        const index =
+          selections.indexOf(existing);
+
+        selections.splice(index, 1);
+
+        button.classList.remove("selected");
+
+      } else {
+
+        selections.push({
+          name,
+          odd,
+          button
+        });
+
+        button.classList.add("selected");
+      }
+
+      renderSlip();
+    });
+
+  });
+
+
+  function renderSlip() {
+
+    selectionContainer.innerHTML = "";
+
+    if (selections.length === 0) {
+
+      selectionContainer.innerHTML = `
+        <div class="empty">
+          Your bet slip is empty.<br>
+          Select an odd to add it here.
+        </div>
+      `;
+
+    } else {
+
+      selections.forEach((item, index) => {
+
+        const div =
+          document.createElement("div");
+
+        div.className = "selection";
+
+        div.innerHTML = `
+          <div class="selection-top">
+
+            <div class="selection-name">
+              ${item.name}
+            </div>
+
+            <button
+              class="remove"
+              onclick="removeSelection(${index})"
+            >
+              ×
+            </button>
+
+          </div>
+
+          <div class="selection-info">
+            Odds: ${item.odd.toFixed(2)}
+          </div>
+        `;
+
+        selectionContainer.appendChild(div);
+
+      });
+
+    }
+
+    updateSummary();
+  }
+
+
+  function removeSelection(index) {
+
+    const item =
+      selections[index];
+
+    if (item && item.button) {
+      item.button.classList.remove("selected");
+    }
+
+    selections.splice(index, 1);
+
+    renderSlip();
+  }
+
+
+  function updateSummary() {
+
+    const total =
+      selections.reduce(
+        (value, item) =>
+          value * item.odd,
+        selections.length ? 1 : 0
+      );
+
+    const amount =
+      Math.max(
+        0,
+        Number(stake.value) || 0
+      );
+
+    const win =
+      total * amount;
+
+    count.textContent =
+      selections.length;
+
+    selectionCount.textContent =
+      selections.length;
+
+    totalOdds.textContent =
+      total.toFixed(2);
+
+    stakeDisplay.textContent =
+      amount.toFixed(2) + " ETB";
+
+    potentialWin.textContent =
+      win.toFixed(2) + " ETB";
+
+    placeBet.disabled =
+      selections.length === 0 ||
+      amount <= 0;
+  }
+
+
+  stake.addEventListener(
+    "input",
+    updateSummary
+  );
+
+
+  placeBet.addEventListener(
+    "click",
+    () => {
+
+      if (selections.length === 0) {
+        return;
+      }
+
+      alert(
+        "Bet Slip ready. Backend betting will be connected next."
+      );
+
+    }
+  );
+
+
+</script>
+
+</body>
+</html>
