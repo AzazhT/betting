@@ -878,20 +878,83 @@
   );
 
 
- placeBet.addEventListener(
-  "click",
-  () => {
+placeBet.addEventListener("click", async () => {
 
-    if (selections.length === 0) {
+  if (selections.length === 0) {
+    return;
+  }
+
+  const amount = Number(stake.value);
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    alert("Please enter a valid stake.");
+    return;
+  }
+
+  const payload = {
+    telegram_id: "TEST_USER_001",
+    game: "football",
+    stake: amount,
+    selections: selections.map(item => ({
+      name: item.name,
+      odd: item.odd
+    }))
+  };
+
+  placeBet.disabled = true;
+  placeBet.textContent = "Placing Bet...";
+
+  try {
+
+    const response = await fetch("/api/bets/place", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+
+    if (!data.success) {
+      alert(data.message || "Bet failed.");
       return;
     }
 
     alert(
-      "Bet Slip ready. Backend betting will be connected next."
+      "Bet placed successfully!\n\n" +
+      "Bet ID: " + data.bet.id +
+      "\nStake: " + amount.toFixed(2) + " ETB" +
+      "\nPotential Win: " +
+      Number(data.bet.potential_win).toFixed(2) + " ETB" +
+      "\nNew Balance: " +
+      Number(data.balance).toFixed(2) + " ETB"
     );
 
+    selections.forEach(item => {
+      if (item.button) {
+        item.button.classList.remove("selected");
+      }
+    });
+
+    selections.length = 0;
+
+    renderSlip();
+
+  } catch (error) {
+
+    console.error(error);
+
+    alert("Server connection failed.");
+
+  } finally {
+
+    placeBet.disabled = selections.length === 0;
+    placeBet.textContent = "Place Bet";
+
   }
-);
+
+});
 
 
 </script>
