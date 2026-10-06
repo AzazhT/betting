@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <title>Ethiopia Betting</title>
 
   <style>
@@ -13,784 +12,475 @@
       padding: 0;
     }
 
-    :root {
-      --bg: #030b16;
-      --bg2: #061426;
-      --card: #0a1b31;
-      --card2: #0d2440;
-      --text: #ffffff;
-      --muted: #91a5bd;
-      --green: #00e5a0;
-      --green2: #00b982;
-      --blue: #168cff;
-      --purple: #8b4dff;
-      --gold: #ffbd3d;
-      --red: #ff3f68;
-      --border: rgba(255,255,255,.08);
-    }
-
-    html {
-      scroll-behavior: smooth;
-    }
-
     body {
       font-family: Arial, Helvetica, sans-serif;
-      background:
-        radial-gradient(circle at 50% -10%, #12365b 0%, transparent 40%),
-        var(--bg);
-      color: var(--text);
+      background: #07111f;
+      color: #ffffff;
       min-height: 100vh;
-      padding-bottom: 85px;
     }
 
     button {
       font-family: inherit;
       cursor: pointer;
-      border: 0;
     }
 
-    /* =========================
-       HEADER
-    ========================= */
+    .app {
+      min-height: 100vh;
+      padding-bottom: 80px;
+    }
+
+    /* HEADER */
 
     .header {
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      border-bottom: 1px solid #18283b;
+      background: #081522;
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(3, 11, 22, .94);
-      backdrop-filter: blur(18px);
-      border-bottom: 1px solid var(--border);
     }
 
-    .header-inner {
-      max-width: 1200px;
-      margin: auto;
-      height: 76px;
-      padding: 0 22px;
-
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-width: 170px;
-    }
-
-    .brand-icon {
-      font-size: 34px;
-    }
-
-    .brand-text {
-      font-size: 22px;
-      font-weight: 900;
-      line-height: 1;
-    }
-
-    .brand-text span {
-      color: var(--green);
-    }
-
-    .balance-box {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 9px 10px 9px 15px;
-
-      border: 1px solid rgba(0,229,160,.45);
-      background: rgba(0,229,160,.05);
-      border-radius: 40px;
-    }
-
-    .balance-box .wallet {
-      font-size: 20px;
-    }
-
-    .balance-amount {
+    .logo {
+      font-size: 21px;
       font-weight: 800;
-      white-space: nowrap;
+      color: #ffffff;
     }
 
-    .add-money {
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      background: var(--green);
-      color: #00150e;
-      font-size: 23px;
-      font-weight: 900;
+    .logo span {
+      color: #20c878;
     }
 
-    .profile {
-      width: 43px;
-      height: 43px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #ffcb55, #ff6b45);
-      display: grid;
-      place-items: center;
-      font-size: 22px;
-      border: 2px solid var(--green);
-    }
-
-    /* =========================
-       CONTAINER
-    ========================= */
-
-    .container {
-      max-width: 1200px;
-      margin: auto;
-      padding: 25px 22px;
-    }
-
-    /* =========================
-       HERO
-    ========================= */
-
-    .hero {
-      position: relative;
-      min-height: 330px;
-      overflow: hidden;
-
-      border-radius: 25px;
-      border: 1px solid rgba(0,229,160,.2);
-
-      background:
-        radial-gradient(circle at 75% 50%, rgba(0,229,160,.16), transparent 28%),
-        linear-gradient(110deg, #082238, #03101e 70%);
-
-      display: flex;
-      align-items: center;
-      padding: 42px;
-    }
-
-    .hero::after {
-      content: "";
-      position: absolute;
-      width: 430px;
-      height: 430px;
-      right: -120px;
-      top: -100px;
-      border-radius: 50%;
-      background: radial-gradient(
-        circle,
-        rgba(0,229,160,.15),
-        transparent 65%
-      );
-    }
-
-    .hero-content {
-      position: relative;
-      z-index: 2;
-      max-width: 620px;
-    }
-
-    .hero-label {
-      color: var(--green);
-      font-size: 15px;
-      font-weight: 900;
-      letter-spacing: 1px;
-      margin-bottom: 12px;
-    }
-
-    .hero h1 {
-      font-size: clamp(38px, 6vw, 70px);
-      line-height: .98;
-      margin-bottom: 16px;
-    }
-
-    .hero h1 span {
-      color: var(--green);
-    }
-
-    .hero p {
-      color: #b7c7d8;
-      font-size: 18px;
-      line-height: 1.5;
-      max-width: 560px;
-    }
-
-    .hero-button {
-      margin-top: 25px;
-      padding: 14px 25px;
-      border-radius: 14px;
-      background: var(--green);
-      color: #00150e;
-      font-weight: 900;
-      font-size: 16px;
-    }
-
-    .hero-button span {
-      margin-left: 8px;
-      font-size: 20px;
-    }
-
-    .hero-ball {
-      position: absolute;
-      right: 12%;
-      bottom: 20px;
-      font-size: 170px;
-      filter: drop-shadow(0 15px 30px rgba(0,0,0,.5));
-      opacity: .9;
-    }
-
-    /* =========================
-       QUICK FEATURES
-    ========================= */
-
-    .features {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 14px;
-      margin: 20px 0 34px;
-    }
-
-    .feature {
-      background: linear-gradient(145deg, var(--card2), var(--card));
-      border: 1px solid var(--border);
-      border-radius: 17px;
-      padding: 17px;
-
-      display: flex;
-      align-items: center;
-      gap: 13px;
-
-      transition: .2s;
-    }
-
-    .feature:hover {
-      transform: translateY(-3px);
-      border-color: rgba(0,229,160,.3);
-    }
-
-    .feature-icon {
-      width: 48px;
-      height: 48px;
-      flex-shrink: 0;
-      border-radius: 14px;
-
-      display: grid;
-      place-items: center;
-
-      background: rgba(255,255,255,.06);
-      font-size: 25px;
-    }
-
-    .feature h3 {
-      font-size: 15px;
-      margin-bottom: 5px;
-    }
-
-    .feature p {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    /* =========================
-       SECTION HEADER
-    ========================= */
-
-    .section-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 17px;
-    }
-
-    .section-title {
+    .header-right {
       display: flex;
       align-items: center;
       gap: 12px;
     }
 
-    .section-title-icon {
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-
-      display: grid;
-      place-items: center;
-
-      background: rgba(0,229,160,.1);
-      font-size: 24px;
+    .balance-box {
+      background: #102235;
+      border: 1px solid #20364e;
+      padding: 8px 14px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
-    .section-head h2 {
-      font-size: 25px;
+    .balance-label {
+      color: #8fa3b8;
+      font-size: 12px;
     }
 
-    .section-head p {
-      color: var(--muted);
-      font-size: 13px;
-      margin-top: 3px;
+    .balance {
+      font-size: 15px;
+      font-weight: 700;
+      color: #20c878;
     }
 
-    .view-all {
-      background: transparent;
-      color: var(--green);
+    .profile {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #16304a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+    }
+
+    /* MAIN */
+
+    .container {
+      max-width: 1180px;
+      margin: auto;
+      padding: 28px 20px;
+    }
+
+    /* HERO */
+
+    .hero {
+      background: linear-gradient(135deg, #0c2237, #0a1727);
+      border: 1px solid #19324a;
+      border-radius: 20px;
+      padding: 38px;
+      margin-bottom: 25px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      right: -100px;
+      top: -120px;
+      background: rgba(32, 200, 120, 0.08);
+    }
+
+    .hero h1 {
+      font-size: 42px;
+      line-height: 1.1;
+      margin-bottom: 12px;
+    }
+
+    .hero h1 span {
+      color: #20c878;
+    }
+
+    .hero p {
+      color: #9bb0c4;
+      max-width: 570px;
+      line-height: 1.6;
+      margin-bottom: 22px;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      border: 0;
+      background: #20c878;
+      color: #06150e;
+      padding: 13px 22px;
+      border-radius: 10px;
       font-weight: 800;
-      font-size: 14px;
     }
 
-    /* =========================
-       GAMES GRID
-    ========================= */
+    .btn-secondary {
+      border: 1px solid #29445e;
+      background: #102337;
+      color: #ffffff;
+      padding: 13px 22px;
+      border-radius: 10px;
+      font-weight: 700;
+    }
 
-    .games {
+    /* INFO */
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 30px;
+    }
+
+    .info-card {
+      background: #0c1a2a;
+      border: 1px solid #182e44;
+      border-radius: 14px;
+      padding: 18px;
+    }
+
+    .info-icon {
+      font-size: 25px;
+      margin-bottom: 10px;
+    }
+
+    .info-card h3 {
+      font-size: 15px;
+      margin-bottom: 6px;
+    }
+
+    .info-card p {
+      color: #8095aa;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    /* SECTION */
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .section-header h2 {
+      font-size: 23px;
+    }
+
+    .section-header span {
+      color: #738aa0;
+      font-size: 13px;
+    }
+
+    /* GAMES */
+
+    .games-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 15px;
+      margin-bottom: 28px;
     }
 
-    .game {
-      position: relative;
-      overflow: hidden;
-
-      min-height: 205px;
-      padding: 19px;
-
-      border-radius: 20px;
-      border: 1px solid var(--border);
-
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-
-      transition:
-        transform .2s ease,
-        border-color .2s ease;
+    .game-card {
+      background: #0c1a2a;
+      border: 1px solid #192f46;
+      border-radius: 16px;
+      padding: 20px;
+      min-height: 165px;
+      transition: 0.2s;
     }
 
-    .game:hover {
-      transform: translateY(-5px);
-      border-color: rgba(255,255,255,.25);
-    }
-
-    .game::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-
-      background:
-        radial-gradient(
-          circle at 70% 25%,
-          rgba(255,255,255,.12),
-          transparent 30%
-        );
+    .game-card:hover {
+      border-color: #20c878;
+      transform: translateY(-2px);
     }
 
     .game-icon {
-      position: absolute;
-      top: 18px;
-      right: 20px;
-
-      font-size: 65px;
-      filter: drop-shadow(0 8px 15px rgba(0,0,0,.35));
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: #11283b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 14px;
     }
 
-    .game-content {
-      position: relative;
-      z-index: 2;
+    .game-card h3 {
+      font-size: 17px;
+      margin-bottom: 7px;
     }
 
-    .game h3 {
-      font-size: 19px;
-      margin-bottom: 5px;
+    .game-card p {
+      color: #7e94aa;
+      font-size: 12px;
+      line-height: 1.5;
     }
 
-    .game p {
-      color: rgba(255,255,255,.72);
-      font-size: 13px;
+    .game-status {
+      display: inline-block;
+      margin-top: 12px;
+      font-size: 11px;
+      color: #20c878;
     }
 
-    .game-arrow {
-      position: absolute;
-      right: 17px;
-      bottom: 17px;
-
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-
-      display: grid;
-      place-items: center;
-
-      background: rgba(0,0,0,.2);
-      color: white;
-      font-size: 18px;
-    }
-
-    /* Game Colors */
-
-    .betting {
-      background: linear-gradient(145deg, #087c46, #052d2b);
-    }
-
-    .keno {
-      background: linear-gradient(145deg, #3922a8, #15104d);
-    }
-
-    .lucky {
-      background: linear-gradient(145deg, #8a5510, #382006);
-    }
-
-    .mines {
-      background: linear-gradient(145deg, #a9183e, #3c081a);
-    }
-
-    .number {
-      background: linear-gradient(145deg, #074db1, #081c59);
-    }
-
-    .highlow {
-      background: linear-gradient(145deg, #087f77, #063a42);
-    }
-
-    .bingo {
-      background: linear-gradient(145deg, #6a25b4, #2a104b);
-    }
-
-    .jackpot {
-      background: linear-gradient(145deg, #9a6411, #382006);
-    }
-
-    /* =========================
-       BONUS
-    ========================= */
+    /* BONUS */
 
     .bonus {
-      margin-top: 25px;
-
-      border: 1px solid rgba(0,229,160,.3);
-      border-radius: 20px;
-
-      padding: 22px 25px;
-
-      background:
-        radial-gradient(
-          circle at 75% 50%,
-          rgba(0,229,160,.14),
-          transparent 35%
-        ),
-        linear-gradient(100deg, #063b32, #071c2b);
-
+      background: #0d2a22;
+      border: 1px solid #174b3b;
+      border-radius: 17px;
+      padding: 23px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 20px;
-    }
-
-    .bonus-left {
-      display: flex;
-      align-items: center;
-      gap: 17px;
-    }
-
-    .bonus-icon {
-      font-size: 42px;
+      margin-bottom: 30px;
     }
 
     .bonus h2 {
-      font-size: 20px;
-      margin-bottom: 5px;
+      font-size: 21px;
+      margin-bottom: 7px;
     }
 
     .bonus p {
-      color: var(--muted);
+      color: #8eb3a7;
       font-size: 13px;
     }
 
-    .bonus strong {
-      color: var(--green);
-    }
-
-    .bonus-button {
-      background: var(--green);
-      color: #00150e;
-      padding: 13px 22px;
-      border-radius: 13px;
+    .bonus-amount {
+      font-size: 28px;
       font-weight: 900;
+      color: #20c878;
       white-space: nowrap;
     }
 
-    /* =========================
-       BOTTOM NAV
-    ========================= */
+    /* ACCOUNT */
 
-    .bottom-nav {
-      position: fixed;
-      z-index: 200;
-
-      left: 50%;
-      bottom: 12px;
-      transform: translateX(-50%);
-
-      width: min(700px, calc(100% - 25px));
-
-      background: rgba(3,11,22,.94);
-      backdrop-filter: blur(18px);
-
-      border: 1px solid rgba(255,255,255,.1);
-      border-radius: 22px;
-
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-
-      padding: 8px;
+    .account-card {
+      background: #0c1a2a;
+      border: 1px solid #192f46;
+      border-radius: 17px;
+      padding: 22px;
+      margin-bottom: 25px;
     }
 
-    .nav-item {
-      min-height: 58px;
-
+    .account-row {
       display: flex;
-      flex-direction: column;
+      justify-content: space-between;
       align-items: center;
-      justify-content: center;
-      gap: 3px;
-
-      background: transparent;
-      color: #7187a0;
-
-      border-radius: 15px;
+      padding: 12px 0;
+      border-bottom: 1px solid #17293b;
     }
 
-    .nav-item .nav-icon {
-      font-size: 22px;
+    .account-row:last-child {
+      border-bottom: 0;
     }
 
-    .nav-item span:last-child {
-      font-size: 11px;
+    .account-row span:first-child {
+      color: #8297ab;
+      font-size: 13px;
+    }
+
+    .account-row span:last-child {
       font-weight: 700;
     }
 
-    .nav-item.active {
-      color: var(--green);
-      background: rgba(0,229,160,.08);
+    .bonus-value {
+      color: #20c878;
     }
 
-    /* =========================
-       DESKTOP
-    ========================= */
+    /* STATUS */
 
-    @media (min-width: 901px) {
-      .bottom-nav {
-        display: none;
-      }
+    .status {
+      text-align: center;
+      padding: 10px;
+      color: #7e94aa;
+      font-size: 12px;
     }
 
-    /* =========================
-       TABLET
-    ========================= */
+    .status.success {
+      color: #20c878;
+    }
 
-    @media (max-width: 950px) {
+    .status.error {
+      color: #ff6b6b;
+    }
 
-      .features {
+    /* MOBILE NAV */
+
+    .mobile-nav {
+      display: none;
+    }
+
+    /* RESPONSIVE */
+
+    @media (max-width: 900px) {
+
+      .info-grid {
         grid-template-columns: repeat(2, 1fr);
       }
 
-      .games {
+      .games-grid {
         grid-template-columns: repeat(2, 1fr);
-      }
-
-      .hero-ball {
-        right: 4%;
-        opacity: .35;
-      }
-    }
-
-    /* =========================
-       MOBILE
-    ========================= */
-
-    @media (max-width: 600px) {
-
-      body {
-        padding-bottom: 92px;
-      }
-
-      .header-inner {
-        height: 68px;
-        padding: 0 14px;
-      }
-
-      .brand {
-        min-width: auto;
-      }
-
-      .brand-icon {
-        display: none;
-      }
-
-      .brand-text {
-        font-size: 19px;
-      }
-
-      .balance-box {
-        padding: 7px 8px 7px 11px;
-      }
-
-      .balance-box .wallet {
-        font-size: 17px;
-      }
-
-      .balance-amount {
-        font-size: 13px;
-      }
-
-      .add-money {
-        width: 30px;
-        height: 30px;
-        font-size: 20px;
-      }
-
-      .profile {
-        width: 37px;
-        height: 37px;
-        font-size: 18px;
-      }
-
-      .container {
-        padding: 15px 12px;
-      }
-
-      .hero {
-        min-height: 280px;
-        padding: 25px 21px;
-        border-radius: 19px;
       }
 
       .hero h1 {
-        font-size: 38px;
+        font-size: 34px;
+      }
+    }
+
+    @media (max-width: 600px) {
+
+      .app {
+        padding-bottom: 75px;
       }
 
-      .hero p {
-        font-size: 14px;
+      .header {
+        height: 62px;
+        padding: 0 15px;
       }
 
-      .hero-ball {
-        right: -15px;
-        bottom: 8px;
-        font-size: 120px;
-        opacity: .18;
+      .logo {
+        font-size: 17px;
       }
 
-      .hero-button {
-        padding: 12px 18px;
-        font-size: 14px;
+      .balance-box {
+        padding: 7px 9px;
       }
 
-      .features {
-        display: flex;
-        overflow-x: auto;
-        gap: 10px;
-        margin: 14px -12px 28px;
-        padding: 0 12px 4px;
-
-        scrollbar-width: none;
-      }
-
-      .features::-webkit-scrollbar {
+      .balance-label {
         display: none;
       }
 
-      .feature {
-        min-width: 205px;
-        padding: 13px;
+      .profile {
+        width: 36px;
+        height: 36px;
       }
 
-      .section-head h2 {
-        font-size: 21px;
+      .container {
+        padding: 18px 14px;
       }
 
-      .section-head p {
-        font-size: 11px;
+      .hero {
+        padding: 25px 20px;
+        border-radius: 16px;
       }
 
-      .section-title-icon {
-        width: 39px;
-        height: 39px;
-        font-size: 20px;
+      .hero h1 {
+        font-size: 31px;
       }
 
-      .games {
+      .hero p {
+        font-size: 13px;
+      }
+
+      .info-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 10px;
       }
 
-      .game {
-        min-height: 170px;
+      .info-card {
         padding: 14px;
-        border-radius: 16px;
       }
 
-      .game-icon {
-        font-size: 48px;
-        top: 13px;
-        right: 13px;
+      .games-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
       }
 
-      .game h3 {
-        font-size: 16px;
+      .game-card {
+        padding: 15px;
+        min-height: 145px;
       }
 
-      .game p {
-        font-size: 11px;
-      }
-
-      .game-arrow {
-        width: 29px;
-        height: 29px;
-        right: 11px;
-        bottom: 11px;
+      .game-card h3 {
         font-size: 15px;
       }
 
       .bonus {
-        padding: 16px;
-        border-radius: 17px;
-      }
-
-      .bonus-icon {
-        font-size: 32px;
+        padding: 18px;
       }
 
       .bonus h2 {
-        font-size: 16px;
+        font-size: 17px;
       }
 
-      .bonus p {
-        font-size: 11px;
+      .bonus-amount {
+        font-size: 23px;
       }
 
-      .bonus-button {
-        padding: 10px 13px;
-        font-size: 12px;
-      }
-    }
-
-    @media (max-width: 390px) {
-
-      .balance-amount {
-        display: none;
-      }
-
-      .game {
-        min-height: 155px;
+      .mobile-nav {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 64px;
+        background: #081522;
+        border-top: 1px solid #1b3044;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        z-index: 200;
       }
 
-      .game-icon {
-        font-size: 42px;
+      .mobile-nav button {
+        border: 0;
+        background: transparent;
+        color: #71869a;
+        font-size: 10px;
       }
 
-      .bonus-left {
-        gap: 9px;
+      .mobile-nav button span {
+        display: block;
+        font-size: 20px;
+        margin-bottom: 3px;
       }
 
-      .bonus-button {
-        padding: 9px;
+      .mobile-nav button.active {
+        color: #20c878;
       }
     }
   </style>
@@ -798,453 +488,595 @@
 
 <body>
 
-  <!-- =========================
-       HEADER
-  ========================== -->
+<div class="app">
+
+  <!-- HEADER -->
 
   <header class="header">
 
-    <div class="header-inner">
+    <div class="logo">
+      Ethiopia <span>Betting</span>
+    </div>
 
-      <div class="brand">
-        <div class="brand-icon">👑</div>
-
-        <div class="brand-text">
-          Ethiopia <span>Betting</span>
-        </div>
-      </div>
+    <div class="header-right">
 
       <div class="balance-box">
-
-        <div class="wallet">💳</div>
-
-        <div class="balance-amount">
-          ETB 1,250.00
+        <div>
+          <div class="balance-label">Balance</div>
+          <div class="balance" id="balance">Loading...</div>
         </div>
-
-        <button class="add-money" type="button">
-          +
-        </button>
-
       </div>
 
-      <button class="profile" type="button">
-        👤
-      </button>
+      <div class="profile" id="profile">
+        P
+      </div>
 
     </div>
 
   </header>
 
 
-  <!-- =========================
-       MAIN
-  ========================== -->
+  <!-- MAIN -->
 
   <main class="container">
-
 
     <!-- HERO -->
 
     <section class="hero">
 
-      <div class="hero-content">
+      <h1>
+        Play. Predict.<br>
+        <span>Win.</span>
+      </h1>
 
-        <div class="hero-label">
-          SPORTS BETTING
-        </div>
+      <p>
+        Welcome to Ethiopia Betting.
+        Enjoy exciting games, predictions and
+        entertainment from one simple platform.
+      </p>
 
-        <h1>
-          Play. Predict.<br>
-          <span>Win.</span>
-        </h1>
+      <div class="hero-buttons">
 
+        <button
+          class="btn-primary"
+          id="playButton"
+          type="button">
+          🎮 Play Now
+        </button>
+
+        <button
+          class="btn-secondary"
+          id="accountButton"
+          type="button">
+          👤 My Account
+        </button>
+
+      </div>
+
+    </section>
+
+
+    <!-- INFO -->
+
+    <section class="info-grid">
+
+      <div class="info-card">
+        <div class="info-icon">🎁</div>
+        <h3>50 ETB Bonus</h3>
         <p>
-          Best odds, exciting games and a fast,
-          modern betting experience.
+          New users receive a 50 ETB
+          signup bonus.
         </p>
-
-        <button class="hero-button" type="button">
-          Bet Now
-          <span>→</span>
-        </button>
-
       </div>
 
-      <div class="hero-ball">
-        ⚽
+      <div class="info-card">
+        <div class="info-icon">🛡️</div>
+        <h3>Secure & Fair</h3>
+        <p>
+          Game results are processed
+          server-side.
+        </p>
       </div>
 
-    </section>
-
-
-    <!-- QUICK FEATURES -->
-
-    <section class="features">
-
-      <div class="feature">
-
-        <div class="feature-icon">
-          🎁
-        </div>
-
-        <div>
-          <h3>Signup Bonus</h3>
-          <p>Get <strong>50 ETB</strong></p>
-        </div>
-
+      <div class="info-card">
+        <div class="info-icon">⚡</div>
+        <h3>Fast Experience</h3>
+        <p>
+          Fast and responsive gameplay
+          across devices.
+        </p>
       </div>
 
-
-      <div class="feature">
-
-        <div class="feature-icon">
-          🛡️
-        </div>
-
-        <div>
-          <h3>Secure & Fair</h3>
-          <p>Your trust matters</p>
-        </div>
-
-      </div>
-
-
-      <div class="feature">
-
-        <div class="feature-icon">
-          ⚡
-        </div>
-
-        <div>
-          <h3>Fast Payouts</h3>
-          <p>Quick withdrawals</p>
-        </div>
-
-      </div>
-
-
-      <div class="feature">
-
-        <div class="feature-icon">
-          🎧
-        </div>
-
-        <div>
-          <h3>Support</h3>
-          <p>We are here to help</p>
-        </div>
-
+      <div class="info-card">
+        <div class="info-icon">💬</div>
+        <h3>Support</h3>
+        <p>
+          Help and support will be
+          available inside the platform.
+        </p>
       </div>
 
     </section>
 
 
-    <!-- =========================
-         GAMES
-    ========================== -->
+    <!-- GAMES -->
 
-    <section>
+    <div class="section-header">
+      <h2>Games</h2>
+      <span>Choose your game</span>
+    </div>
 
-      <div class="section-head">
+    <section class="games-grid">
 
-        <div class="section-title">
-
-          <div class="section-title-icon">
-            🎮
-          </div>
-
-          <div>
-            <h2>Our Games</h2>
-            <p>Choose your favorite game</p>
-          </div>
-
-        </div>
-
-        <button class="view-all" type="button">
-          View All →
-        </button>
-
+      <div class="game-card">
+        <div class="game-icon">⚽</div>
+        <h3>Betting</h3>
+        <p>
+          Main betting platform for
+          upcoming events.
+        </p>
+        <span class="game-status">Coming soon</span>
       </div>
 
+      <div class="game-card">
+        <div class="game-icon">🔢</div>
+        <h3>Keno</h3>
+        <p>
+          Pick numbers and test your luck.
+        </p>
+        <span class="game-status">Coming soon</span>
+      </div>
 
-      <div class="games">
+      <div class="game-card">
+        <div class="game-icon">🎟️</div>
+        <h3>Lucky Draw</h3>
+        <p>
+          Enter the draw and wait for
+          the result.
+        </p>
+        <span class="game-status">Coming soon</span>
+      </div>
 
+      <div class="game-card">
+        <div class="game-icon">💣</div>
+        <h3>Mines</h3>
+        <p>
+          Reveal safe positions and
+          manage your risk.
+        </p>
+        <span class="game-status">Coming soon</span>
+      </div>
 
-        <!-- BETTING -->
+      <div class="game-card">
+        <div class="game-icon">🔺</div>
+        <h3>High / Low</h3>
+        <p>
+          Predict whether the next
+          number will be high or low.
+        </p>
+        <span class="game-status">Coming soon</span>
+      </div>
 
-        <article class="game betting">
+      <div class="game-card">
+        <div class="game-icon">🎯</div>
+        <h3>Number Pick</h3>
+        <p>
+          Choose your number and
+          predict the result.
+        </p>
+        <span class="game-status">Coming soon</span>
+      </div>
 
-          <div class="game-icon">
-            ⚽
-          </div>
+      <div class="game-card">
+        <div class="game-icon">🎱</div>
+        <h3>Bingo</h3>
+        <p>
+          Play a fast and exciting
+          bingo game.
+        </p>
+        <span class="game-status">Coming soon</span>
+      </div>
 
-          <div class="game-content">
-            <h3>Betting</h3>
-            <p>Sports & Odds</p>
-          </div>
-
-          <div class="game-arrow">
-            →
-          </div>
-
-        </article>
-
-
-        <!-- KENO -->
-
-        <article class="game keno">
-
-          <div class="game-icon">
-            🎱
-          </div>
-
-          <div class="game-content">
-            <h3>Keno</h3>
-            <p>Pick numbers</p>
-          </div>
-
-          <div class="game-arrow">
-            →
-          </div>
-
-        </article>
-
-
-        <!-- LUCKY DRAW -->
-
-        <article class="game lucky">
-
-          <div class="game-icon">
-            🎟️
-          </div>
-
-          <div class="game-content">
-            <h3>Lucky Draw</h3>
-            <p>Win big prizes</p>
-          </div>
-
-          <div class="game-arrow">
-            →
-          </div>
-
-        </article>
-
-
-        <!-- MINES -->
-
-        <article class="game mines">
-
-          <div class="game-icon">
-            💣
-          </div>
-
-          <div class="game-content">
-            <h3>Mines</h3>
-            <p>Avoid the mines</p>
-          </div>
-
-          <div class="game-arrow">
-            →
-          </div>
-
-        </article>
-
-
-        <!-- NUMBER PICK -->
-
-        <article class="game number">
-
-          <div class="game-icon">
-            🔢
-          </div>
-
-          <div class="game-content">
-            <h3>Number Pick</h3>
-            <p>Pick & win</p>
-          </div>
-
-          <div class="game-arrow">
-            →
-          </div>
-
-        </article>
-
-
-        <!-- HIGH LOW -->
-
-        <article class="game highlow">
-
-          <div class="game-icon">
-            🃏
-          </div>
-
-          <div class="game-content">
-            <h3>High / Low</h3>
-            <p>Predict higher or lower</p>
-          </div>
-
-          <div class="game-arrow">
-            →
-          </div>
-
-        </article>
-
-
-        <!-- BINGO -->
-
-        <article class="game bingo">
-
-          <div class="game-icon">
-            🎯
-          </div>
-
-          <div class="game-content">
-            <h3>Bingo</h3>
-            <p>Classic game</p>
-          </div>
-
-          <div class="game-arrow">
-            →
-          </div>
-
-        </article>
-
-
-        <!-- JACKPOT -->
-
-        <article class="game jackpot">
-
-          <div class="game-icon">
-            💎
-          </div>
-
-          <div class="game-content">
-            <h3>Jackpot</h3>
-            <p>Big prize</p>
-          </div>
-
-          <div class="game-arrow">
-            →
-          </div>
-
-        </article>
-
+      <div class="game-card">
+        <div class="game-icon">🏆</div>
+        <h3>Jackpot</h3>
+        <p>
+          Special jackpot events with
+          larger prizes.
+        </p>
+        <span class="game-status">Coming soon</span>
       </div>
 
     </section>
 
 
-    <!-- =========================
-         BONUS
-    ========================== -->
+    <!-- BONUS -->
 
     <section class="bonus">
 
-      <div class="bonus-left">
+      <div>
+        <h2>🎁 Welcome Bonus</h2>
 
-        <div class="bonus-icon">
-          🏆
-        </div>
-
-        <div>
-          <h2>Play More, Win More!</h2>
-
-          <p>
-            Join now and get
-            <strong>50 ETB bonus</strong>
-          </p>
-        </div>
-
+        <p>
+          New users get 50 ETB signup bonus.
+        </p>
       </div>
 
-      <button class="bonus-button" type="button">
-        Get Bonus →
-      </button>
+      <div
+        class="bonus-amount"
+        id="bonusDisplay">
+        50 ETB
+      </div>
 
     </section>
+
+
+    <!-- ACCOUNT -->
+
+    <div class="section-header">
+      <h2>My Account</h2>
+      <span id="accountStatus">Loading...</span>
+    </div>
+
+    <section class="account-card">
+
+      <div class="account-row">
+        <span>Name</span>
+        <span id="userName">Loading...</span>
+      </div>
+
+      <div class="account-row">
+        <span>Username</span>
+        <span id="userUsername">Loading...</span>
+      </div>
+
+      <div class="account-row">
+        <span>Balance</span>
+        <span id="accountBalance">Loading...</span>
+      </div>
+
+      <div class="account-row">
+        <span>Bonus Balance</span>
+        <span
+          class="bonus-value"
+          id="accountBonus">
+          Loading...
+        </span>
+      </div>
+
+    </section>
+
+
+    <div
+      class="status"
+      id="status">
+      Connecting to account...
+    </div>
 
   </main>
 
 
-  <!-- =========================
-       BOTTOM NAVIGATION
-  ========================== -->
+  <!-- MOBILE NAV -->
 
-  <nav class="bottom-nav">
+  <nav class="mobile-nav">
 
-    <button class="nav-item active" type="button">
-
-      <span class="nav-icon">⌂</span>
-      <span>Home</span>
-
+    <button
+      type="button"
+      class="active"
+      data-page="home">
+      <span>⌂</span>
+      Home
     </button>
 
-    <button class="nav-item" type="button">
-
-      <span class="nav-icon">⚽</span>
-      <span>Betting</span>
-
+    <button
+      type="button"
+      data-page="betting">
+      <span>⚽</span>
+      Betting
     </button>
 
-    <button class="nav-item" type="button">
-
-      <span class="nav-icon">🎮</span>
-      <span>Games</span>
-
+    <button
+      type="button"
+      data-page="games">
+      <span>🎮</span>
+      Games
     </button>
 
-    <button class="nav-item" type="button">
-
-      <span class="nav-icon">◷</span>
-      <span>History</span>
-
+    <button
+      type="button"
+      data-page="history">
+      <span>📋</span>
+      History
     </button>
 
-    <button class="nav-item" type="button">
-
-      <span class="nav-icon">●</span>
-      <span>Account</span>
-
+    <button
+      type="button"
+      data-page="account">
+      <span>👤</span>
+      Account
     </button>
 
   </nav>
 
+</div>
 
-  <script>
+
+<script>
+
+/*
+|--------------------------------------------------------------------------
+| Configuration
+|--------------------------------------------------------------------------
+*/
+
+const API_BASE = window.location.origin;
+
+
+/*
+|--------------------------------------------------------------------------
+| Test User
+|--------------------------------------------------------------------------
+|
+| Temporary test identity.
+| Later this will come from Telegram Web App.
+|--------------------------------------------------------------------------
+*/
+
+const TEST_USER = {
+  telegram_id: "TEST_USER_001",
+  name: "Test Player",
+  username: "test_player"
+};
+
+
+/*
+|--------------------------------------------------------------------------
+| Helpers
+|--------------------------------------------------------------------------
+*/
+
+function formatMoney(amount) {
+
+  const value = Number(amount);
+
+  if (!Number.isFinite(value)) {
+    return "0.00 ETB";
+  }
+
+  return value.toFixed(2) + " ETB";
+}
+
+
+function setStatus(message, type = "") {
+
+  const status = document.getElementById("status");
+
+  status.textContent = message;
+  status.className = "status";
+
+  if (type) {
+    status.classList.add(type);
+  }
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Load User
+|--------------------------------------------------------------------------
+*/
+
+async function loadUser() {
+
+  try {
+
+    setStatus("Loading your account...");
+
+    const response = await fetch(
+      `${API_BASE}/api/user`,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify(TEST_USER)
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(
+        data.message || "Could not load account."
+      );
+    }
+
+    const user = data.user;
 
     /*
-      Temporary navigation interaction.
-
-      Later these buttons will connect to:
-      - Login
-      - Betting
-      - Keno
-      - Lucky Draw
-      - Mines
-      - Number Pick
-      - High / Low
-      - Bingo
-      - Account
+    | Update header
     */
 
-    const navItems = document.querySelectorAll(".nav-item");
+    document.getElementById("balance").textContent =
+      formatMoney(user.balance);
 
-    navItems.forEach(item => {
+    /*
+    | Update profile
+    */
 
-      item.addEventListener("click", () => {
+    const firstLetter =
+      (user.name || "P").charAt(0).toUpperCase();
 
-        navItems.forEach(nav => {
-          nav.classList.remove("active");
+    document.getElementById("profile").textContent =
+      firstLetter;
+
+    /*
+    | Update account
+    */
+
+    document.getElementById("userName").textContent =
+      user.name || "Player";
+
+    document.getElementById("userUsername").textContent =
+      user.username
+        ? "@" + user.username
+        : "—";
+
+    document.getElementById("accountBalance").textContent =
+      formatMoney(user.balance);
+
+    document.getElementById("accountBonus").textContent =
+      formatMoney(user.bonus_balance);
+
+    /*
+    | Bonus display
+    */
+
+    document.getElementById("bonusDisplay").textContent =
+      formatMoney(user.bonus_balance);
+
+    /*
+    | Account status
+    */
+
+    document.getElementById("accountStatus").textContent =
+      data.new_user
+        ? "New account"
+        : "Active account";
+
+    /*
+    | Status
+    */
+
+    if (data.new_user) {
+
+      setStatus(
+        "🎁 Your 50 ETB signup bonus has been added.",
+        "success"
+      );
+
+    } else {
+
+      setStatus(
+        "✓ Account loaded successfully.",
+        "success"
+      );
+    }
+
+  } catch (error) {
+
+    console.error(error);
+
+    setStatus(
+      "Unable to load account. Please try again.",
+      "error"
+    );
+
+  }
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Navigation
+|--------------------------------------------------------------------------
+*/
+
+document
+  .querySelectorAll(".mobile-nav button")
+  .forEach(button => {
+
+    button.addEventListener("click", () => {
+
+      document
+        .querySelectorAll(".mobile-nav button")
+        .forEach(item => {
+          item.classList.remove("active");
         });
 
-        item.classList.add("active");
+      button.classList.add("active");
 
-      });
+      const page = button.dataset.page;
+
+      if (page === "home") {
+
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth"
+        });
+
+      }
+
+      if (page === "games") {
+
+        const games =
+          document.querySelector(".games-grid");
+
+        games.scrollIntoView({
+          behavior: "smooth"
+        });
+
+      }
+
+      if (page === "account") {
+
+        const account =
+          document.querySelector(".account-card");
+
+        account.scrollIntoView({
+          behavior: "smooth"
+        });
+
+      }
 
     });
 
-  </script>
+  });
+
+
+/*
+|--------------------------------------------------------------------------
+| Buttons
+|--------------------------------------------------------------------------
+*/
+
+document
+  .getElementById("playButton")
+  .addEventListener("click", () => {
+
+    document
+      .querySelector(".games-grid")
+      .scrollIntoView({
+        behavior: "smooth"
+      });
+
+  });
+
+
+document
+  .getElementById("accountButton")
+  .addEventListener("click", () => {
+
+    document
+      .querySelector(".account-card")
+      .scrollIntoView({
+        behavior: "smooth"
+      });
+
+  });
+
+
+/*
+|--------------------------------------------------------------------------
+| Start
+|--------------------------------------------------------------------------
+*/
+
+loadUser();
+
+</script>
 
 </body>
 </html>
