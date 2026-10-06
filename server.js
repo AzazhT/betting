@@ -740,10 +740,6 @@ app.post("/api/deposit/request", async (req, res) => {
       reference
     } = req.body;
 
-    /*
-    | Validate Telegram ID
-    */
-
     if (!telegram_id) {
 
       return res.status(400).json({
@@ -751,10 +747,6 @@ app.post("/api/deposit/request", async (req, res) => {
         message: "telegram_id is required."
       });
     }
-
-    /*
-    | Validate amount
-    */
 
     const depositAmount = Number(amount);
 
@@ -769,10 +761,6 @@ app.post("/api/deposit/request", async (req, res) => {
       });
     }
 
-    /*
-    | Validate payment method
-    */
-
     if (!method) {
 
       return res.status(400).json({
@@ -780,10 +768,6 @@ app.post("/api/deposit/request", async (req, res) => {
         message: "Payment method is required."
       });
     }
-
-    /*
-    | Get minimum deposit
-    */
 
     const minimumDepositResult =
       await pool.query(
@@ -812,10 +796,6 @@ app.post("/api/deposit/request", async (req, res) => {
 
     await client.query("BEGIN");
 
-    /*
-    | Find user
-    */
-
     const userResult = await client.query(
       `
       SELECT *
@@ -838,10 +818,6 @@ app.post("/api/deposit/request", async (req, res) => {
 
     const user = userResult.rows[0];
 
-    /*
-    | Check account status
-    */
-
     if (!user.is_active) {
 
       await client.query("ROLLBACK");
@@ -851,10 +827,6 @@ app.post("/api/deposit/request", async (req, res) => {
         message: "User account is inactive."
       });
     }
-
-    /*
-    | Generate unique platform reference
-    */
 
     const cleanReference =
       reference &&
@@ -867,22 +839,10 @@ app.post("/api/deposit/request", async (req, res) => {
         Math.random() * 100000
       )}`;
 
-    /*
-    | Store payment reference in description
-    */
-
     const description =
       cleanReference
         ? `${method} deposit request | Payment reference: ${cleanReference}`
         : `${method} deposit request`;
-
-    /*
-    | Create pending transaction
-    |
-    | IMPORTANT:
-    | Deposit is NOT added to balance here.
-    | Admin/payment verification must approve it first.
-    */
 
     const transactionResult =
       await client.query(
@@ -933,6 +893,291 @@ app.post("/api/deposit/request", async (req, res) => {
       success: false,
       message:
         "Could not create deposit request."
+    });
+
+  } finally {
+
+    client.release();
+
+  }
+});
+
+/*
+|--------------------------------------------------------------------------
+| Withdraw Request
+|--------------------------------------------------------------------------
+*/
+
+app.post("/api/withdraw/request", async (req, res) => {
+
+  const client = await pool.connect();
+
+  try {
+
+    const {
+      telegram_id,
+      amount,
+      method,
+      account
+    } = req.body;
+
+    /*
+    | Validate Telegram ID
+    */
+
+    if (!telegram_id) {
+
+      return res.status(400).json({
+        success: false,
+        message: "telegram_id is required."
+      });
+    }
+
+    /*
+    | Validate amount
+    */
+
+    const withdrawAmount = Number(amount);
+
+    if (
+      !Number.isFinite(withdrawAmount) ||
+      withdrawAmount <= 0
+    ) {
+
+      return res.status(400).json({
+        success: false,
+        message: "Invalid withdrawal amount."
+      });
+    }
+
+    /*
+    | Validate method
+    */
+
+    if (!method) {
+
+      return res.status(400).json({
+        success: false,
+        message: "Withdrawal method is required."
+      });
+    }
+
+    /*
+    | Validate account
+    */
+
+    if (
+      !account ||
+      !String(account).trim()
+    ) {
+
+      return res.status(400).json({
+        success: false,
+        message: "Withdrawal account is required."
+      });
+    }
+
+    /*
+    | Get minimum withdrawal
+    */
+
+    const minimumWithdrawResult =
+      await pool.query(
+        `
+        SELECT value
+        FROM settings
+        WHERE key = 'minimum_withdraw'
+        `
+      );
+
+    const minimumWithdraw =
+      minimumWithdrawResult.rows.length > 0
+        ? Number(
+            minimumWithdrawResult.rows[0].value
+          )
+        : 51;
+
+    if (withdrawAmount < minimumWithdraw) {
+
+      return res.status(400).json({
+        success: false,
+        message:
+          `Minimum withdrawal is ${minimumWithdraw} ETB.`
+      });
+    }
+
+    /*
+    | Start transaction
+    */
+
+    await client.query("BEGIN");
+
+    /*
+    | Find and lock user
+    */
+
+    const userResult = await client.query(
+      `
+      SELECT *
+      FROM users
+      WHERE telegram_id = $1
+      FOR UPDATE
+      `,
+      [telegram_id]
+    );
+
+    if (userResult.rows.length === 0) {
+
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        success: false,
+        message: "User not found."
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    /*
+    | Check account status
+    */
+
+    if (!user.is_active) {
+
+      await client.query("ROLLBACK");
+
+      return res.status(403).json({
+        success: false,
+        message: "User account is inactive."
+      });
+    }
+
+    /*
+    | Only withdraw from normal balance
+    |
+    | bonus_balance is NOT withdrawable.
+    */
+
+    const balance = Number(user.balance);
+
+    if (balance < withdrawAmount) {
+
+      await client.query("ROLLBACK");
+
+      return res.status(400).json({
+        success: false,
+        message:
+          "Insufficient withdrawable balance."
+      });
+    }
+
+    /*
+    | Create unique withdrawal reference
+    */
+
+    const platformReference =
+      `WDR-${user.id}-${Date.now()}-${Math.floor(
+        Math.random() * 100000
+      )}`;
+
+    /*
+    | Clean account information
+    */
+
+    const cleanAccount =
+      String(account).trim();
+
+    /*
+    | Transaction description
+    */
+
+    const description =
+      `${method} withdrawal request | Account: ${cleanAccount}`;
+
+    /*
+    | Reserve money immediately
+    |
+    | Balance is reduced while withdrawal
+    | is pending.
+    */
+
+    const newBalance =
+      Number(
+        (balance - withdrawAmount).toFixed(2)
+      );
+
+    await client.query(
+      `
+      UPDATE users
+      SET
+        balance = $1,
+        updated_at = NOW()
+      WHERE id = $2
+      `,
+      [
+        newBalance,
+        user.id
+      ]
+    );
+
+    /*
+    | Create pending withdrawal transaction
+    */
+
+    const transactionResult =
+      await client.query(
+        `
+        INSERT INTO transactions
+          (
+            user_id,
+            type,
+            amount,
+            status,
+            reference,
+            description
+          )
+        VALUES
+          ($1, $2, $3, $4, $5, $6)
+        RETURNING *
+        `,
+        [
+          user.id,
+          "withdraw",
+          withdrawAmount,
+          "pending",
+          platformReference,
+          description
+        ]
+      );
+
+    /*
+    | Complete database transaction
+    */
+
+    await client.query("COMMIT");
+
+    res.json({
+      success: true,
+      message:
+        "Withdrawal request submitted successfully.",
+      transaction:
+        transactionResult.rows[0],
+      balance: newBalance
+    });
+
+  } catch (error) {
+
+    await client.query("ROLLBACK");
+
+    console.error(
+      "Withdrawal request error:",
+      error.message
+    );
+
+    res.status(500).json({
+      success: false,
+      message:
+        "Could not create withdrawal request."
     });
 
   } finally {
