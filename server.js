@@ -554,17 +554,122 @@ app.get(
 
 /*
 |--------------------------------------------------------------------------
+/*
+|--------------------------------------------------------------------------
 | FOOTBALL API
 |--------------------------------------------------------------------------
 */
+
+async function footballRequest(endpoint, params = {}) {
+  if (!API_FOOTBALL_KEY) {
+    throw new Error("API_FOOTBALL_KEY is not configured.");
+  }
+
+  const query = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== "") {
+      query.append(key, String(value));
+    }
+  }
+
+  const url =
+    `${API_FOOTBALL_URL}/${endpoint}?${query.toString()}`;
+
+  console.log("⚽ API-Football request:", url);
+
+  const response = await fetch(url, {
+    headers: {
+      "x-apisports-key": API_FOOTBALL_KEY,
+      "Accept": "application/json"
+    }
+  });
+
+  const data = await response.json();
+
+  return {
+    http_status: response.status,
+    ok: response.ok,
+    data
+  };
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Football API Diagnostic
+|--------------------------------------------------------------------------
+|
+| This is for checking:
+| - API connection
+| - API errors
+| - results
+| - paging
+| - remaining quota
+|
+*/
+
+app.get(
+  "/api/football/diagnostic",
+  async (req, res) => {
+
+    try {
+
+      const result =
+        await footballRequest(
+          "fixtures",
+          {
+            next: 10
+          }
+        );
+
+      const data = result.data;
+
+      res.json({
+        success: result.ok,
+        http_status: result.http_status,
+
+        api: {
+          endpoint: data?.get || "fixtures",
+          parameters: data?.parameters || {},
+          errors: data?.errors || [],
+          results: data?.results || 0,
+          paging: data?.paging || {}
+        },
+
+        matches:
+          Array.isArray(data?.response)
+            ? data.response
+            : []
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Football diagnostic error:",
+        error.message
+      );
+
+      res.status(500).json({
+        success: false,
+        message:
+          "Failed to connect to API-Football.",
+        error:
+          error.message
+      });
+
+    }
+
+  }
+);
+
 
 /*
 |--------------------------------------------------------------------------
 | Football Fixtures Test
 |--------------------------------------------------------------------------
 |
-| Example:
-| /api/football/test
+| Gets the next 10 fixtures instead of hardcoding a date.
 |
 */
 
@@ -574,34 +679,34 @@ app.get(
 
     try {
 
-      if (!API_FOOTBALL_KEY) {
-
-        return res.status(500).json({
-          success: false,
-          message:
-            "API_FOOTBALL_KEY is not configured."
-        });
-
-      }
-
-      const response =
-        await fetch(
-          `${API_FOOTBALL_URL}/fixtures?date=2026-10-06`,
+      const result =
+        await footballRequest(
+          "fixtures",
           {
-            headers: {
-              "x-apisports-key":
-                API_FOOTBALL_KEY
-            }
+            next: 10,
+            timezone: "Africa/Addis_Ababa"
           }
         );
 
-      const data =
-        await response.json();
+      const data = result.data;
 
       res.json({
-        success: true,
-        results: data.results,
-        response: data.response
+        success: result.ok,
+        http_status: result.http_status,
+
+        errors:
+          data?.errors || [],
+
+        results:
+          data?.results || 0,
+
+        paging:
+          data?.paging || {},
+
+        response:
+          Array.isArray(data?.response)
+            ? data.response
+            : []
       });
 
     } catch (error) {
@@ -614,7 +719,352 @@ app.get(
       res.status(500).json({
         success: false,
         message:
-          "Failed to connect to API-Football."
+          "Failed to connect to API-Football.",
+        error:
+          error.message
+      });
+
+    }
+
+  }
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| Football Odds Test
+|--------------------------------------------------------------------------
+|
+| Gets odds from the next available fixtures.
+|
+*/
+
+app.get(
+  "/api/football/odds-test",
+  async (req, res) => {
+
+    try {
+
+      /*
+      | First get upcoming fixtures
+      */
+
+      const fixturesResult =
+        await footballRequest(
+          "fixtures",
+          {
+            next: 20
+          }
+        );
+
+      const fixturesData =
+        fixturesResult.data;
+
+      const fixtures =
+        Array.isArray(
+          fixturesData?.response
+        )
+          ? fixturesData.response
+          : [];
+
+      if (fixtures.length === 0) {
+
+        return res.json({
+          success: true,
+          message:
+            "No upcoming fixtures returned by API-Football.",
+          fixture_results:
+            fixturesData?.results || 0,
+          fixture_errors:
+            fixturesData?.errors || [],
+          odds_results: 0,
+          odds: []
+        });
+
+      }
+
+      /*
+      | Try odds for fixtures
+      |
+      | Stop when we find odds.
+      */
+
+      const oddsResults = [];
+
+      for (
+        const fixture
+        of fixtures.slice(0, 10)
+      ) {
+
+        const fixtureId =
+          fixture?.fixture?.id;
+
+        if (!fixtureId) {
+          continue;
+        }
+
+        try {
+
+          const oddsResult =
+            await footballRequest(
+              "odds",
+              {
+                fixture: fixtureId
+              }
+            );
+
+          const oddsData =
+            oddsResult.data;
+
+          if (
+            Array.isArray(
+              oddsData?.response
+            ) &&
+            oddsData.response.length > 0
+          ) {
+
+            oddsResults.push({
+              fixture_id:
+                fixtureId,
+
+              home:
+                fixture?.teams?.home?.name,
+
+              away:
+                fixture?.teams?.away?.name,
+
+              date:
+                fixture?.fixture?.date,
+
+              results:
+                oddsData.results || 0,
+
+              errors:
+                oddsData.errors || [],
+
+              response:
+                oddsData.response
+            });
+
+          }
+
+        } catch (error) {
+
+          console.error(
+            `Odds error for fixture ${fixtureId}:`,
+            error.message
+          );
+
+        }
+
+      }
+
+      res.json({
+        success: true,
+
+        fixtures_checked:
+          Math.min(
+            fixtures.length,
+            10
+          ),
+
+        odds_matches_found:
+          oddsResults.length,
+
+        odds:
+          oddsResults
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Football odds error:",
+        error.message
+      );
+
+      res.status(500).json({
+        success: false,
+        message:
+          "Failed to load football odds.",
+        error:
+          error.message
+      });
+
+    }
+
+  }
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| Football Odds By Fixture
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  "/api/football/odds/:fixtureId",
+  async (req, res) => {
+
+    try {
+
+      const fixtureId =
+        Number(req.params.fixtureId);
+
+      if (
+        !Number.isInteger(fixtureId) ||
+        fixtureId <= 0
+      ) {
+
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid fixture ID."
+        });
+
+      }
+
+      const result =
+        await footballRequest(
+          "odds",
+          {
+            fixture: fixtureId
+          }
+        );
+
+      const data =
+        result.data;
+
+      res.json({
+        success: result.ok,
+
+        http_status:
+          result.http_status,
+
+        fixture_id:
+          fixtureId,
+
+        errors:
+          data?.errors || [],
+
+        results:
+          data?.results || 0,
+
+        paging:
+          data?.paging || {},
+
+        response:
+          Array.isArray(data?.response)
+            ? data.response
+            : []
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Fixture odds error:",
+        error.message
+      );
+
+      res.status(500).json({
+        success: false,
+        message:
+          "Failed to load fixture odds.",
+        error:
+          error.message
+      });
+
+    }
+
+  }
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| Football Upcoming Matches
+|--------------------------------------------------------------------------
+|
+| Uses API-Football "next" instead of today's date only.
+|
+*/
+
+app.get(
+  "/api/football/upcoming",
+  async (req, res) => {
+
+    try {
+
+      const limit =
+        Math.min(
+          Math.max(
+            Number(req.query.limit) || 20,
+            1
+          ),
+          50
+        );
+
+      const result =
+        await footballRequest(
+          "fixtures",
+          {
+            next: limit,
+            timezone: "Africa/Addis_Ababa"
+          }
+        );
+
+      const data =
+        result.data;
+
+      const matches =
+        Array.isArray(
+          data?.response
+        )
+          ? data.response.filter(
+              item => {
+
+                const status =
+                  item?.fixture?.status?.short;
+
+                return [
+                  "NS",
+                  "1H",
+                  "HT",
+                  "2H",
+                  "ET",
+                  "P",
+                  "BT"
+                ].includes(status);
+
+              }
+            )
+          : [];
+
+      res.json({
+        success: result.ok,
+
+        errors:
+          data?.errors || [],
+
+        results:
+          matches.length,
+
+        matches
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Upcoming football error:",
+        error.message
+      );
+
+      res.status(500).json({
+        success: false,
+        message:
+          "Failed to load upcoming matches.",
+        error:
+          error.message
       });
 
     }
