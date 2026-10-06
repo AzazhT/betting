@@ -17,6 +17,8 @@ require("dotenv").config();
 const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY;
 const API_FOOTBALL_URL = "https://v3.football.api-sports.io";
 
+const FOOTBALL_TIMEZONE = "Africa/Addis_Ababa";
+
 /*
 |--------------------------------------------------------------------------
 | App
@@ -314,10 +316,6 @@ app.post(
 
       }
 
-      /*
-      | Check existing user
-      */
-
       const existingUser =
         await pool.query(
           `
@@ -343,6 +341,9 @@ app.post(
 
       /*
       | New user
+      |
+      | Signup bonus is stored in bonus_balance.
+      | It is NOT directly withdrawable.
       */
 
       const signupBonus = 50.00;
@@ -368,17 +369,13 @@ app.post(
             name || "Player",
             username || "",
             phone || "",
-            signupBonus,
+            0,
             signupBonus
           ]
         );
 
       const user =
         result.rows[0];
-
-      /*
-      | Record signup bonus
-      */
 
       await pool.query(
         `
@@ -455,10 +452,6 @@ app.get(
           [telegramId]
         );
 
-      /*
-      | Create test user
-      */
-
       if (
         result.rows.length === 0
       ) {
@@ -484,7 +477,7 @@ app.get(
               telegramId,
               "Test Player",
               "test_player",
-              signupBonus,
+              0,
               signupBonus
             ]
           );
@@ -524,10 +517,6 @@ app.get(
 
       }
 
-      /*
-      | Existing test user
-      */
-
       res.json({
         success: true,
         new_user: false,
@@ -554,58 +543,214 @@ app.get(
 
 /*
 |--------------------------------------------------------------------------
-/*
-|--------------------------------------------------------------------------
 | FOOTBALL API
 |--------------------------------------------------------------------------
 */
 
-async function footballRequest(endpoint, params = {}) {
+/*
+| API request helper
+*/
+
+async function footballRequest(
+  endpoint,
+  params = {}
+) {
+
   if (!API_FOOTBALL_KEY) {
-    throw new Error("API_FOOTBALL_KEY is not configured.");
+    throw new Error(
+      "API_FOOTBALL_KEY is not configured."
+    );
   }
 
-  const query = new URLSearchParams();
+  const query =
+    new URLSearchParams();
 
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== null && value !== "") {
-      query.append(key, String(value));
+  for (
+    const [key, value]
+    of Object.entries(params)
+  ) {
+
+    if (
+      value !== undefined &&
+      value !== null &&
+      value !== ""
+    ) {
+
+      query.append(
+        key,
+        String(value)
+      );
+
     }
+
   }
 
   const url =
     `${API_FOOTBALL_URL}/${endpoint}?${query.toString()}`;
 
-  console.log("⚽ API-Football request:", url);
+  console.log(
+    "⚽ API-Football request:",
+    url
+  );
 
-  const response = await fetch(url, {
-    headers: {
-      "x-apisports-key": API_FOOTBALL_KEY,
-      "Accept": "application/json"
-    }
-  });
+  const response =
+    await fetch(
+      url,
+      {
+        headers: {
+          "x-apisports-key":
+            API_FOOTBALL_KEY,
+          "Accept":
+            "application/json"
+        }
+      }
+    );
 
-  const data = await response.json();
+  let data;
+
+  try {
+
+    data =
+      await response.json();
+
+  } catch (error) {
+
+    data = {
+      errors: {
+        parse:
+          "API returned invalid JSON."
+      }
+    };
+
+  }
 
   return {
-    http_status: response.status,
-    ok: response.ok,
+    http_status:
+      response.status,
+
+    ok:
+      response.ok,
+
     data
   };
 }
 
+/*
+|--------------------------------------------------------------------------
+| Date Helper
+|--------------------------------------------------------------------------
+|
+| Uses Ethiopia/Addis Ababa date.
+|
+*/
+
+function getAddisDate(
+  offsetDays = 0
+) {
+
+  const now =
+    new Date();
+
+  const parts =
+    new Intl.DateTimeFormat(
+      "en-CA",
+      {
+        timeZone:
+          FOOTBALL_TIMEZONE,
+        year:
+          "numeric",
+        month:
+          "2-digit",
+        day:
+          "2-digit"
+      }
+    ).formatToParts(now);
+
+  const year =
+    Number(
+      parts.find(
+        p => p.type === "year"
+      ).value
+    );
+
+  const month =
+    Number(
+      parts.find(
+        p => p.type === "month"
+      ).value
+    );
+
+  const day =
+    Number(
+      parts.find(
+        p => p.type === "day"
+      ).value
+    );
+
+  const date =
+    new Date(
+      Date.UTC(
+        year,
+        month - 1,
+        day + offsetDays
+      )
+    );
+
+  return date
+    .toISOString()
+    .slice(0, 10);
+}
 
 /*
 |--------------------------------------------------------------------------
-| Football API Diagnostic
+| Date Validation
+|--------------------------------------------------------------------------
+*/
+
+function isValidDateString(
+  value
+) {
+
+  if (
+    typeof value !==
+    "string"
+  ) {
+    return false;
+  }
+
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(
+      value
+    )
+  ) {
+    return false;
+  }
+
+  const date =
+    new Date(
+      `${value}T00:00:00Z`
+    );
+
+  return (
+    !Number.isNaN(
+      date.getTime()
+    ) &&
+    date.toISOString().slice(0, 10) ===
+      value
+  );
+}
+
+/*
+|--------------------------------------------------------------------------
+| Football Diagnostic
 |--------------------------------------------------------------------------
 |
-| This is for checking:
-| - API connection
-| - API errors
-| - results
-| - paging
-| - remaining quota
+| IMPORTANT:
+| Free API-Football does NOT support "next".
+|
+| Example:
+| /api/football/diagnostic
+| /api/football/diagnostic?date=2026-10-06
 |
 */
 
@@ -615,32 +760,76 @@ app.get(
 
     try {
 
+      const date =
+        req.query.date ||
+        getAddisDate(0);
+
+      if (
+        !isValidDateString(date)
+      ) {
+
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid date. Use YYYY-MM-DD."
+        });
+
+      }
+
       const result =
         await footballRequest(
           "fixtures",
           {
-            next: 10
+            date,
+            timezone:
+              FOOTBALL_TIMEZONE
           }
         );
 
-      const data = result.data;
+      const data =
+        result.data;
 
       res.json({
-        success: result.ok,
-        http_status: result.http_status,
+
+        success:
+          result.ok,
+
+        http_status:
+          result.http_status,
 
         api: {
-          endpoint: data?.get || "fixtures",
-          parameters: data?.parameters || {},
-          errors: data?.errors || [],
-          results: data?.results || 0,
-          paging: data?.paging || {}
+
+          endpoint:
+            data?.get ||
+            "fixtures",
+
+          parameters:
+            data?.parameters ||
+            {},
+
+          errors:
+            data?.errors ||
+            {},
+
+          results:
+            data?.results ||
+            0,
+
+          paging:
+            data?.paging ||
+            {}
+
         },
 
+        date,
+
         matches:
-          Array.isArray(data?.response)
+          Array.isArray(
+            data?.response
+          )
             ? data.response
             : []
+
       });
 
     } catch (error) {
@@ -651,11 +840,15 @@ app.get(
       );
 
       res.status(500).json({
+
         success: false,
+
         message:
           "Failed to connect to API-Football.",
+
         error:
           error.message
+
       });
 
     }
@@ -663,13 +856,14 @@ app.get(
   }
 );
 
-
 /*
 |--------------------------------------------------------------------------
 | Football Fixtures Test
 |--------------------------------------------------------------------------
 |
-| Gets the next 10 fixtures instead of hardcoding a date.
+| Example:
+| /api/football/test
+| /api/football/test?date=2026-10-06
 |
 */
 
@@ -679,458 +873,83 @@ app.get(
 
     try {
 
-      const result =
-        await footballRequest(
-          "fixtures",
-          {
-            next: 10,
-            timezone: "Africa/Addis_Ababa"
-          }
-        );
-
-      const data = result.data;
-
-      res.json({
-        success: result.ok,
-        http_status: result.http_status,
-
-        errors:
-          data?.errors || [],
-
-        results:
-          data?.results || 0,
-
-        paging:
-          data?.paging || {},
-
-        response:
-          Array.isArray(data?.response)
-            ? data.response
-            : []
-      });
-
-    } catch (error) {
-
-      console.error(
-        "API-Football error:",
-        error.message
-      );
-
-      res.status(500).json({
-        success: false,
-        message:
-          "Failed to connect to API-Football.",
-        error:
-          error.message
-      });
-
-    }
-
-  }
-);
-
-
-/*
-|--------------------------------------------------------------------------
-| Football Odds Test
-|--------------------------------------------------------------------------
-|
-| Gets odds from the next available fixtures.
-|
-*/
-
-app.get(
-  "/api/football/odds-test",
-  async (req, res) => {
-
-    try {
-
-      /*
-      | First get upcoming fixtures
-      */
-
-      const fixturesResult =
-        await footballRequest(
-          "fixtures",
-          {
-            next: 20
-          }
-        );
-
-      const fixturesData =
-        fixturesResult.data;
-
-      const fixtures =
-        Array.isArray(
-          fixturesData?.response
-        )
-          ? fixturesData.response
-          : [];
-
-      if (fixtures.length === 0) {
-
-        return res.json({
-          success: true,
-          message:
-            "No upcoming fixtures returned by API-Football.",
-          fixture_results:
-            fixturesData?.results || 0,
-          fixture_errors:
-            fixturesData?.errors || [],
-          odds_results: 0,
-          odds: []
-        });
-
-      }
-
-      /*
-      | Try odds for fixtures
-      |
-      | Stop when we find odds.
-      */
-
-      const oddsResults = [];
-
-      for (
-        const fixture
-        of fixtures.slice(0, 10)
-      ) {
-
-        const fixtureId =
-          fixture?.fixture?.id;
-
-        if (!fixtureId) {
-          continue;
-        }
-
-        try {
-
-          const oddsResult =
-            await footballRequest(
-              "odds",
-              {
-                fixture: fixtureId
-              }
-            );
-
-          const oddsData =
-            oddsResult.data;
-
-          if (
-            Array.isArray(
-              oddsData?.response
-            ) &&
-            oddsData.response.length > 0
-          ) {
-
-            oddsResults.push({
-              fixture_id:
-                fixtureId,
-
-              home:
-                fixture?.teams?.home?.name,
-
-              away:
-                fixture?.teams?.away?.name,
-
-              date:
-                fixture?.fixture?.date,
-
-              results:
-                oddsData.results || 0,
-
-              errors:
-                oddsData.errors || [],
-
-              response:
-                oddsData.response
-            });
-
-          }
-
-        } catch (error) {
-
-          console.error(
-            `Odds error for fixture ${fixtureId}:`,
-            error.message
-          );
-
-        }
-
-      }
-
-      res.json({
-        success: true,
-
-        fixtures_checked:
-          Math.min(
-            fixtures.length,
-            10
-          ),
-
-        odds_matches_found:
-          oddsResults.length,
-
-        odds:
-          oddsResults
-      });
-
-    } catch (error) {
-
-      console.error(
-        "Football odds error:",
-        error.message
-      );
-
-      res.status(500).json({
-        success: false,
-        message:
-          "Failed to load football odds.",
-        error:
-          error.message
-      });
-
-    }
-
-  }
-);
-
-
-/*
-|--------------------------------------------------------------------------
-| Football Odds By Fixture
-|--------------------------------------------------------------------------
-*/
-
-app.get(
-  "/api/football/odds/:fixtureId",
-  async (req, res) => {
-
-    try {
-
-      const fixtureId =
-        Number(req.params.fixtureId);
+      const date =
+        req.query.date ||
+        getAddisDate(0);
 
       if (
-        !Number.isInteger(fixtureId) ||
-        fixtureId <= 0
+        !isValidDateString(date)
       ) {
 
         return res.status(400).json({
           success: false,
           message:
-            "Invalid fixture ID."
+            "Invalid date. Use YYYY-MM-DD."
         });
 
       }
-
-      const result =
-        await footballRequest(
-          "odds",
-          {
-            fixture: fixtureId
-          }
-        );
-
-      const data =
-        result.data;
-
-      res.json({
-        success: result.ok,
-
-        http_status:
-          result.http_status,
-
-        fixture_id:
-          fixtureId,
-
-        errors:
-          data?.errors || [],
-
-        results:
-          data?.results || 0,
-
-        paging:
-          data?.paging || {},
-
-        response:
-          Array.isArray(data?.response)
-            ? data.response
-            : []
-      });
-
-    } catch (error) {
-
-      console.error(
-        "Fixture odds error:",
-        error.message
-      );
-
-      res.status(500).json({
-        success: false,
-        message:
-          "Failed to load fixture odds.",
-        error:
-          error.message
-      });
-
-    }
-
-  }
-);
-
-
-/*
-|--------------------------------------------------------------------------
-| Football Upcoming Matches
-|--------------------------------------------------------------------------
-|
-| Uses API-Football "next" instead of today's date only.
-|
-*/
-
-app.get(
-  "/api/football/upcoming",
-  async (req, res) => {
-
-    try {
-
-      const limit =
-        Math.min(
-          Math.max(
-            Number(req.query.limit) || 20,
-            1
-          ),
-          50
-        );
 
       const result =
         await footballRequest(
           "fixtures",
           {
-            next: limit,
-            timezone: "Africa/Addis_Ababa"
+            date,
+            timezone:
+              FOOTBALL_TIMEZONE
           }
         );
 
       const data =
         result.data;
 
-      const matches =
-        Array.isArray(
-          data?.response
-        )
-          ? data.response.filter(
-              item => {
-
-                const status =
-                  item?.fixture?.status?.short;
-
-                return [
-                  "NS",
-                  "1H",
-                  "HT",
-                  "2H",
-                  "ET",
-                  "P",
-                  "BT"
-                ].includes(status);
-
-              }
-            )
-          : [];
-
       res.json({
-        success: result.ok,
+
+        success:
+          result.ok,
+
+        http_status:
+          result.http_status,
+
+        date,
 
         errors:
-          data?.errors || [],
+          data?.errors ||
+          {},
 
         results:
-          matches.length,
+          data?.results ||
+          0,
 
-        matches
+        paging:
+          data?.paging ||
+          {},
+
+        response:
+          Array.isArray(
+            data?.response
+          )
+            ? data.response
+            : []
+
       });
 
     } catch (error) {
 
       console.error(
-        "Upcoming football error:",
+        "API-Football test error:",
         error.message
       );
 
       res.status(500).json({
+
         success: false,
+
         message:
-          "Failed to load upcoming matches.",
+          "Failed to connect to API-Football.",
+
         error:
           error.message
-      });
 
-    }
-
-  }
-);
-
-/*
-|--------------------------------------------------------------------------
-| Football Odds Test
-|--------------------------------------------------------------------------
-|
-| This route is now SEPARATE from fixtures.
-|
-| Example:
-| /api/football/odds-test
-|
-*/
-
-app.get(
-  "/api/football/odds-test",
-  async (req, res) => {
-
-    try {
-
-      if (!API_FOOTBALL_KEY) {
-
-        return res.status(500).json({
-          success: false,
-          message:
-            "API_FOOTBALL_KEY is not configured."
-        });
-
-      }
-
-      const response =
-        await fetch(
-          `${API_FOOTBALL_URL}/odds?date=2026-10-06`,
-          {
-            headers: {
-              "x-apisports-key":
-                API_FOOTBALL_KEY
-            }
-          }
-        );
-
-      const data =
-        await response.json();
-
-      res.json({
-        success: true,
-        results: data.results,
-        response: data.response
-      });
-
-    } catch (error) {
-
-      console.error(
-        "API-Football odds error:",
-        error.message
-      );
-
-      res.status(500).json({
-        success: false,
-        message:
-          "Failed to load football odds."
       });
 
     }
@@ -1154,21 +973,15 @@ app.get(
 
     try {
 
-      if (!API_FOOTBALL_KEY) {
-
-        return res.status(500).json({
-          success: false,
-          message:
-            "API_FOOTBALL_KEY is not configured."
-        });
-
-      }
-
       const fixtureId =
-        Number(req.params.fixtureId);
+        Number(
+          req.params.fixtureId
+        );
 
       if (
-        !Number.isInteger(fixtureId) ||
+        !Number.isInteger(
+          fixtureId
+        ) ||
         fixtureId <= 0
       ) {
 
@@ -1180,25 +993,48 @@ app.get(
 
       }
 
-      const response =
-        await fetch(
-          `${API_FOOTBALL_URL}/odds?fixture=${fixtureId}`,
+      const result =
+        await footballRequest(
+          "odds",
           {
-            headers: {
-              "x-apisports-key":
-                API_FOOTBALL_KEY
-            }
+            fixture:
+              fixtureId
           }
         );
 
       const data =
-        await response.json();
+        result.data;
 
       res.json({
-        success: true,
-        fixture_id: fixtureId,
-        results: data.results,
-        response: data.response
+
+        success:
+          result.ok,
+
+        http_status:
+          result.http_status,
+
+        fixture_id:
+          fixtureId,
+
+        errors:
+          data?.errors ||
+          {},
+
+        results:
+          data?.results ||
+          0,
+
+        paging:
+          data?.paging ||
+          {},
+
+        response:
+          Array.isArray(
+            data?.response
+          )
+            ? data.response
+            : []
+
       });
 
     } catch (error) {
@@ -1209,9 +1045,120 @@ app.get(
       );
 
       res.status(500).json({
+
         success: false,
+
         message:
-          "Failed to load fixture odds."
+          "Failed to load fixture odds.",
+
+        error:
+          error.message
+
+      });
+
+    }
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| Football Odds By Date
+|--------------------------------------------------------------------------
+|
+| Free plan supports date.
+|
+| Example:
+| /api/football/odds-test
+| /api/football/odds-test?date=2026-10-06
+|
+| NOTE:
+| Odds availability depends on the API-Football plan,
+| bookmaker coverage and fixture.
+|
+*/
+
+app.get(
+  "/api/football/odds-test",
+  async (req, res) => {
+
+    try {
+
+      const date =
+        req.query.date ||
+        getAddisDate(0);
+
+      if (
+        !isValidDateString(date)
+      ) {
+
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid date. Use YYYY-MM-DD."
+        });
+
+      }
+
+      const result =
+        await footballRequest(
+          "odds",
+          {
+            date
+          }
+        );
+
+      const data =
+        result.data;
+
+      res.json({
+
+        success:
+          result.ok,
+
+        http_status:
+          result.http_status,
+
+        date,
+
+        errors:
+          data?.errors ||
+          {},
+
+        results:
+          data?.results ||
+          0,
+
+        paging:
+          data?.paging ||
+          {},
+
+        response:
+          Array.isArray(
+            data?.response
+          )
+            ? data.response
+            : []
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "API-Football odds error:",
+        error.message
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Failed to load football odds.",
+
+        error:
+          error.message
+
       });
 
     }
@@ -1224,8 +1171,17 @@ app.get(
 | Football Upcoming Matches
 |--------------------------------------------------------------------------
 |
-| Gets upcoming matches from API-Football.
+| IMPORTANT:
+| Free plan does NOT support "next".
 |
+| We query dates individually.
+|
+| Example:
+| /api/football/upcoming
+| /api/football/upcoming?days=3
+| /api/football/upcoming?date=2026-10-06&days=3
+|
+|--------------------------------------------------------------------------
 */
 
 app.get(
@@ -1234,67 +1190,215 @@ app.get(
 
     try {
 
-      if (!API_FOOTBALL_KEY) {
+      const requestedDays =
+        Number(
+          req.query.days
+        );
 
-        return res.status(500).json({
+      const days =
+        Number.isFinite(
+          requestedDays
+        )
+          ? Math.min(
+              Math.max(
+                Math.floor(
+                  requestedDays
+                ),
+                1
+              ),
+              4
+            )
+          : 3;
+
+      const startDate =
+        req.query.date ||
+        getAddisDate(0);
+
+      if (
+        !isValidDateString(
+          startDate
+        )
+      ) {
+
+        return res.status(400).json({
           success: false,
           message:
-            "API_FOOTBALL_KEY is not configured."
+            "Invalid date. Use YYYY-MM-DD."
         });
 
       }
 
-      const date =
-        req.query.date ||
-        new Date()
-          .toISOString()
-          .slice(0, 10);
-
-      const response =
-        await fetch(
-          `${API_FOOTBALL_URL}/fixtures?date=${encodeURIComponent(date)}`,
-          {
-            headers: {
-              "x-apisports-key":
-                API_FOOTBALL_KEY
-            }
-          }
-        );
-
-      const data =
-        await response.json();
+      const allMatches = [];
+      const apiErrors = [];
 
       /*
-      | Keep only matches that are not finished
+      | Query each date separately.
+      |
+      | Maximum 4 dates to protect
+      | the free API quota.
       */
 
-      const matches =
-        Array.isArray(data.response)
-          ? data.response.filter(
-              item => {
+      for (
+        let i = 0;
+        i < days;
+        i++
+      ) {
 
-                const status =
-                  item.fixture?.status?.short;
+        const date =
+          i === 0
+            ? startDate
+            : getDateFromString(
+                startDate,
+                i
+              );
 
-                return [
-                  "NS",
-                  "1H",
-                  "HT",
-                  "2H",
-                  "ET",
-                  "P",
-                  "BT"
-                ].includes(status);
+        try {
 
+          const result =
+            await footballRequest(
+              "fixtures",
+              {
+                date,
+                timezone:
+                  FOOTBALL_TIMEZONE
               }
+            );
+
+          const data =
+            result.data;
+
+          if (
+            data?.errors &&
+            Object.keys(
+              data.errors
+            ).length > 0
+          ) {
+
+            apiErrors.push({
+              date,
+              errors:
+                data.errors
+            });
+
+          }
+
+          const matches =
+            Array.isArray(
+              data?.response
             )
-          : [];
+              ? data.response
+              : [];
+
+          for (
+            const match
+            of matches
+          ) {
+
+            const status =
+              match?.fixture
+                ?.status
+                ?.short;
+
+            /*
+            | Keep scheduled/live matches.
+            | Exclude finished/cancelled.
+            */
+
+            const allowedStatuses = [
+              "NS",
+              "TBD",
+              "1H",
+              "HT",
+              "2H",
+              "ET",
+              "P",
+              "BT",
+              "LIVE"
+            ];
+
+            if (
+              allowedStatuses.includes(
+                status
+              )
+            ) {
+
+              allMatches.push(
+                match
+              );
+
+            }
+
+          }
+
+        } catch (error) {
+
+          apiErrors.push({
+            date,
+            error:
+              error.message
+          });
+
+        }
+
+      }
+
+      /*
+      | Sort by match date.
+      */
+
+      allMatches.sort(
+        (a, b) => {
+
+          const dateA =
+            new Date(
+              a?.fixture?.date ||
+              0
+            ).getTime();
+
+          const dateB =
+            new Date(
+              b?.fixture?.date ||
+              0
+            ).getTime();
+
+          return dateA - dateB;
+
+        }
+      );
 
       res.json({
-        success: true,
-        date,
-        results: matches.length,
-        matches
+
+        success:
+          true,
+
+        start_date:
+          startDate,
+
+        days,
+
+        dates_checked:
+          Array.from(
+            {
+              length: days
+            },
+            (_, i) =>
+              i === 0
+                ? startDate
+                : getDateFromString(
+                    startDate,
+                    i
+                  )
+          ),
+
+        results:
+          allMatches.length,
+
+        errors:
+          apiErrors,
+
+        matches:
+          allMatches
+
       });
 
     } catch (error) {
@@ -1305,9 +1409,366 @@ app.get(
       );
 
       res.status(500).json({
+
         success: false,
+
         message:
-          "Failed to load upcoming matches."
+          "Failed to load upcoming matches.",
+
+        error:
+          error.message
+
+      });
+
+    }
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| Date From String Helper
+|--------------------------------------------------------------------------
+*/
+
+function getDateFromString(
+  dateString,
+  offsetDays
+) {
+
+  const base =
+    new Date(
+      `${dateString}T00:00:00Z`
+    );
+
+  base.setUTCDate(
+    base.getUTCDate() +
+      offsetDays
+  );
+
+  return base
+    .toISOString()
+    .slice(0, 10);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Football Matches With Limited Odds
+|--------------------------------------------------------------------------
+|
+| This endpoint is useful for the Betting page.
+|
+| It:
+|
+| 1. Gets fixtures for selected dates.
+| 2. Selects a limited number of matches.
+| 3. Gets odds for those matches.
+|
+| This is intentionally limited because the free
+| API plan has request limits.
+|
+| Example:
+| /api/football/betting?days=1&limit=5
+|
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  "/api/football/betting",
+  async (req, res) => {
+
+    try {
+
+      const requestedDays =
+        Number(
+          req.query.days
+        );
+
+      const days =
+        Number.isFinite(
+          requestedDays
+        )
+          ? Math.min(
+              Math.max(
+                Math.floor(
+                  requestedDays
+                ),
+                1
+              ),
+              2
+            )
+          : 1;
+
+      const requestedLimit =
+        Number(
+          req.query.limit
+        );
+
+      const limit =
+        Number.isFinite(
+          requestedLimit
+        )
+          ? Math.min(
+              Math.max(
+                Math.floor(
+                  requestedLimit
+                ),
+                1
+              ),
+              10
+            )
+          : 5;
+
+      const startDate =
+        req.query.date ||
+        getAddisDate(0);
+
+      if (
+        !isValidDateString(
+          startDate
+        )
+      ) {
+
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid date. Use YYYY-MM-DD."
+        });
+
+      }
+
+      const fixtures = [];
+
+      /*
+      | Get fixtures by date.
+      */
+
+      for (
+        let i = 0;
+        i < days;
+        i++
+      ) {
+
+        const date =
+          i === 0
+            ? startDate
+            : getDateFromString(
+                startDate,
+                i
+              );
+
+        const result =
+          await footballRequest(
+            "fixtures",
+            {
+              date,
+              timezone:
+                FOOTBALL_TIMEZONE
+            }
+          );
+
+        const data =
+          result.data;
+
+        if (
+          !Array.isArray(
+            data?.response
+          )
+        ) {
+          continue;
+        }
+
+        for (
+          const fixture
+          of data.response
+        ) {
+
+          const status =
+            fixture?.fixture
+              ?.status
+              ?.short;
+
+          const allowedStatuses = [
+            "NS",
+            "TBD",
+            "1H",
+            "HT",
+            "2H",
+            "ET",
+            "P",
+            "BT",
+            "LIVE"
+          ];
+
+          if (
+            allowedStatuses.includes(
+              status
+            )
+          ) {
+
+            fixtures.push(
+              fixture
+            );
+
+          }
+
+        }
+
+      }
+
+      /*
+      | Sort fixtures.
+      */
+
+      fixtures.sort(
+        (a, b) => {
+
+          return (
+            new Date(
+              a?.fixture?.date ||
+              0
+            ).getTime()
+            -
+            new Date(
+              b?.fixture?.date ||
+              0
+            ).getTime()
+          );
+
+        }
+      );
+
+      /*
+      | Only inspect a limited number.
+      */
+
+      const selectedFixtures =
+        fixtures.slice(
+          0,
+          limit
+        );
+
+      const matches = [];
+
+      /*
+      | Request odds one fixture at a time.
+      |
+      | Limited intentionally.
+      */
+
+      for (
+        const fixture
+        of selectedFixtures
+      ) {
+
+        const fixtureId =
+          fixture?.fixture?.id;
+
+        if (!fixtureId) {
+          continue;
+        }
+
+        try {
+
+          const oddsResult =
+            await footballRequest(
+              "odds",
+              {
+                fixture:
+                  fixtureId
+              }
+            );
+
+          const oddsData =
+            oddsResult.data;
+
+          matches.push({
+
+            fixture:
+              fixture,
+
+            fixture_id:
+              fixtureId,
+
+            odds:
+              Array.isArray(
+                oddsData?.response
+              )
+                ? oddsData.response
+                : [],
+
+            odds_results:
+              oddsData?.results ||
+              0,
+
+            odds_errors:
+              oddsData?.errors ||
+              {}
+
+          });
+
+        } catch (error) {
+
+          matches.push({
+
+            fixture:
+              fixture,
+
+            fixture_id:
+              fixtureId,
+
+            odds: [],
+
+            odds_results:
+              0,
+
+            odds_errors: {
+              request:
+                error.message
+            }
+
+          });
+
+        }
+
+      }
+
+      res.json({
+
+        success: true,
+
+        start_date:
+          startDate,
+
+        days,
+
+        fixtures_found:
+          fixtures.length,
+
+        fixtures_checked:
+          selectedFixtures.length,
+
+        matches
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Football betting API error:",
+        error.message
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Failed to load football betting data.",
+
+        error:
+          error.message
+
       });
 
     }
@@ -1348,7 +1809,8 @@ app.get(
 
       res.json({
         success: true,
-        matches: result.rows
+        matches:
+          result.rows
       });
 
     } catch (error) {
@@ -1418,7 +1880,8 @@ app.get(
 
       res.json({
         success: true,
-        match: result.rows[0]
+        match:
+          result.rows[0]
       });
 
     } catch (error) {
@@ -1482,7 +1945,9 @@ app.post(
       }
 
       if (
-        !Array.isArray(selections) ||
+        !Array.isArray(
+          selections
+        ) ||
         selections.length === 0
       ) {
 
@@ -1498,7 +1963,9 @@ app.post(
         Number(stake);
 
       if (
-        !Number.isFinite(amount) ||
+        !Number.isFinite(
+          amount
+        ) ||
         amount <= 0
       ) {
 
@@ -1510,11 +1977,9 @@ app.post(
 
       }
 
-      await client.query("BEGIN");
-
-      /*
-      | Lock user
-      */
+      await client.query(
+        "BEGIN"
+      );
 
       const userResult =
         await client.query(
@@ -1563,7 +2028,9 @@ app.post(
       const balance =
         Number(user.balance);
 
-      if (balance < amount) {
+      if (
+        balance < amount
+      ) {
 
         await client.query(
           "ROLLBACK"
@@ -1589,10 +2056,14 @@ app.post(
       ) {
 
         const odd =
-          Number(selection.odd);
+          Number(
+            selection.odd
+          );
 
         if (
-          !Number.isFinite(odd) ||
+          !Number.isFinite(
+            odd
+          ) ||
           odd <= 1
         ) {
 
@@ -1655,7 +2126,8 @@ app.post(
             "pending",
             JSON.stringify({
               selections,
-              total_odds: totalOdds
+              total_odds:
+                totalOdds
             })
           ]
         );
@@ -1687,7 +2159,7 @@ app.post(
       );
 
       /*
-      | Transaction record
+      | Transaction
       */
 
       await client.query(
@@ -1719,13 +2191,18 @@ app.post(
       );
 
       res.json({
+
         success: true,
+
         message:
           "Bet placed successfully.",
+
         bet:
           betResult.rows[0],
+
         balance:
           newBalance
+
       });
 
     } catch (error) {
@@ -1771,11 +2248,8 @@ app.post(
 |--------------------------------------------------------------------------
 |
 | IMPORTANT:
-| This is ONLY for testing.
-|
-| It randomly marks one pending bet as Won/Lost.
-|
-| DO NOT use this endpoint for real-money production betting.
+| Random settlement is ONLY for development/testing.
+| NEVER use this endpoint in production.
 |
 |--------------------------------------------------------------------------
 */
@@ -1802,10 +2276,6 @@ app.post(
       );
 
       let betResult;
-
-      /*
-      | Specific bet
-      */
 
       if (
         requestedBetId &&
@@ -1835,10 +2305,6 @@ app.post(
 
       } else {
 
-        /*
-        | First pending bet
-        */
-
         betResult =
           await client.query(
             `
@@ -1851,7 +2317,8 @@ app.post(
               ON u.id = b.user_id
             WHERE
               b.status = 'pending'
-            ORDER BY b.id ASC
+            ORDER BY
+              b.id ASC
             LIMIT 1
             FOR UPDATE OF b
             `
@@ -1877,10 +2344,6 @@ app.post(
 
       const bet =
         betResult.rows[0];
-
-      /*
-      | Lock user
-      */
 
       const userResult =
         await client.query(
@@ -1913,7 +2376,7 @@ app.post(
         userResult.rows[0];
 
       /*
-      | TEST RANDOM RESULT ONLY
+      | TEST ONLY
       */
 
       const randomResult =
@@ -1938,7 +2401,9 @@ app.post(
           : 0;
 
       const currentBalance =
-        Number(user.balance);
+        Number(
+          user.balance
+        );
 
       const newBalance =
         won
@@ -1950,22 +2415,15 @@ app.post(
             )
           : currentBalance;
 
-      /*
-      | Result data
-      */
-
       const resultData = {
         test_mode: true,
-        outcome: status,
+        outcome:
+          status,
         settled_by:
           "automatic_test_settlement",
         settled_at:
           new Date().toISOString()
       };
-
-      /*
-      | Update bet
-      */
 
       await client.query(
         `
@@ -1994,10 +2452,6 @@ app.post(
           bet.id
         ]
       );
-
-      /*
-      | Credit winner
-      */
 
       if (won) {
 
@@ -2072,26 +2526,38 @@ app.post(
       );
 
       res.json({
+
         success: true,
+
         message:
           won
             ? "Bet settled as WON."
             : "Bet settled as LOST.",
+
         bet_id:
           bet.id,
+
         telegram_id:
           bet.telegram_id,
+
         status,
+
         stake:
-          Number(bet.stake),
+          Number(
+            bet.stake
+          ),
+
         potential_win:
           Number(
             bet.potential_win
           ),
+
         actual_win:
           actualWin,
+
         balance:
           newBalance
+
       });
 
     } catch (error) {
@@ -2277,11 +2743,11 @@ app.post(
         );
 
       const minimumDeposit =
-        minimumDepositResult
-          .rows.length > 0
+        minimumDepositResult.rows.length > 0
           ? Number(
               minimumDepositResult
-                .rows[0].value
+                .rows[0]
+                .value
             )
           : 51;
 
@@ -2348,15 +2814,18 @@ app.post(
 
       const cleanReference =
         reference &&
-        String(reference).trim()
+        String(
+          reference
+        ).trim()
           ? String(
               reference
             ).trim()
           : null;
 
       const platformReference =
-        `DEP-${user.id}-${Date.now()}-${Math.floor(
-          Math.random() * 100000
+        `DEP-${user.id}-${Date.now()}-${crypto.randomInt(
+          100000,
+          999999
         )}`;
 
       const description =
@@ -2395,11 +2864,15 @@ app.post(
       );
 
       res.json({
+
         success: true,
+
         message:
           "Deposit request submitted successfully.",
+
         transaction:
           transactionResult.rows[0]
+
       });
 
     } catch (error) {
@@ -2501,7 +2974,9 @@ app.post(
 
       if (
         !account ||
-        !String(account).trim()
+        !String(
+          account
+        ).trim()
       ) {
 
         return res.status(400).json({
@@ -2523,11 +2998,11 @@ app.post(
         );
 
       const minimumWithdraw =
-        minimumWithdrawResult
-          .rows.length > 0
+        minimumWithdrawResult.rows.length > 0
           ? Number(
               minimumWithdrawResult
-                .rows[0].value
+                .rows[0]
+                .value
             )
           : 51;
 
@@ -2597,7 +3072,9 @@ app.post(
       */
 
       const balance =
-        Number(user.balance);
+        Number(
+          user.balance
+        );
 
       if (
         balance <
@@ -2617,12 +3094,15 @@ app.post(
       }
 
       const platformReference =
-        `WDR-${user.id}-${Date.now()}-${Math.floor(
-          Math.random() * 100000
+        `WDR-${user.id}-${Date.now()}-${crypto.randomInt(
+          100000,
+          999999
         )}`;
 
       const cleanAccount =
-        String(account).trim();
+        String(
+          account
+        ).trim();
 
       const description =
         `${method} withdrawal request | Account: ${cleanAccount}`;
@@ -2652,10 +3132,6 @@ app.post(
           user.id
         ]
       );
-
-      /*
-      | Create transaction
-      */
 
       const transactionResult =
         await client.query(
@@ -2688,13 +3164,18 @@ app.post(
       );
 
       res.json({
+
         success: true,
+
         message:
           "Withdrawal request submitted successfully.",
+
         transaction:
           transactionResult.rows[0],
+
         balance:
           newBalance
+
       });
 
     } catch (error) {
