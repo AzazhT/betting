@@ -14,10 +14,14 @@ require("dotenv").config();
 |--------------------------------------------------------------------------
 */
 
-const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY;
-const API_FOOTBALL_URL = "https://v3.football.api-sports.io";
+const API_FOOTBALL_KEY =
+  process.env.API_FOOTBALL_KEY;
 
-const FOOTBALL_TIMEZONE = "Africa/Addis_Ababa";
+const API_FOOTBALL_URL =
+  "https://v3.football.api-sports.io";
+
+const FOOTBALL_TIMEZONE =
+  "Africa/Addis_Ababa";
 
 /*
 |--------------------------------------------------------------------------
@@ -26,7 +30,9 @@ const FOOTBALL_TIMEZONE = "Africa/Addis_Ababa";
 */
 
 const app = express();
-const server = http.createServer(app);
+
+const server =
+  http.createServer(app);
 
 /*
 |--------------------------------------------------------------------------
@@ -34,12 +40,13 @@ const server = http.createServer(app);
 |--------------------------------------------------------------------------
 */
 
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
+const io =
+  new Server(server, {
+    cors: {
+      origin: "*",
+      methods: ["GET", "POST"]
+    }
+  });
 
 /*
 |--------------------------------------------------------------------------
@@ -47,7 +54,8 @@ const io = new Server(server, {
 |--------------------------------------------------------------------------
 */
 
-const PORT = process.env.PORT || 10000;
+const PORT =
+  process.env.PORT || 10000;
 
 /*
 |--------------------------------------------------------------------------
@@ -55,21 +63,28 @@ const PORT = process.env.PORT || 10000;
 |--------------------------------------------------------------------------
 */
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+const pool =
+  new Pool({
+    connectionString:
+      process.env.DATABASE_URL,
 
-  ssl:
-    process.env.NODE_ENV === "production"
-      ? { rejectUnauthorized: false }
-      : false
-});
+    ssl:
+      process.env.NODE_ENV === "production"
+        ? {
+            rejectUnauthorized: false
+          }
+        : false
+  });
 
-pool.on("error", (err) => {
-  console.error(
-    "PostgreSQL pool error:",
-    err.message
-  );
-});
+pool.on(
+  "error",
+  (err) => {
+    console.error(
+      "PostgreSQL pool error:",
+      err.message
+    );
+  }
+);
 
 /*
 |--------------------------------------------------------------------------
@@ -79,7 +94,9 @@ pool.on("error", (err) => {
 
 app.use(cors());
 
-app.use(express.json());
+app.use(
+  express.json()
+);
 
 app.use(
   express.urlencoded({
@@ -89,7 +106,10 @@ app.use(
 
 app.use(
   express.static(
-    path.join(__dirname, "public")
+    path.join(
+      __dirname,
+      "public"
+    )
   )
 );
 
@@ -100,16 +120,25 @@ app.use(
 */
 
 async function initializeDatabase() {
-  try {
-    const schemaPath = path.join(
-      __dirname,
-      "schema.sql"
-    );
 
-    if (!fs.existsSync(schemaPath)) {
+  try {
+
+    const schemaPath =
+      path.join(
+        __dirname,
+        "schema.sql"
+      );
+
+    if (
+      !fs.existsSync(
+        schemaPath
+      )
+    ) {
+
       console.log(
         "⚠️ schema.sql not found."
       );
+
       return;
     }
 
@@ -119,7 +148,9 @@ async function initializeDatabase() {
         "utf8"
       );
 
-    await pool.query(schema);
+    await pool.query(
+      schema
+    );
 
     console.log(
       "✅ Database tables initialized successfully."
@@ -142,15 +173,18 @@ async function initializeDatabase() {
 |--------------------------------------------------------------------------
 */
 
-app.get("/", (req, res) => {
+app.get(
+  "/",
+  (req, res) => {
 
-  res.json({
-    success: true,
-    name: "Ethiopia Betting",
-    status: "online"
-  });
+    res.json({
+      success: true,
+      name: "Ethiopia Betting",
+      status: "online"
+    });
 
-});
+  }
+);
 
 /*
 |--------------------------------------------------------------------------
@@ -173,7 +207,8 @@ app.get(
         success: true,
         server: "healthy",
         database: "healthy",
-        time: result.rows[0].time
+        time:
+          result.rows[0].time
       });
 
     } catch (error) {
@@ -265,7 +300,8 @@ app.get(
         success: true,
         tables:
           result.rows.map(
-            row => row.table_name
+            row =>
+              row.table_name
           )
       });
 
@@ -289,7 +325,7 @@ app.get(
 
 /*
 |--------------------------------------------------------------------------
-| User Account
+| USER ACCOUNT
 |--------------------------------------------------------------------------
 */
 
@@ -340,13 +376,18 @@ app.post(
       }
 
       /*
-      | New user
+      |--------------------------------------------------------------------------
+      | Signup Bonus
+      |--------------------------------------------------------------------------
       |
-      | Signup bonus is stored in bonus_balance.
-      | It is NOT directly withdrawable.
+      | IMPORTANT:
+      | Bonus is stored ONLY in bonus_balance.
+      | It is not added to withdrawable balance.
+      |
       */
 
-      const signupBonus = 50.00;
+      const signupBonus =
+        50.00;
 
       const result =
         await pool.query(
@@ -456,7 +497,8 @@ app.get(
         result.rows.length === 0
       ) {
 
-        const signupBonus = 50.00;
+        const signupBonus =
+          50.00;
 
         result =
           await pool.query(
@@ -520,7 +562,8 @@ app.get(
       res.json({
         success: true,
         new_user: false,
-        user: result.rows[0]
+        user:
+          result.rows[0]
       });
 
     } catch (error) {
@@ -543,12 +586,8 @@ app.get(
 
 /*
 |--------------------------------------------------------------------------
-| FOOTBALL API
+| API-FOOTBALL REQUEST HELPER
 |--------------------------------------------------------------------------
-*/
-
-/*
-| API request helper
 */
 
 async function footballRequest(
@@ -556,10 +595,14 @@ async function footballRequest(
   params = {}
 ) {
 
-  if (!API_FOOTBALL_KEY) {
+  if (
+    !API_FOOTBALL_KEY
+  ) {
+
     throw new Error(
       "API_FOOTBALL_KEY is not configured."
     );
+
   }
 
   const query =
@@ -590,7 +633,8 @@ async function footballRequest(
 
   console.log(
     "⚽ API-Football request:",
-    url
+    endpoint,
+    params
   );
 
   const response =
@@ -600,7 +644,7 @@ async function footballRequest(
         headers: {
           "x-apisports-key":
             API_FOOTBALL_KEY,
-          "Accept":
+          Accept:
             "application/json"
         }
       }
@@ -637,11 +681,8 @@ async function footballRequest(
 
 /*
 |--------------------------------------------------------------------------
-| Date Helper
+| DATE HELPERS
 |--------------------------------------------------------------------------
-|
-| Uses Ethiopia/Addis Ababa date.
-|
 */
 
 function getAddisDate(
@@ -669,21 +710,24 @@ function getAddisDate(
   const year =
     Number(
       parts.find(
-        p => p.type === "year"
+        p =>
+          p.type === "year"
       ).value
     );
 
   const month =
     Number(
       parts.find(
-        p => p.type === "month"
+        p =>
+          p.type === "month"
       ).value
     );
 
   const day =
     Number(
       parts.find(
-        p => p.type === "day"
+        p =>
+          p.type === "day"
       ).value
     );
 
@@ -701,11 +745,25 @@ function getAddisDate(
     .slice(0, 10);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Date Validation
-|--------------------------------------------------------------------------
-*/
+function getDateFromString(
+  dateString,
+  offsetDays
+) {
+
+  const base =
+    new Date(
+      `${dateString}T00:00:00Z`
+    );
+
+  base.setUTCDate(
+    base.getUTCDate() +
+      offsetDays
+  );
+
+  return base
+    .toISOString()
+    .slice(0, 10);
+}
 
 function isValidDateString(
   value
@@ -715,6 +773,7 @@ function isValidDateString(
     typeof value !==
     "string"
   ) {
+
     return false;
   }
 
@@ -723,6 +782,7 @@ function isValidDateString(
       value
     )
   ) {
+
     return false;
   }
 
@@ -735,23 +795,17 @@ function isValidDateString(
     !Number.isNaN(
       date.getTime()
     ) &&
-    date.toISOString().slice(0, 10) ===
+    date
+      .toISOString()
+      .slice(0, 10) ===
       value
   );
 }
 
 /*
 |--------------------------------------------------------------------------
-| Football Diagnostic
+| FOOTBALL DIAGNOSTIC
 |--------------------------------------------------------------------------
-|
-| IMPORTANT:
-| Free API-Football does NOT support "next".
-|
-| Example:
-| /api/football/diagnostic
-| /api/football/diagnostic?date=2026-10-06
-|
 */
 
 app.get(
@@ -765,7 +819,9 @@ app.get(
         getAddisDate(0);
 
       if (
-        !isValidDateString(date)
+        !isValidDateString(
+          date
+        )
       ) {
 
         return res.status(400).json({
@@ -840,15 +896,9 @@ app.get(
       );
 
       res.status(500).json({
-
         success: false,
-
         message:
-          "Failed to connect to API-Football.",
-
-        error:
-          error.message
-
+          "Failed to connect to API-Football."
       });
 
     }
@@ -858,13 +908,8 @@ app.get(
 
 /*
 |--------------------------------------------------------------------------
-| Football Fixtures Test
+| FOOTBALL FIXTURES TEST
 |--------------------------------------------------------------------------
-|
-| Example:
-| /api/football/test
-| /api/football/test?date=2026-10-06
-|
 */
 
 app.get(
@@ -878,7 +923,9 @@ app.get(
         getAddisDate(0);
 
       if (
-        !isValidDateString(date)
+        !isValidDateString(
+          date
+        )
       ) {
 
         return res.status(400).json({
@@ -941,15 +988,9 @@ app.get(
       );
 
       res.status(500).json({
-
         success: false,
-
         message:
-          "Failed to connect to API-Football.",
-
-        error:
-          error.message
-
+          "Failed to connect to API-Football."
       });
 
     }
@@ -959,12 +1000,8 @@ app.get(
 
 /*
 |--------------------------------------------------------------------------
-| Football Odds By Fixture
+| FOOTBALL ODDS BY FIXTURE
 |--------------------------------------------------------------------------
-|
-| Example:
-| /api/football/odds/1549809
-|
 */
 
 app.get(
@@ -1045,15 +1082,9 @@ app.get(
       );
 
       res.status(500).json({
-
         success: false,
-
         message:
-          "Failed to load fixture odds.",
-
-        error:
-          error.message
-
+          "Failed to load fixture odds."
       });
 
     }
@@ -1063,19 +1094,8 @@ app.get(
 
 /*
 |--------------------------------------------------------------------------
-| Football Odds By Date
+| ODDS BY DATE
 |--------------------------------------------------------------------------
-|
-| Free plan supports date.
-|
-| Example:
-| /api/football/odds-test
-| /api/football/odds-test?date=2026-10-06
-|
-| NOTE:
-| Odds availability depends on the API-Football plan,
-| bookmaker coverage and fixture.
-|
 */
 
 app.get(
@@ -1089,7 +1109,9 @@ app.get(
         getAddisDate(0);
 
       if (
-        !isValidDateString(date)
+        !isValidDateString(
+          date
+        )
       ) {
 
         return res.status(400).json({
@@ -1150,15 +1172,9 @@ app.get(
       );
 
       res.status(500).json({
-
         success: false,
-
         message:
-          "Failed to load football odds.",
-
-        error:
-          error.message
-
+          "Failed to load football odds."
       });
 
     }
@@ -1168,19 +1184,525 @@ app.get(
 
 /*
 |--------------------------------------------------------------------------
-| Football Upcoming Matches
+| NORMALIZE ODDS
 |--------------------------------------------------------------------------
 |
-| IMPORTANT:
-| Free plan does NOT support "next".
+| Converts API-Football bookmaker data
+| into simple markets for the frontend.
 |
-| We query dates individually.
-|
-| Example:
-| /api/football/upcoming
-| /api/football/upcoming?days=3
-| /api/football/upcoming?date=2026-10-06&days=3
-|
+|--------------------------------------------------------------------------
+*/
+
+function normalizeOdds(
+  oddsResponse
+) {
+
+  const markets = {
+    "1x2": [],
+    double: [],
+    overunder: [],
+    btts: [],
+    handicap: []
+  };
+
+  if (
+    !Array.isArray(
+      oddsResponse
+    )
+  ) {
+
+    return markets;
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Find bookmaker
+  |--------------------------------------------------------------------------
+  */
+
+  const bookmaker =
+    oddsResponse.find(
+      item =>
+        Array.isArray(
+          item?.bookmakers
+        ) &&
+        item.bookmakers.length > 0
+    );
+
+  if (!bookmaker) {
+    return markets;
+  }
+
+  const bookmakers =
+    bookmaker.bookmakers || [];
+
+  /*
+  |--------------------------------------------------------------------------
+  | Helper
+  |--------------------------------------------------------------------------
+  */
+
+  function addMarket(
+    marketKey,
+    name,
+    value,
+    odd,
+    extra = {}
+  ) {
+
+    const numericOdd =
+      Number(odd);
+
+    if (
+      !Number.isFinite(
+        numericOdd
+      ) ||
+      numericOdd <= 1
+    ) {
+
+      return;
+    }
+
+    markets[marketKey].push({
+      name,
+      value,
+      odd:
+        numericOdd,
+      ...extra
+    });
+
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Loop bookmakers / bets
+  |--------------------------------------------------------------------------
+  */
+
+  for (
+    const book
+    of bookmakers
+  ) {
+
+    const bets =
+      Array.isArray(
+        book?.bets
+      )
+        ? book.bets
+        : [];
+
+    for (
+      const bet
+      of bets
+    ) {
+
+      const betName =
+        String(
+          bet?.name ||
+          ""
+        ).toLowerCase();
+
+      const values =
+        Array.isArray(
+          bet?.values
+        )
+          ? bet.values
+          : [];
+
+      /*
+      |--------------------------------------------------------------------------
+      | Match Winner / 1X2
+      |--------------------------------------------------------------------------
+      */
+
+      if (
+        betName.includes(
+          "match winner"
+        ) ||
+        betName ===
+          "match winner"
+      ) {
+
+        for (
+          const item
+          of values
+        ) {
+
+          addMarket(
+            "1x2",
+            item.value,
+            item.value,
+            item.odd
+          );
+
+        }
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Double Chance
+      |--------------------------------------------------------------------------
+      */
+
+      if (
+        betName.includes(
+          "double chance"
+        )
+      ) {
+
+        for (
+          const item
+          of values
+        ) {
+
+          addMarket(
+            "double",
+            item.value,
+            item.value,
+            item.odd
+          );
+
+        }
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Over / Under
+      |--------------------------------------------------------------------------
+      */
+
+      if (
+        betName.includes(
+          "over/under"
+        ) ||
+        betName.includes(
+          "over under"
+        )
+      ) {
+
+        for (
+          const item
+          of values
+        ) {
+
+          addMarket(
+            "overunder",
+            item.value,
+            item.value,
+            item.odd,
+            {
+              line:
+                item?.handicap ||
+                null
+            }
+          );
+
+        }
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Both Teams To Score
+      |--------------------------------------------------------------------------
+      */
+
+      if (
+        betName.includes(
+          "both teams to score"
+        )
+      ) {
+
+        for (
+          const item
+          of values
+        ) {
+
+          addMarket(
+            "btts",
+            item.value,
+            item.value,
+            item.odd
+          );
+
+        }
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Handicap
+      |--------------------------------------------------------------------------
+      */
+
+      if (
+        betName.includes(
+          "handicap"
+        ) &&
+        !betName.includes(
+          "asian"
+        )
+      ) {
+
+        for (
+          const item
+          of values
+        ) {
+
+          addMarket(
+            "handicap",
+            item.value,
+            item.value,
+            item.odd,
+            {
+              line:
+                item?.handicap ||
+                null
+            }
+          );
+
+        }
+
+      }
+
+    }
+
+    /*
+    | Use first bookmaker that
+    | contains useful markets.
+    */
+
+    const hasUsefulMarket =
+      Object.values(
+        markets
+      ).some(
+        array =>
+          array.length > 0
+      );
+
+    if (
+      hasUsefulMarket
+    ) {
+
+      break;
+    }
+
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Remove duplicate selections
+  |--------------------------------------------------------------------------
+  */
+
+  for (
+    const key
+    of Object.keys(
+      markets
+    )
+  ) {
+
+    const seen =
+      new Set();
+
+    markets[key] =
+      markets[key].filter(
+        item => {
+
+          const identifier =
+            JSON.stringify([
+              item.name,
+              item.value,
+              item.line,
+              item.odd
+            ]);
+
+          if (
+            seen.has(
+              identifier
+            )
+          ) {
+
+            return false;
+          }
+
+          seen.add(
+            identifier
+          );
+
+          return true;
+        }
+      );
+
+  }
+
+  return markets;
+}
+
+/*
+|--------------------------------------------------------------------------
+| SAVE FIXTURE LOCALLY
+|--------------------------------------------------------------------------
+*/
+
+async function saveFixture(
+  fixture
+) {
+
+  const fixtureId =
+    fixture?.fixture?.id;
+
+  if (!fixtureId) {
+    return null;
+  }
+
+  const externalId =
+    String(
+      fixtureId
+    );
+
+  const homeTeam =
+    fixture?.teams?.home?.name ||
+    "Home";
+
+  const awayTeam =
+    fixture?.teams?.away?.name ||
+    "Away";
+
+  const status =
+    fixture?.fixture?.status
+      ?.short ||
+    "NS";
+
+  const homeScore =
+    Number.isFinite(
+      Number(
+        fixture?.goals?.home
+      )
+    )
+      ? Number(
+          fixture.goals.home
+        )
+      : null;
+
+  const awayScore =
+    Number.isFinite(
+      Number(
+        fixture?.goals?.away
+      )
+    )
+      ? Number(
+          fixture.goals.away
+        )
+      : null;
+
+  const startedAt =
+    fixture?.fixture?.date ||
+    null;
+
+  let result = null;
+
+  if (
+    homeScore !== null &&
+    awayScore !== null
+  ) {
+
+    if (
+      homeScore >
+      awayScore
+    ) {
+
+      result = "home";
+
+    } else if (
+      homeScore <
+      awayScore
+    ) {
+
+      result = "away";
+
+    } else {
+
+      result = "draw";
+
+    }
+
+  }
+
+  const finished =
+    [
+      "FT",
+      "AET",
+      "PEN"
+    ].includes(
+      status
+    );
+
+  const resultQuery =
+    await pool.query(
+      `
+      INSERT INTO matches
+        (
+          external_id,
+          home_team,
+          away_team,
+          status,
+          home_score,
+          away_score,
+          result,
+          started_at,
+          finished_at,
+          updated_at
+        )
+      VALUES
+        (
+          $1,
+          $2,
+          $3,
+          $4,
+          $5,
+          $6,
+          $7,
+          $8,
+          $9,
+          NOW()
+        )
+      ON CONFLICT (external_id)
+      DO UPDATE SET
+        home_team = EXCLUDED.home_team,
+        away_team = EXCLUDED.away_team,
+        status = EXCLUDED.status,
+        home_score = EXCLUDED.home_score,
+        away_score = EXCLUDED.away_score,
+        result = EXCLUDED.result,
+        started_at = EXCLUDED.started_at,
+        finished_at = EXCLUDED.finished_at,
+        updated_at = NOW()
+      RETURNING *
+      `,
+      [
+        externalId,
+        homeTeam,
+        awayTeam,
+        status,
+        homeScore,
+        awayScore,
+        result,
+        startedAt,
+        finished
+          ? new Date()
+          : null
+      ]
+    );
+
+  return resultQuery.rows[0];
+}
+
+/*
+|--------------------------------------------------------------------------
+| FOOTBALL UPCOMING
 |--------------------------------------------------------------------------
 */
 
@@ -1231,13 +1753,6 @@ app.get(
       const allMatches = [];
       const apiErrors = [];
 
-      /*
-      | Query each date separately.
-      |
-      | Maximum 4 dates to protect
-      | the free API quota.
-      */
-
       for (
         let i = 0;
         i < days;
@@ -1245,12 +1760,10 @@ app.get(
       ) {
 
         const date =
-          i === 0
-            ? startDate
-            : getDateFromString(
-                startDate,
-                i
-              );
+          getDateFromString(
+            startDate,
+            i
+          );
 
         try {
 
@@ -1295,14 +1808,8 @@ app.get(
           ) {
 
             const status =
-              match?.fixture
-                ?.status
+              match?.fixture?.status
                 ?.short;
-
-            /*
-            | Keep scheduled/live matches.
-            | Exclude finished/cancelled.
-            */
 
             const allowedStatuses = [
               "NS",
@@ -1326,6 +1833,27 @@ app.get(
                 match
               );
 
+              /*
+              | Save locally.
+              */
+
+              try {
+
+                await saveFixture(
+                  match
+                );
+
+              } catch (
+                saveError
+              ) {
+
+                console.error(
+                  "Save fixture error:",
+                  saveError.message
+                );
+
+              }
+
             }
 
           }
@@ -1342,34 +1870,21 @@ app.get(
 
       }
 
-      /*
-      | Sort by match date.
-      */
-
       allMatches.sort(
-        (a, b) => {
-
-          const dateA =
-            new Date(
-              a?.fixture?.date ||
-              0
-            ).getTime();
-
-          const dateB =
-            new Date(
-              b?.fixture?.date ||
-              0
-            ).getTime();
-
-          return dateA - dateB;
-
-        }
+        (a, b) =>
+          new Date(
+            a?.fixture?.date ||
+            0
+          ).getTime() -
+          new Date(
+            b?.fixture?.date ||
+            0
+          ).getTime()
       );
 
       res.json({
 
-        success:
-          true,
+        success: true,
 
         start_date:
           startDate,
@@ -1382,12 +1897,10 @@ app.get(
               length: days
             },
             (_, i) =>
-              i === 0
-                ? startDate
-                : getDateFromString(
-                    startDate,
-                    i
-                  )
+              getDateFromString(
+                startDate,
+                i
+              )
           ),
 
         results:
@@ -1409,15 +1922,9 @@ app.get(
       );
 
       res.status(500).json({
-
         success: false,
-
         message:
-          "Failed to load upcoming matches.",
-
-        error:
-          error.message
-
+          "Failed to load upcoming matches."
       });
 
     }
@@ -1427,49 +1934,12 @@ app.get(
 
 /*
 |--------------------------------------------------------------------------
-| Date From String Helper
-|--------------------------------------------------------------------------
-*/
-
-function getDateFromString(
-  dateString,
-  offsetDays
-) {
-
-  const base =
-    new Date(
-      `${dateString}T00:00:00Z`
-    );
-
-  base.setUTCDate(
-    base.getUTCDate() +
-      offsetDays
-  );
-
-  return base
-    .toISOString()
-    .slice(0, 10);
-}
-
-/*
-|--------------------------------------------------------------------------
-| Football Matches With Limited Odds
+| BETTING DATA
 |--------------------------------------------------------------------------
 |
-| This endpoint is useful for the Betting page.
-|
-| It:
-|
-| 1. Gets fixtures for selected dates.
-| 2. Selects a limited number of matches.
-| 3. Gets odds for those matches.
-|
-| This is intentionally limited because the free
-| API plan has request limits.
-|
-| Example:
 | /api/football/betting?days=1&limit=5
 |
+| Gets real fixtures and limited odds.
 |--------------------------------------------------------------------------
 */
 
@@ -1540,7 +2010,9 @@ app.get(
       const fixtures = [];
 
       /*
-      | Get fixtures by date.
+      |--------------------------------------------------------------------------
+      | Get fixtures
+      |--------------------------------------------------------------------------
       */
 
       for (
@@ -1550,12 +2022,10 @@ app.get(
       ) {
 
         const date =
-          i === 0
-            ? startDate
-            : getDateFromString(
-                startDate,
-                i
-              );
+          getDateFromString(
+            startDate,
+            i
+          );
 
         const result =
           await footballRequest(
@@ -1570,22 +2040,20 @@ app.get(
         const data =
           result.data;
 
-        if (
-          !Array.isArray(
+        const matches =
+          Array.isArray(
             data?.response
           )
-        ) {
-          continue;
-        }
+            ? data.response
+            : [];
 
         for (
           const fixture
-          of data.response
+          of matches
         ) {
 
           const status =
-            fixture?.fixture
-              ?.status
+            fixture?.fixture?.status
               ?.short;
 
           const allowedStatuses = [
@@ -1610,6 +2078,23 @@ app.get(
               fixture
             );
 
+            try {
+
+              await saveFixture(
+                fixture
+              );
+
+            } catch (
+              saveError
+            ) {
+
+              console.error(
+                "Save betting fixture error:",
+                saveError.message
+              );
+
+            }
+
           }
 
         }
@@ -1617,29 +2102,27 @@ app.get(
       }
 
       /*
-      | Sort fixtures.
+      |--------------------------------------------------------------------------
+      | Sort
+      |--------------------------------------------------------------------------
       */
 
       fixtures.sort(
-        (a, b) => {
-
-          return (
-            new Date(
-              a?.fixture?.date ||
-              0
-            ).getTime()
-            -
-            new Date(
-              b?.fixture?.date ||
-              0
-            ).getTime()
-          );
-
-        }
+        (a, b) =>
+          new Date(
+            a?.fixture?.date ||
+            0
+          ).getTime() -
+          new Date(
+            b?.fixture?.date ||
+            0
+          ).getTime()
       );
 
       /*
-      | Only inspect a limited number.
+      |--------------------------------------------------------------------------
+      | Limit fixtures
+      |--------------------------------------------------------------------------
       */
 
       const selectedFixtures =
@@ -1651,9 +2134,9 @@ app.get(
       const matches = [];
 
       /*
-      | Request odds one fixture at a time.
-      |
-      | Limited intentionally.
+      |--------------------------------------------------------------------------
+      | Get odds
+      |--------------------------------------------------------------------------
       */
 
       for (
@@ -1667,6 +2150,9 @@ app.get(
         if (!fixtureId) {
           continue;
         }
+
+        let odds = [];
+        let oddsErrors = {};
 
         try {
 
@@ -1682,54 +2168,114 @@ app.get(
           const oddsData =
             oddsResult.data;
 
-          matches.push({
+          odds =
+            Array.isArray(
+              oddsData?.response
+            )
+              ? oddsData.response
+              : [];
 
-            fixture:
-              fixture,
-
-            fixture_id:
-              fixtureId,
-
-            odds:
-              Array.isArray(
-                oddsData?.response
-              )
-                ? oddsData.response
-                : [],
-
-            odds_results:
-              oddsData?.results ||
-              0,
-
-            odds_errors:
-              oddsData?.errors ||
-              {}
-
-          });
+          oddsErrors =
+            oddsData?.errors ||
+            {};
 
         } catch (error) {
 
-          matches.push({
-
-            fixture:
-              fixture,
-
-            fixture_id:
-              fixtureId,
-
-            odds: [],
-
-            odds_results:
-              0,
-
-            odds_errors: {
-              request:
-                error.message
-            }
-
-          });
+          oddsErrors = {
+            request:
+              error.message
+          };
 
         }
+
+        const markets =
+          normalizeOdds(
+            odds
+          );
+
+        const oddsAvailable =
+          Object.values(
+            markets
+          ).some(
+            market =>
+              market.length > 0
+          );
+
+        matches.push({
+
+          fixture_id:
+            fixtureId,
+
+          external_id:
+            String(
+              fixtureId
+            ),
+
+          home_team:
+            fixture?.teams?.home?.name ||
+            "Home",
+
+          away_team:
+            fixture?.teams?.away?.name ||
+            "Away",
+
+          home_logo:
+            fixture?.teams?.home?.logo ||
+            null,
+
+          away_logo:
+            fixture?.teams?.away?.logo ||
+            null,
+
+          league_name:
+            fixture?.league?.name ||
+            "",
+
+          league_country:
+            fixture?.league?.country ||
+            "",
+
+          league_logo:
+            fixture?.league?.logo ||
+            null,
+
+          kickoff:
+            fixture?.fixture?.date ||
+            null,
+
+          venue:
+            fixture?.fixture?.venue?.name ||
+            "",
+
+          status:
+            fixture?.fixture?.status?.short ||
+            "NS",
+
+          status_long:
+            fixture?.fixture?.status?.long ||
+            "",
+
+          goals: {
+            home:
+              fixture?.goals?.home ??
+              null,
+            away:
+              fixture?.goals?.away ??
+              null
+          },
+
+          odds_available:
+            oddsAvailable,
+
+          odds_results:
+            odds.length,
+
+          odds_errors:
+            oddsErrors,
+
+          markets
+
+        });
 
       }
 
@@ -1760,15 +2306,9 @@ app.get(
       );
 
       res.status(500).json({
-
         success: false,
-
         message:
-          "Failed to load football betting data.",
-
-        error:
-          error.message
-
+          "Failed to load football betting data."
       });
 
     }
@@ -1778,7 +2318,7 @@ app.get(
 
 /*
 |--------------------------------------------------------------------------
-| Local Matches
+| LOCAL MATCHES
 |--------------------------------------------------------------------------
 */
 
@@ -1833,7 +2373,7 @@ app.get(
 
 /*
 |--------------------------------------------------------------------------
-| Get One Local Match
+| ONE LOCAL MATCH
 |--------------------------------------------------------------------------
 */
 
@@ -1842,9 +2382,6 @@ app.get(
   async (req, res) => {
 
     try {
-
-      const { id } =
-        req.params;
 
       const result =
         await pool.query(
@@ -1863,7 +2400,7 @@ app.get(
           FROM matches
           WHERE id = $1
           `,
-          [id]
+          [req.params.id]
         );
 
       if (
@@ -1904,7 +2441,7 @@ app.get(
 
 /*
 |--------------------------------------------------------------------------
-| Betting - Place Bet
+| PLACE BET
 |--------------------------------------------------------------------------
 */
 
@@ -2011,7 +2548,9 @@ app.post(
       const user =
         userResult.rows[0];
 
-      if (!user.is_active) {
+      if (
+        !user.is_active
+      ) {
 
         await client.query(
           "ROLLBACK"
@@ -2026,7 +2565,9 @@ app.post(
       }
 
       const balance =
-        Number(user.balance);
+        Number(
+          user.balance
+        );
 
       if (
         balance < amount
@@ -2045,7 +2586,9 @@ app.post(
       }
 
       /*
-      | Calculate total odds
+      |--------------------------------------------------------------------------
+      | Calculate odds
+      |--------------------------------------------------------------------------
       */
 
       let totalOdds = 1;
@@ -2079,7 +2622,8 @@ app.post(
 
         }
 
-        totalOdds *= odd;
+        totalOdds *=
+          odd;
 
       }
 
@@ -2097,7 +2641,9 @@ app.post(
         );
 
       /*
+      |--------------------------------------------------------------------------
       | Store bet
+      |--------------------------------------------------------------------------
       */
 
       const betResult =
@@ -2133,7 +2679,9 @@ app.post(
         );
 
       /*
-      | Deduct stake
+      |--------------------------------------------------------------------------
+      | Deduct balance
+      |--------------------------------------------------------------------------
       */
 
       const newBalance =
@@ -2159,7 +2707,9 @@ app.post(
       );
 
       /*
+      |--------------------------------------------------------------------------
       | Transaction
+      |--------------------------------------------------------------------------
       */
 
       await client.query(
@@ -2208,9 +2758,11 @@ app.post(
     } catch (error) {
 
       try {
+
         await client.query(
           "ROLLBACK"
         );
+
       } catch (
         rollbackError
       ) {
@@ -2244,13 +2796,13 @@ app.post(
 
 /*
 |--------------------------------------------------------------------------
-| TEST ONLY - Automatic Settlement
+| TEST ONLY SETTLEMENT
 |--------------------------------------------------------------------------
 |
-| IMPORTANT:
-| Random settlement is ONLY for development/testing.
-| NEVER use this endpoint in production.
+| ⚠️ DEVELOPMENT ONLY
 |
+| This randomly settles a bet.
+| NEVER use this for real-money production.
 |--------------------------------------------------------------------------
 */
 
@@ -2290,8 +2842,7 @@ app.post(
             `
             SELECT
               b.*,
-              u.telegram_id,
-              u.balance
+              u.telegram_id
             FROM bets b
             INNER JOIN users u
               ON u.id = b.user_id
@@ -2310,8 +2861,7 @@ app.post(
             `
             SELECT
               b.*,
-              u.telegram_id,
-              u.balance
+              u.telegram_id
             FROM bets b
             INNER JOIN users u
               ON u.id = b.user_id
@@ -2376,17 +2926,16 @@ app.post(
         userResult.rows[0];
 
       /*
-      | TEST ONLY
+      |--------------------------------------------------------------------------
+      | TEST RANDOM RESULT
+      |--------------------------------------------------------------------------
       */
 
-      const randomResult =
+      const won =
         crypto.randomInt(
           0,
           2
-        );
-
-      const won =
-        randomResult === 1;
+        ) === 1;
 
       const status =
         won
@@ -2563,9 +3112,11 @@ app.post(
     } catch (error) {
 
       try {
+
         await client.query(
           "ROLLBACK"
         );
+
       } catch (
         rollbackError
       ) {
@@ -2599,7 +3150,7 @@ app.post(
 
 /*
 |--------------------------------------------------------------------------
-| Bet History
+| BET HISTORY
 |--------------------------------------------------------------------------
 */
 
@@ -2674,7 +3225,7 @@ app.get(
 
 /*
 |--------------------------------------------------------------------------
-| Deposit Request
+| DEPOSIT REQUEST
 |--------------------------------------------------------------------------
 */
 
@@ -2732,7 +3283,7 @@ app.post(
 
       }
 
-      const minimumDepositResult =
+      const minimumResult =
         await pool.query(
           `
           SELECT value
@@ -2743,9 +3294,9 @@ app.post(
         );
 
       const minimumDeposit =
-        minimumDepositResult.rows.length > 0
+        minimumResult.rows.length
           ? Number(
-              minimumDepositResult
+              minimumResult
                 .rows[0]
                 .value
             )
@@ -2798,7 +3349,9 @@ app.post(
       const user =
         userResult.rows[0];
 
-      if (!user.is_active) {
+      if (
+        !user.is_active
+      ) {
 
         await client.query(
           "ROLLBACK"
@@ -2878,9 +3431,11 @@ app.post(
     } catch (error) {
 
       try {
+
         await client.query(
           "ROLLBACK"
         );
+
       } catch (
         rollbackError
       ) {
@@ -2914,7 +3469,7 @@ app.post(
 
 /*
 |--------------------------------------------------------------------------
-| Withdraw Request
+| WITHDRAW REQUEST
 |--------------------------------------------------------------------------
 */
 
@@ -2987,7 +3542,7 @@ app.post(
 
       }
 
-      const minimumWithdrawResult =
+      const minimumResult =
         await pool.query(
           `
           SELECT value
@@ -2998,9 +3553,9 @@ app.post(
         );
 
       const minimumWithdraw =
-        minimumWithdrawResult.rows.length > 0
+        minimumResult.rows.length
           ? Number(
-              minimumWithdrawResult
+              minimumResult
                 .rows[0]
                 .value
             )
@@ -3053,7 +3608,9 @@ app.post(
       const user =
         userResult.rows[0];
 
-      if (!user.is_active) {
+      if (
+        !user.is_active
+      ) {
 
         await client.query(
           "ROLLBACK"
@@ -3068,7 +3625,9 @@ app.post(
       }
 
       /*
-      | Only normal balance is withdrawable.
+      |--------------------------------------------------------------------------
+      | Bonus is NOT withdrawable.
+      |--------------------------------------------------------------------------
       */
 
       const balance =
@@ -3114,10 +3673,6 @@ app.post(
             withdrawAmount
           ).toFixed(2)
         );
-
-      /*
-      | Reserve withdrawal money
-      */
 
       await client.query(
         `
@@ -3181,9 +3736,11 @@ app.post(
     } catch (error) {
 
       try {
+
         await client.query(
           "ROLLBACK"
         );
+
       } catch (
         rollbackError
       ) {
@@ -3217,7 +3774,7 @@ app.post(
 
 /*
 |--------------------------------------------------------------------------
-| Wallet Transactions
+| WALLET TRANSACTIONS
 |--------------------------------------------------------------------------
 */
 
@@ -3291,7 +3848,7 @@ app.get(
 
 /*
 |--------------------------------------------------------------------------
-| Socket.IO
+| SOCKET.IO
 |--------------------------------------------------------------------------
 */
 
@@ -3327,7 +3884,7 @@ io.on(
 
 /*
 |--------------------------------------------------------------------------
-| Start Server
+| START SERVER
 |--------------------------------------------------------------------------
 */
 
