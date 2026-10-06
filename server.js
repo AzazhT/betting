@@ -8,6 +8,8 @@ const path = require("path");
 const crypto = require("crypto");
 require("dotenv").config();
 
+const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY;
+const API_FOOTBALL_URL = "https://v3.football.api-sports.io";
 const app = express();
 const server = http.createServer(app);
 
