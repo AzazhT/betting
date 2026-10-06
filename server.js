@@ -443,6 +443,33 @@ app.get("/api/user-test", async (req, res) => {
 // ===============================
 
 // Get all matches
+app.get("/api/football/test", async (req, res) => {
+  try {
+    const response = await fetch(
+      `${API_FOOTBALL_URL}/fixtures?date=2026-10-06`,
+      {
+        headers: {
+          "x-apisports-key": API_FOOTBALL_KEY
+        }
+      }
+    );
+
+    const data = await response.json();
+
+    res.json({
+      success: true,
+      results: data.results,
+      response: data.response
+    });
+  } catch (error) {
+    console.error("API-Football error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to connect to API-Football."
+    });
+  }
+});
 app.get("/api/matches", async (req, res) => {
   try {
     const result = await pool.query(`
