@@ -84,6 +84,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 15px;
       margin-bottom: 22px;
     }
 
@@ -209,9 +210,13 @@
       border-bottom-color: #16db8b;
     }
 
+    .market-tab.hidden {
+      display: none;
+    }
+
     .market-content {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 8px;
     }
 
@@ -257,6 +262,7 @@
       color: #718ba0;
       border: 1px dashed #29465d;
       border-radius: 9px;
+      line-height: 1.5;
     }
 
     .slip {
@@ -452,6 +458,22 @@
       text-align: center;
     }
 
+    .status {
+      margin-bottom: 15px;
+      padding: 11px 13px;
+      border-radius: 9px;
+      background: #0c263b;
+      border: 1px solid #21445f;
+      color: #91a8bb;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .status.success {
+      color: #69e6b0;
+      border-color: #1b6247;
+    }
+
     @media (max-width: 900px) {
       .layout {
         grid-template-columns: 1fr;
@@ -566,19 +588,30 @@
 
   <div class="sports">
 
-    <button class="sport active" type="button">
+    <button
+      class="sport active"
+      type="button">
       ⚽ Football
     </button>
 
-    <button class="sport" type="button">
+    <button
+      class="sport"
+      type="button"
+      disabled>
       🏀 Basketball
     </button>
 
-    <button class="sport" type="button">
+    <button
+      class="sport"
+      type="button"
+      disabled>
       🎾 Tennis
     </button>
 
-    <button class="sport" type="button">
+    <button
+      class="sport"
+      type="button"
+      disabled>
       🏐 Volleyball
     </button>
 
@@ -649,12 +682,10 @@
             <strong id="selectionCount">0</strong>
           </div>
 
-
           <div class="summary-row">
             <span>Total Odds</span>
             <strong id="totalOdds">0.00</strong>
           </div>
-
 
           <div class="summary-row">
             <span>Stake</span>
@@ -662,7 +693,6 @@
               10.00 ETB
             </strong>
           </div>
-
 
           <div class="summary-row">
             <span>Potential Win</span>
@@ -686,7 +716,7 @@
 
           <div class="notice">
             Odds are supplied by the server.
-            Final validation is performed server-side.
+            Final validation must be performed server-side.
           </div>
 
         </div>
@@ -702,29 +732,23 @@
 
 <script>
 
-  /*
-   * =========================================================
-   * USER
-   * =========================================================
-   */
+  /* =========================================================
+     USER
+     ========================================================= */
 
   const TEST_USER_ID = "TEST_USER_001";
 
 
-  /*
-   * =========================================================
-   * STATE
-   * =========================================================
-   */
+  /* =========================================================
+     STATE
+     ========================================================= */
 
   const selections = [];
 
 
-  /*
-   * =========================================================
-   * ELEMENTS
-   * =========================================================
-   */
+  /* =========================================================
+     ELEMENTS
+     ========================================================= */
 
   const matchesContainer =
     document.getElementById("matches");
@@ -760,45 +784,31 @@
     document.getElementById("placeBet");
 
 
-  /*
-   * =========================================================
-   * LOAD USER
-   * =========================================================
-   */
+  /* =========================================================
+     LOAD USER
+     ========================================================= */
 
   async function loadUser() {
 
     try {
 
-      const response =
-        await fetch(
-          "/api/user",
-          {
-            method: "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json"
-            },
-
-            body: JSON.stringify({
-
-              telegram_id:
-                TEST_USER_ID,
-
-              name:
-                "Test Player",
-
-              username:
-                "test_player"
-
-            })
-          }
-        );
+      const response = await fetch(
+        "/api/user",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            telegram_id: TEST_USER_ID,
+            name: "Test Player",
+            username: "test_player"
+          })
+        }
+      );
 
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
 
       if (
@@ -827,17 +837,15 @@
   }
 
 
-  /*
-   * =========================================================
-   * LOAD REAL MATCHES
-   * =========================================================
-   */
+  /* =========================================================
+     LOAD REAL MATCHES + ODDS
+     ========================================================= */
 
   async function loadMatches() {
 
     matchesContainer.innerHTML = `
       <div class="loading">
-        Loading real football matches...
+        Loading real football matches and odds...
       </div>
     `;
 
@@ -848,28 +856,43 @@
 
     try {
 
-      const response =
-        await fetch(
-          "/api/football/upcoming",
-          {
-            cache: "no-store"
-          }
-        );
+      /*
+       * IMPORTANT:
+       * This is the endpoint already implemented
+       * in your current server.js.
+       *
+       * We do NOT use API-Football directly here.
+       * The API key stays on the server.
+       */
+
+      const response = await fetch(
+        "/api/football/betting?days=1&limit=5",
+        {
+          cache: "no-store"
+        }
+      );
 
 
       const data =
         await response.json();
 
 
-      if (!response.ok || !data.success) {
+      if (
+        !response.ok ||
+        !data.success
+      ) {
 
         throw new Error(
           data.message ||
-          "Could not load football matches."
+          "Could not load football betting data."
         );
 
       }
 
+
+      /*
+       * Your backend returns fixtures in `matches`.
+       */
 
       const matches =
         Array.isArray(data.matches)
@@ -887,8 +910,8 @@
             </div>
 
             <div>
-              No upcoming football matches
-              are currently available.
+              No football matches with available
+              betting data are currently available.
             </div>
 
             <button
@@ -907,6 +930,7 @@
 
       renderMatches(matches);
 
+
     } catch (error) {
 
       console.error(
@@ -919,7 +943,7 @@
         <div class="error-box">
 
           <strong>
-            Could not load football matches.
+            Could not load football betting.
           </strong>
 
           <div style="margin-top:8px;">
@@ -946,11 +970,9 @@
   }
 
 
-  /*
-   * =========================================================
-   * RENDER MATCHES
-   * =========================================================
-   */
+  /* =========================================================
+     RENDER MATCHES
+     ========================================================= */
 
   function renderMatches(matches) {
 
@@ -963,49 +985,81 @@
         const article =
           document.createElement("article");
 
-        article.className =
-          "match";
+        article.className = "match";
 
 
-        article.dataset.match =
-          String(
-            match.id ||
-            match.external_id ||
-            matchIndex
-          );
+        const fixture =
+          match.fixture || {};
+
+
+        const leagueObject =
+          match.league || {};
+
+
+        const homeObject =
+          fixture.teams?.home ||
+          match.home ||
+          {};
+
+
+        const awayObject =
+          fixture.teams?.away ||
+          match.away ||
+          {};
+
+
+        const fixtureId =
+          fixture.id ||
+          match.fixture_id ||
+          match.id ||
+          match.external_id ||
+          matchIndex;
 
 
         const league =
-          match.league ||
+          leagueObject.name ||
           match.league_name ||
           "Football";
 
 
+        const country =
+          leagueObject.country ||
+          match.country ||
+          "";
+
+
         const home =
+          homeObject.name ||
           match.home_team ||
           match.home ||
           "Home";
 
 
         const away =
+          awayObject.name ||
           match.away_team ||
           match.away ||
           "Away";
 
 
         const date =
+          fixture.date ||
           match.start_time ||
           match.started_at ||
           match.date ||
           null;
 
 
-        const formattedDate =
-          formatMatchDate(date);
-
-
         const odds =
           normalizeOdds(match);
+
+
+        const availableMarkets =
+          getAvailableMarkets(odds);
+
+
+        article.dataset.fixtureId =
+          String(fixtureId);
 
 
         article.innerHTML = `
@@ -1013,11 +1067,21 @@
           <div class="match-head">
 
             <span class="league">
+
               ⚽ ${escapeHtml(league)}
+
+              ${
+                country
+                  ? ` · ${escapeHtml(country)}`
+                  : ""
+              }
+
             </span>
 
             <span class="match-time">
-              ${escapeHtml(formattedDate)}
+              ${escapeHtml(
+                formatMatchDate(date)
+              )}
             </span>
 
           </div>
@@ -1044,77 +1108,86 @@
 
             <div class="markets">
 
-              <button
-                class="market-tab active"
-                type="button"
-                data-market-tab="1x2">
-                1X2
-              </button>
+              ${renderMarketTab(
+                "1x2",
+                "1X2",
+                availableMarkets
+              )}
 
-              <button
-                class="market-tab"
-                type="button"
-                data-market-tab="double">
-                Double Chance
-              </button>
+              ${renderMarketTab(
+                "double",
+                "Double Chance",
+                availableMarkets
+              )}
 
-              <button
-                class="market-tab"
-                type="button"
-                data-market-tab="overunder">
-                Over / Under
-              </button>
+              ${renderMarketTab(
+                "overunder",
+                "Over / Under",
+                availableMarkets
+              )}
 
-              <button
-                class="market-tab"
-                type="button"
-                data-market-tab="btts">
-                BTTS
-              </button>
+              ${renderMarketTab(
+                "btts",
+                "BTTS",
+                availableMarkets
+              )}
 
-              <button
-                class="market-tab"
-                type="button"
-                data-market-tab="handicap">
-                Handicap
-              </button>
+              ${renderMarketTab(
+                "handicap",
+                "Handicap",
+                availableMarkets
+              )}
 
             </div>
 
 
             ${renderMarket(
-              match,
+              fixtureId,
               "1x2",
               odds["1x2"],
-              true
+              getFirstAvailableMarket(
+                availableMarkets
+              ) === "1x2"
             )}
 
+
             ${renderMarket(
-              match,
+              fixtureId,
               "double",
               odds.double,
-              false
+              getFirstAvailableMarket(
+                availableMarkets
+              ) === "double"
             )}
 
+
             ${renderMarket(
-              match,
+              fixtureId,
               "overunder",
               odds.overunder,
-              false
+              getFirstAvailableMarket(
+                availableMarkets
+              ) === "overunder"
             )}
 
+
             ${renderMarket(
-              match,
+              fixtureId,
               "btts",
               odds.btts,
-              false
+              getFirstAvailableMarket(
+                availableMarkets
+              ) === "btts"
             )}
 
+
             ${renderMarket(
-              match,
+              fixtureId,
               "handicap",
               odds.handicap,
-              false
+              getFirstAvailableMarket(
+                availableMarkets
+              ) === "handicap"
             )}
 
           </div>
@@ -1122,8 +1195,9 @@
         `;
 
 
-        matchesContainer
-          .appendChild(article);
+        matchesContainer.appendChild(
+          article
+        );
 
       }
     );
@@ -1134,24 +1208,68 @@
   }
 
 
-  /*
-   * =========================================================
-   * RENDER MARKET
-   * =========================================================
-   */
+  /* =========================================================
+     MARKET TAB
+     ========================================================= */
+
+  function renderMarketTab(
+    market,
+    label,
+    availableMarkets
+  ) {
+
+    const available =
+      availableMarkets.includes(
+        market
+      );
+
+
+    if (!available) {
+
+      return `
+        <button
+          class="market-tab hidden"
+          type="button"
+          data-market-tab="${market}">
+          ${label}
+        </button>
+      `;
+
+    }
+
+
+    const first =
+      getFirstAvailableMarket(
+        availableMarkets
+      );
+
+
+    return `
+      <button
+        class="market-tab ${
+          market === first
+            ? "active"
+            : ""
+        }"
+        type="button"
+        data-market-tab="${market}">
+        ${label}
+      </button>
+    `;
+
+  }
+
+
+  /* =========================================================
+     MARKET CONTENT
+     ========================================================= */
 
   function renderMarket(
-    match,
+    fixtureId,
     market,
     marketOdds,
     visible
   ) {
-
-    const display =
-      visible
-        ? "grid"
-        : "none";
-
 
     if (
       !Array.isArray(marketOdds) ||
@@ -1162,7 +1280,7 @@
         <div
           class="market-content"
           data-market="${escapeHtml(market)}"
-          style="display:${display};">
+          style="display:${visible ? "grid" : "none"};">
 
           <div class="no-odds">
             No odds available for this market.
@@ -1174,86 +1292,101 @@
     }
 
 
-    const matchId =
-      String(
-        match.id ||
-        match.external_id ||
-        ""
-      );
-
-
     return `
-
       <div
         class="market-content"
         data-market="${escapeHtml(market)}"
-        style="display:${display};">
+        style="display:${visible ? "grid" : "none"};">
 
-        ${marketOdds.map(
-          item => {
+        ${marketOdds
+          .map(
+            item => {
 
-            const odd =
-              Number(item.odd);
+              const odd =
+                Number(item.odd);
 
 
-            if (
-              !Number.isFinite(odd) ||
-              odd <= 1
-            ) {
-              return "";
+              if (
+                !Number.isFinite(odd) ||
+                odd <= 1
+              ) {
+
+                return "";
+
+              }
+
+
+              const name =
+                item.name ||
+                item.value ||
+                "";
+
+
+              const label =
+                item.label ||
+                name;
+
+
+              const line =
+                item.line ||
+                "";
+
+
+              return `
+                <button
+                  class="odd"
+                  type="button"
+
+                  data-fixture-id="${escapeHtml(
+                    String(fixtureId)
+                  )}"
+
+                  data-match="${escapeHtml(
+                    String(fixtureId)
+                  )}"
+
+                  data-market="${escapeHtml(
+                    market
+                  )}"
+
+                  data-name="${escapeHtml(
+                    name
+                  )}"
+
+                  data-label="${escapeHtml(
+                    label
+                  )}"
+
+                  data-odd="${odd}"
+
+                  data-line="${escapeHtml(
+                    String(line)
+                  )}">
+
+                  <span class="odd-name">
+                    ${escapeHtml(label)}
+                  </span>
+
+                  <span class="odd-value">
+                    ${odd.toFixed(2)}
+                  </span>
+
+                </button>
+              `;
+
             }
-
-
-            return `
-
-              <button
-                class="odd"
-                type="button"
-
-                data-match="${escapeHtml(matchId)}"
-
-                data-market="${escapeHtml(market)}"
-
-                data-name="${escapeHtml(item.name)}"
-
-                data-label="${escapeHtml(item.label || item.name)}"
-
-                data-odd="${odd}"
-
-                data-line="${escapeHtml(item.line || "")}">
-
-                <span class="odd-name">
-                  ${escapeHtml(
-                    item.label ||
-                    item.name
-                  )}
-                </span>
-
-                <span class="odd-value">
-                  ${odd.toFixed(2)}
-                </span>
-
-              </button>
-
-            `;
-
-          }
-        ).join("")}
+          )
+          .join("")}
 
       </div>
-
     `;
 
   }
 
 
-  /*
-   * =========================================================
-   * NORMALIZE ODDS
-   *
-   * Supports several backend shapes.
-   * =========================================================
-   */
+  /* =========================================================
+     NORMALIZE API-FOOTBALL ODDS
+     ========================================================= */
 
   function normalizeOdds(match) {
 
@@ -1268,210 +1401,119 @@
     };
 
 
-    const source =
-      match.odds ||
+    /*
+     * Some backend shapes may already be normalized.
+     */
+
+    const direct =
       match.markets ||
-      match.betting_odds ||
-      {};
-
-
-    /*
-     * Already normalized backend:
-     */
-
-    if (
-      Array.isArray(source["1x2"])
-    ) {
-
-      result["1x2"] =
-        source["1x2"];
-
-    }
+      match.odds ||
+      null;
 
 
     if (
-      Array.isArray(source.double)
+      direct &&
+      !Array.isArray(direct)
     ) {
 
-      result.double =
-        source.double;
+      copyNormalizedMarket(
+        result,
+        "1x2",
+        direct["1x2"]
+      );
 
-    }
+      copyNormalizedMarket(
+        result,
+        "double",
+        direct.double
+      );
 
+      copyNormalizedMarket(
+        result,
+        "overunder",
+        direct.overunder
+      );
 
-    if (
-      Array.isArray(source.overunder)
-    ) {
+      copyNormalizedMarket(
+        result,
+        "btts",
+        direct.btts
+      );
 
-      result.overunder =
-        source.overunder;
-
-    }
-
-
-    if (
-      Array.isArray(source.btts)
-    ) {
-
-      result.btts =
-        source.btts;
-
-    }
-
-
-    if (
-      Array.isArray(source.handicap)
-    ) {
-
-      result.handicap =
-        source.handicap;
+      copyNormalizedMarket(
+        result,
+        "handicap",
+        direct.handicap
+      );
 
     }
 
 
     /*
-     * Common API-Football style markets.
+     * The current backend returns the raw
+     * API-Football odds response in `odds`.
+     */
+
+    const oddsResponse =
+      match.odds;
+
+
+    if (
+      Array.isArray(oddsResponse)
+    ) {
+
+      parseOddsRows(
+        oddsResponse,
+        result,
+        match
+      );
+
+    }
+
+
+    /*
+     * Sometimes the backend wraps the
+     * API response:
+     *
+     * {
+     *   response: [...]
+     * }
      */
 
     if (
-      result["1x2"].length === 0 &&
-      Array.isArray(source)
+      oddsResponse &&
+      Array.isArray(
+        oddsResponse.response
+      )
     ) {
 
-      source.forEach(market => {
+      parseOddsRows(
+        oddsResponse.response,
+        result,
+        match
+      );
 
-        const name =
-          String(
-            market.name ||
-            market.market ||
-            ""
-          ).toLowerCase();
-
-
-        const values =
-          Array.isArray(market.values)
-            ? market.values
-            : [];
+    }
 
 
-        if (
-          name.includes("match winner") ||
-          name.includes("1x2")
-        ) {
+    /*
+     * Another possible shape:
+     *
+     * match.odds.response
+     */
 
-          result["1x2"] =
-            values.map(value => ({
+    if (
+      match.odds &&
+      Array.isArray(
+        match.odds.response
+      )
+    ) {
 
-              name:
-                value.value || "",
-
-              label:
-                convertWinnerLabel(
-                  value.value,
-                  match
-                ),
-
-              odd:
-                Number(value.odd)
-
-            }));
-
-        }
-
-
-        if (
-          name.includes("double chance")
-        ) {
-
-          result.double =
-            values.map(value => ({
-
-              name:
-                value.value || "",
-
-              label:
-                value.value || "",
-
-              odd:
-                Number(value.odd)
-
-            }));
-
-        }
-
-
-        if (
-          name.includes("over/under") ||
-          name.includes("goals over") ||
-          name.includes("goals")
-        ) {
-
-          result.overunder =
-            values.map(value => ({
-
-              name:
-                value.value || "",
-
-              label:
-                value.value || "",
-
-              odd:
-                Number(value.odd),
-
-              line:
-                value.value || ""
-
-            }));
-
-        }
-
-
-        if (
-          name.includes("both teams") ||
-          name.includes("btts")
-        ) {
-
-          result.btts =
-            values.map(value => ({
-
-              name:
-                value.value || "",
-
-              label:
-                value.value || "",
-
-              odd:
-                Number(value.odd)
-
-            }));
-
-        }
-
-
-        if (
-          name.includes("handicap")
-        ) {
-
-          result.handicap =
-            values.map(value => ({
-
-              name:
-                value.value || "",
-
-              label:
-                value.value || "",
-
-              odd:
-                Number(value.odd),
-
-              line:
-                value.value || ""
-
-            }));
-
-        }
-
-      });
+      parseOddsRows(
+        match.odds.response,
+        result,
+        match
+      );
 
     }
 
@@ -1481,11 +1523,400 @@
   }
 
 
-  /*
-   * =========================================================
-   * CONVERT 1X2 LABEL
-   * =========================================================
-   */
+  /* =========================================================
+     PARSE API-FOOTBALL BOOKMAKERS
+     ========================================================= */
+
+  function parseOddsRows(
+    rows,
+    result,
+    match
+  ) {
+
+    if (!Array.isArray(rows)) {
+      return;
+    }
+
+
+    /*
+     * API-Football:
+     *
+     * response[]
+     *   bookmakers[]
+     *      bets[]
+     *         values[]
+     */
+
+    rows.forEach(row => {
+
+      const bookmakers =
+        Array.isArray(
+          row.bookmakers
+        )
+          ? row.bookmakers
+          : [];
+
+
+      bookmakers.forEach(
+        bookmaker => {
+
+          const bets =
+            Array.isArray(
+              bookmaker.bets
+            )
+              ? bookmaker.bets
+              : [];
+
+
+          bets.forEach(bet => {
+
+            const marketName =
+              String(
+                bet.name ||
+                ""
+              ).toLowerCase();
+
+
+            const values =
+              Array.isArray(
+                bet.values
+              )
+                ? bet.values
+                : [];
+
+
+            if (
+              values.length === 0
+            ) {
+
+              return;
+
+            }
+
+
+            let target = null;
+
+
+            /*
+             * Match Winner / 1X2
+             */
+
+            if (
+              marketName.includes(
+                "match winner"
+              ) ||
+              marketName === "1x2"
+            ) {
+
+              target = "1x2";
+
+            }
+
+
+            /*
+             * Double Chance
+             */
+
+            else if (
+              marketName.includes(
+                "double chance"
+              )
+            ) {
+
+              target = "double";
+
+            }
+
+
+            /*
+             * Over / Under
+             */
+
+            else if (
+              marketName.includes(
+                "over/under"
+              ) ||
+              marketName.includes(
+                "goals over/under"
+              )
+            ) {
+
+              target = "overunder";
+
+            }
+
+
+            /*
+             * Both Teams Score
+             */
+
+            else if (
+              marketName.includes(
+                "both teams score"
+              ) ||
+              marketName.includes(
+                "btts"
+              )
+            ) {
+
+              target = "btts";
+
+            }
+
+
+            /*
+             * Handicap
+             */
+
+            else if (
+              marketName.includes(
+                "handicap"
+              )
+            ) {
+
+              target = "handicap";
+
+            }
+
+
+            if (!target) {
+              return;
+            }
+
+
+            /*
+             * Use the first available
+             * bookmaker market.
+             *
+             * This prevents duplicate
+             * selections from many bookmakers.
+             */
+
+            if (
+              result[target].length > 0
+            ) {
+
+              return;
+
+            }
+
+
+            result[target] =
+              values
+                .map(value => {
+
+                  const odd =
+                    Number(
+                      value.odd
+                    );
+
+
+                  if (
+                    !Number.isFinite(
+                      odd
+                    ) ||
+                    odd <= 1
+                  ) {
+
+                    return null;
+
+                  }
+
+
+                  const rawValue =
+                    String(
+                      value.value ||
+                      ""
+                    );
+
+
+                  let label =
+                    rawValue;
+
+
+                  if (
+                    target === "1x2"
+                  ) {
+
+                    label =
+                      convertWinnerLabel(
+                        rawValue,
+                        match
+                      );
+
+                  }
+
+
+                  let line = "";
+
+
+                  /*
+                   * Over 1.5 / Under 1.5
+                   *
+                   * Keep original value as line
+                   * because API-Football may use
+                   * different formats.
+                   */
+
+                  if (
+                    target === "overunder" ||
+                    target === "handicap"
+                  ) {
+
+                    line =
+                      rawValue;
+
+                  }
+
+
+                  return {
+
+                    name:
+                      rawValue,
+
+                    label,
+
+                    odd,
+
+                    line
+
+                  };
+
+                })
+                .filter(Boolean);
+
+          });
+
+        }
+      );
+
+    });
+
+  }
+
+
+  /* =========================================================
+     COPY NORMALIZED MARKET
+     ========================================================= */
+
+  function copyNormalizedMarket(
+    result,
+    market,
+    source
+  ) {
+
+    if (
+      !Array.isArray(source)
+    ) {
+
+      return;
+
+    }
+
+
+    result[market] =
+      source
+        .map(item => {
+
+          const odd =
+            Number(
+              item.odd
+            );
+
+
+          if (
+            !Number.isFinite(odd) ||
+            odd <= 1
+          ) {
+
+            return null;
+
+          }
+
+
+          return {
+
+            name:
+              item.name ||
+              item.value ||
+              "",
+
+            label:
+              item.label ||
+              item.name ||
+              item.value ||
+              "",
+
+            odd,
+
+            line:
+              item.line ||
+              ""
+
+          };
+
+        })
+        .filter(Boolean);
+
+  }
+
+
+  /* =========================================================
+     AVAILABLE MARKETS
+     ========================================================= */
+
+  function getAvailableMarkets(
+    odds
+  ) {
+
+    const markets = [];
+
+
+    [
+      "1x2",
+      "double",
+      "overunder",
+      "btts",
+      "handicap"
+    ].forEach(
+      market => {
+
+        if (
+          Array.isArray(
+            odds[market]
+          ) &&
+          odds[market].length > 0
+        ) {
+
+          markets.push(
+            market
+          );
+
+        }
+
+      }
+    );
+
+
+    return markets;
+
+  }
+
+
+  function getFirstAvailableMarket(
+    markets
+  ) {
+
+    return markets.length
+      ? markets[0]
+      : null;
+
+  }
+
+
+  /* =========================================================
+     1X2 LABEL
+     ========================================================= */
 
   function convertWinnerLabel(
     value,
@@ -1493,8 +1924,11 @@
   ) {
 
     const text =
-      String(value || "")
-        .toLowerCase();
+      String(
+        value || ""
+      )
+        .toLowerCase()
+        .trim();
 
 
     if (
@@ -1527,16 +1961,16 @@
     }
 
 
-    return String(value || "");
+    return String(
+      value || ""
+    );
 
   }
 
 
-  /*
-   * =========================================================
-   * ATTACH MATCH EVENTS
-   * =========================================================
-   */
+  /* =========================================================
+     MATCH EVENTS
+     ========================================================= */
 
   function attachMatchEvents() {
 
@@ -1549,7 +1983,9 @@
           () => {
 
             const match =
-              button.closest(".match");
+              button.closest(
+                ".match"
+              );
 
 
             if (!match) {
@@ -1562,7 +1998,9 @@
 
 
             match
-              .querySelectorAll(".market-tab")
+              .querySelectorAll(
+                ".market-tab"
+              )
               .forEach(tab => {
 
                 tab.classList.remove(
@@ -1572,7 +2010,9 @@
               });
 
 
-            button.classList.add("active");
+            button.classList.add(
+              "active"
+            );
 
 
             match
@@ -1582,7 +2022,8 @@
               .forEach(content => {
 
                 content.style.display =
-                  content.dataset.market === market
+                  content.dataset.market ===
+                  market
                     ? "grid"
                     : "none";
 
@@ -1612,15 +2053,14 @@
   }
 
 
-  /*
-   * =========================================================
-   * SELECT ODD
-   * =========================================================
-   */
+  /* =========================================================
+     SELECT ODD
+     ========================================================= */
 
   function selectOdd(button) {
 
     const match =
+      button.dataset.fixtureId ||
       button.dataset.match;
 
 
@@ -1638,11 +2078,14 @@
 
 
     const odd =
-      Number(button.dataset.odd);
+      Number(
+        button.dataset.odd
+      );
 
 
     const line =
-      button.dataset.line || "";
+      button.dataset.line ||
+      "";
 
 
     if (
@@ -1658,30 +2101,40 @@
     }
 
 
+    /*
+     * One selection per fixture.
+     */
+
     const existing =
       selections.find(
         item =>
-          item.match === match &&
-          item.market === market
+          item.match ===
+          String(match)
       );
 
 
     /*
-     * Click selected odd = remove.
+     * Same exact selection:
+     * remove it.
      */
 
     if (
       existing &&
-      existing.button === button
+      existing.button ===
+      button
     ) {
 
       existing.button
         .classList
-        .remove("selected");
+        .remove(
+          "selected"
+        );
 
 
       const index =
-        selections.indexOf(existing);
+        selections.indexOf(
+          existing
+        );
 
 
       selections.splice(
@@ -1698,19 +2151,23 @@
 
 
     /*
-     * Same match + market:
-     * replace old selection.
+     * If another selection exists
+     * for the same match, replace it.
      */
 
     if (existing) {
 
       existing.button
         .classList
-        .remove("selected");
+        .remove(
+          "selected"
+        );
 
 
       const index =
-        selections.indexOf(existing);
+        selections.indexOf(
+          existing
+        );
 
 
       selections.splice(
@@ -1721,13 +2178,13 @@
     }
 
 
-    /*
-     * Add new selection.
-     */
-
     selections.push({
 
-      match,
+      match:
+        String(match),
+
+      fixture_id:
+        String(match),
 
       market,
 
@@ -1754,15 +2211,14 @@
   }
 
 
-  /*
-   * =========================================================
-   * RENDER BET SLIP
-   * =========================================================
-   */
+  /* =========================================================
+     BET SLIP
+     ========================================================= */
 
   function renderSlip() {
 
-    selectionContainer.innerHTML = "";
+    selectionContainer.innerHTML =
+      "";
 
 
     if (
@@ -1770,12 +2226,10 @@
     ) {
 
       selectionContainer.innerHTML = `
-
         <div class="empty">
           Your bet slip is empty.<br>
           Select an odd to add it here.
         </div>
-
       `;
 
     } else {
@@ -1815,23 +2269,32 @@
 
 
             <div class="selection-info">
-              Odds: ${item.odd.toFixed(2)}
+              Odds:
+              ${item.odd.toFixed(2)}
             </div>
 
 
             <div class="selection-match">
+
               ${escapeHtml(
-                item.market.toUpperCase()
+                item.market
+                  .toUpperCase()
               )}
-              · Match ID:
-              ${escapeHtml(item.match)}
+
+              · Fixture:
+              ${escapeHtml(
+                item.match
+              )}
+
             </div>
 
           `;
 
 
           selectionContainer
-            .appendChild(div);
+            .appendChild(
+              div
+            );
 
         }
       );
@@ -1871,13 +2334,13 @@
   }
 
 
-  /*
-   * =========================================================
-   * REMOVE SELECTION
-   * =========================================================
-   */
+  /* =========================================================
+     REMOVE SELECTION
+     ========================================================= */
 
-  function removeSelection(index) {
+  function removeSelection(
+    index
+  ) {
 
     const item =
       selections[index];
@@ -1892,7 +2355,9 @@
 
       item.button
         .classList
-        .remove("selected");
+        .remove(
+          "selected"
+        );
 
     }
 
@@ -1908,18 +2373,17 @@
   }
 
 
-  /*
-   * =========================================================
-   * SUMMARY
-   * =========================================================
-   */
+  /* =========================================================
+     SUMMARY
+     ========================================================= */
 
   function updateSummary() {
 
     const total =
       selections.reduce(
         (value, item) =>
-          value * item.odd,
+          value *
+          Number(item.odd),
         selections.length
           ? 1
           : 0
@@ -1929,12 +2393,15 @@
     const amount =
       Math.max(
         0,
-        Number(stake.value) || 0
+        Number(
+          stake.value
+        ) || 0
       );
 
 
     const win =
-      total * amount;
+      total *
+      amount;
 
 
     count.textContent =
@@ -1966,11 +2433,9 @@
   }
 
 
-  /*
-   * =========================================================
-   * STAKE
-   * =========================================================
-   */
+  /* =========================================================
+     STAKE
+     ========================================================= */
 
   stake.addEventListener(
     "input",
@@ -1978,11 +2443,9 @@
   );
 
 
-  /*
-   * =========================================================
-   * PLACE BET
-   * =========================================================
-   */
+  /* =========================================================
+     PLACE BET
+     ========================================================= */
 
   placeBet.addEventListener(
     "click",
@@ -1998,11 +2461,15 @@
 
 
       const amount =
-        Number(stake.value);
+        Number(
+          stake.value
+        );
 
 
       if (
-        !Number.isFinite(amount) ||
+        !Number.isFinite(
+          amount
+        ) ||
         amount <= 0
       ) {
 
@@ -2018,11 +2485,16 @@
       /*
        * IMPORTANT:
        *
-       * The frontend sends the current
-       * selection information.
+       * The backend MUST validate:
        *
-       * Production backend MUST validate
-       * match + market + odd server-side.
+       * - fixture status
+       * - fixture ID
+       * - market
+       * - selection
+       * - current odds
+       * - stake
+       *
+       * before accepting a real-money bet.
        */
 
       const payload = {
@@ -2037,27 +2509,36 @@
           amount,
 
         selections:
-          selections.map(item => ({
+          selections.map(
+            item => ({
 
-            match:
-              item.match,
+              fixture_id:
+                item.fixture_id,
 
-            market:
-              item.market,
+              match:
+                item.match,
 
-            name:
-              item.name,
+              market:
+                item.market,
 
-            label:
-              item.label,
+              name:
+                item.name,
 
-            line:
-              item.line,
+              label:
+                item.label,
 
-            odd:
-              item.odd
+              value:
+                item.name,
 
-          }))
+              line:
+                item.line ||
+                null,
+
+              odd:
+                item.odd
+
+            })
+          )
 
       };
 
@@ -2114,7 +2595,8 @@
 
 
         const bet =
-          data.bet || {};
+          data.bet ||
+          {};
 
 
         alert(
@@ -2122,7 +2604,10 @@
           "Bet placed successfully!\n\n" +
 
           "Bet ID: " +
-          (bet.id || "-") +
+          (
+            bet.id ||
+            "-"
+          ) +
 
           "\nStake: " +
           amount.toFixed(2) +
@@ -2130,13 +2615,15 @@
 
           "\nPotential Win: " +
           Number(
-            bet.potential_win || 0
+            bet.potential_win ||
+            0
           ).toFixed(2) +
           " ETB" +
 
           "\nNew Balance: " +
           Number(
-            data.balance || 0
+            data.balance ||
+            0
           ).toFixed(2) +
           " ETB"
 
@@ -2145,14 +2632,11 @@
 
         balanceDisplay.textContent =
           Number(
-            data.balance || 0
+            data.balance ||
+            0
           ).toFixed(2) +
           " ETB";
 
-
-        /*
-         * Clear selections.
-         */
 
         selections.forEach(
           item => {
@@ -2196,7 +2680,6 @@
 
         updateSummary();
 
-
         placeBet.textContent =
           "Place Bet";
 
@@ -2206,11 +2689,9 @@
   );
 
 
-  /*
-   * =========================================================
-   * DATE FORMAT
-   * =========================================================
-   */
+  /* =========================================================
+     DATE
+     ========================================================= */
 
   function formatMatchDate(
     value
@@ -2233,7 +2714,9 @@
       )
     ) {
 
-      return String(value);
+      return String(
+        value
+      );
 
     }
 
@@ -2241,21 +2724,26 @@
     return date.toLocaleString(
       undefined,
       {
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit"
+        month:
+          "short",
+
+        day:
+          "numeric",
+
+        hour:
+          "2-digit",
+
+        minute:
+          "2-digit"
       }
     );
 
   }
 
 
-  /*
-   * =========================================================
-   * HTML ESCAPE
-   * =========================================================
-   */
+  /* =========================================================
+     HTML ESCAPE
+     ========================================================= */
 
   function escapeHtml(
     value
@@ -2288,11 +2776,9 @@
   }
 
 
-  /*
-   * =========================================================
-   * REFRESH
-   * =========================================================
-   */
+  /* =========================================================
+     REFRESH
+     ========================================================= */
 
   refreshBtn.addEventListener(
     "click",
@@ -2304,11 +2790,9 @@
   );
 
 
-  /*
-   * =========================================================
-   * INITIAL LOAD
-   * =========================================================
-   */
+  /* =========================================================
+     INITIALIZE
+     ========================================================= */
 
   async function init() {
 
