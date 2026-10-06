@@ -631,13 +631,117 @@
             <div class="team right">Highland FC</div>
           </div>
 
-          <div class="markets">
-            <button class="market-tab active">1X2</button>
-            <button class="market-tab">Double Chance</button>
-            <button class="market-tab">Over / Under</button>
-            <button class="market-tab">BTTS</button>
-            <button class="market-tab">Handicap</button>
-          </div>
+        <div class="markets">
+
+  <button class="market-tab active" onclick="showMarket(this, '1x2')">
+    1X2
+  </button>
+
+  <button class="market-tab" onclick="showMarket(this, 'double')">
+    Double Chance
+  </button>
+
+  <button class="market-tab" onclick="showMarket(this, 'overunder')">
+    Over / Under
+  </button>
+
+  <button class="market-tab" onclick="showMarket(this, 'btts')">
+    BTTS
+  </button>
+
+  <button class="market-tab" onclick="showMarket(this, 'handicap')">
+    Handicap
+  </button>
+
+</div>
+
+<!-- 1X2 -->
+<div class="odds market-content" data-market="1x2">
+
+  <button class="odd" data-name="Addis United" data-odd="1.85">
+    <span class="odd-name">Home</span>
+    <span class="odd-value">1.85</span>
+  </button>
+
+  <button class="odd" data-name="Draw" data-odd="3.40">
+    <span class="odd-name">Draw</span>
+    <span class="odd-value">3.40</span>
+  </button>
+
+  <button class="odd" data-name="Nile FC" data-odd="4.10">
+    <span class="odd-name">Away</span>
+    <span class="odd-value">4.10</span>
+  </button>
+
+</div>
+
+
+<!-- DOUBLE CHANCE -->
+<div class="odds market-content" data-market="double" style="display:none">
+
+  <button class="odd" data-name="Addis United or Draw" data-odd="1.32">
+    <span class="odd-name">1X</span>
+    <span class="odd-value">1.32</span>
+  </button>
+
+  <button class="odd" data-name="Draw or Nile FC" data-odd="1.72">
+    <span class="odd-name">X2</span>
+    <span class="odd-value">1.72</span>
+  </button>
+
+  <button class="odd" data-name="Addis United or Nile FC" data-odd="1.28">
+    <span class="odd-name">12</span>
+    <span class="odd-value">1.28</span>
+  </button>
+
+</div>
+
+
+<!-- OVER UNDER -->
+<div class="odds market-content" data-market="overunder" style="display:none">
+
+  <button class="odd" data-name="Over 1.5 Goals" data-odd="1.42">
+    <span class="odd-name">Over 1.5</span>
+    <span class="odd-value">1.42</span>
+  </button>
+
+  <button class="odd" data-name="Over 2.5 Goals" data-odd="1.88">
+    <span class="odd-name">Over 2.5</span>
+    <span class="odd-value">1.88</span>
+  </button>
+
+  <button class="odd" data-name="Under 2.5 Goals" data-odd="1.82">
+    <span class="odd-name">Under 2.5</span>
+    <span class="odd-value">1.82</span>
+  </button>
+
+  <button class="odd" data-name="Over 3.5 Goals" data-odd="2.65">
+    <span class="odd-name">Over 3.5</span>
+    <span class="odd-value">2.65</span>
+  </button>
+
+  <button class="odd" data-name="Under 3.5 Goals" data-odd="1.40">
+    <span class="odd-name">Under 3.5</span>
+    <span class="odd-value">1.40</span>
+  </button>
+
+</div>
+
+
+<!-- BTTS -->
+<div class="odds market-content" data-market="btts" style="display:none">
+
+  <button class="odd" data-name="Both Teams To Score - Yes" data-odd="1.75">
+    <span class="odd-name">BTTS Yes</span>
+    <span class="odd-value">1.75</span>
+  </button>
+
+  <button class="odd" data-name="Both Teams To Score - No" data-odd="1.95">
+    <span class="odd-name">BTTS No</span>
+    <span class="odd-value">1.95</span>
+  </button>
+
+</div>
 
           <div class="odds">
 
