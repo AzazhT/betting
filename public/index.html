@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Ethiopia Betting</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #07111f;
+      --card: #0e1b2d;
+      --card-light: #14243a;
+      --text: #ffffff;
+      --muted: #91a0b5;
+      --accent: #20c997;
+      --accent-dark: #12a67c;
+      --border: rgba(255,255,255,0.08);
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    button {
+      font: inherit;
+      cursor: pointer;
+    }
+
+    /* -------------------------
+       Header
+    ------------------------- */
+
+    header {
+      width: 100%;
+      border-bottom: 1px solid var(--border);
+      background: rgba(7,17,31,0.95);
+    }
+
+    .header-inner {
+      max-width: 1200px;
+      margin: auto;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .logo {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: .3px;
+    }
+
+    .logo span {
+      color: var(--accent);
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 10px 12px;
+      border-radius: 10px;
+    }
+
+    .nav button:hover {
+      color: var(--text);
+      background: var(--card);
+    }
+
+    .login-btn {
+      background: var(--accent) !important;
+      color: #03130e !important;
+      font-weight: 700;
+    }
+
+    /* -------------------------
+       Main
+    ------------------------- */
+
+    main {
+      max-width: 1200px;
+      margin: auto;
+      padding: 28px 20px 60px;
+    }
+
+    .hero {
+      background:
+        linear-gradient(
+          135deg,
+          rgba(32,201,151,.16),
+          rgba(20,36,58,.9)
+        );
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 34px;
+      margin-bottom: 28px;
+    }
+
+    .hero small {
+      color: var(--accent);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .hero h1 {
+      font-size: clamp(30px, 5vw, 54px);
+      line-height: 1.05;
+      margin: 12px 0;
+    }
+
+    .hero p {
+      color: var(--muted);
+      max-width: 650px;
+      line-height: 1.7;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .primary-btn,
+    .secondary-btn {
+      border-radius: 12px;
+      padding: 13px 20px;
+      border: 1px solid var(--border);
+      font-weight: 700;
+    }
+
+    .primary-btn {
+      background: var(--accent);
+      color: #03130e;
+      border-color: var(--accent);
+    }
+
+    .secondary-btn {
+      background: var(--card);
+      color: var(--text);
+    }
+
+    /* -------------------------
+       Balance
+    ------------------------- */
+
+    .balance-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+
+    .balance-label {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+
+    .balance {
+      font-size: 28px;
+      font-weight: 800;
+    }
+
+    .balance span {
+      color: var(--accent);
+      font-size: 16px;
+    }
+
+    /* -------------------------
+       Games
+    ------------------------- */
+
+    .section-title {
+      margin-bottom: 16px;
+    }
+
+    .section-title h2 {
+      font-size: 25px;
+      margin-bottom: 5px;
+    }
+
+    .section-title p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .games {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .game {
+      position: relative;
+      overflow: hidden;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      min-height: 180px;
+      transition: transform .2s ease, border-color .2s ease;
+    }
+
+    .game:hover {
+      transform: translateY(-3px);
+      border-color: rgba(32,201,151,.45);
+    }
+
+    .game-icon {
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      border-radius: 15px;
+      background: var(--card-light);
+      font-size: 27px;
+      margin-bottom: 20px;
+    }
+
+    .game h3 {
+      margin-bottom: 7px;
+      font-size: 18px;
+    }
+
+    .game p {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .game button {
+      margin-top: 15px;
+      width: 100%;
+      border: 0;
+      border-radius: 10px;
+      padding: 10px;
+      background: var(--card-light);
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .game button:hover {
+      background: var(--accent);
+      color: #03130e;
+    }
+
+    /* -------------------------
+       Footer
+    ------------------------- */
+
+    footer {
+      max-width: 1200px;
+      margin: auto;
+      padding: 25px 20px 40px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 13px;
+    }
+
+    /* -------------------------
+       Responsive
+    ------------------------- */
+
+    @media (max-width: 900px) {
+      .games {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 650px) {
+      .header-inner {
+        padding: 13px 15px;
+      }
+
+      .nav button:not(.login-btn) {
+        display: none;
+      }
+
+      main {
+        padding: 18px 14px 45px;
+      }
+
+      .hero {
+        padding: 25px 20px;
+        border-radius: 18px;
+      }
+
+      .balance-card {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .games {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .game {
+        min-height: 165px;
+        padding: 15px;
+      }
+
+      .game-icon {
+        width: 45px;
+        height: 45px;
+        font-size: 23px;
+        margin-bottom: 15px;
+      }
+
+      .game h3 {
+        font-size: 16px;
+      }
+
+      .hero-actions {
+        flex-direction: column;
+      }
+
+      .primary-btn,
+      .secondary-btn {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .games {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="header-inner">
+
+      <div class="logo">
+        Ethiopia <span>Betting</span>
+      </div>
+
+      <nav class="nav">
+        <button type="button">Home</button>
+        <button type="button">Games</button>
+        <button type="button">History</button>
+        <button type="button" class="login-btn">
+          Login
+        </button>
+      </nav>
+
+    </div>
+  </header>
+
+  <main>
+
+    <!-- Hero -->
+    <section class="hero">
+
+      <small>Play • Predict • Win</small>
+
+      <h1>
+        Welcome to<br>
+        Ethiopia Betting
+      </h1>
+
+      <p>
+        A modern gaming platform with exciting games,
+        fast gameplay and a professional experience
+        across mobile and desktop.
+      </p>
+
+      <div class="hero-actions">
+        <button class="primary-btn" type="button">
+          Start Betting
+        </button>
+
+        <button class="secondary-btn" type="button">
+          Create Account
+        </button>
+      </div>
+
+    </section>
+
+    <!-- Balance -->
+    <section class="balance-card">
+
+      <div>
+        <div class="balance-label">
+          Available Balance
+        </div>
+
+        <div class="balance">
+          0.00 <span>ETB</span>
+        </div>
+      </div>
+
+      <button class="primary-btn" type="button">
+        + Deposit
+      </button>
+
+    </section>
+
+    <!-- Games -->
+    <section>
+
+      <div class="section-title">
+        <h2>Popular Games</h2>
+        <p>
+          Choose a game and start playing.
+        </p>
+      </div>
+
+      <div class="games">
+
+        <article class="game">
+          <div class="game-icon">🎰</div>
+          <h3>Betting</h3>
+          <p>
+            Main betting area for upcoming events.
+          </p>
+          <button type="button">Open</button>
+        </article>
+
+        <article class="game">
+          <div class="game-icon">🎱</div>
+          <h3>Keno</h3>
+          <p>
+            Pick numbers and test your luck.
+          </p>
+          <button type="button">Play</button>
+        </article>
+
+        <article class="game">
+          <div class="game-icon">🎟️</div>
+          <h3>Lucky Draw</h3>
+          <p>
+            Enter the draw and wait for the result.
+          </p>
+          <button type="button">Play</button>
+        </article>
+
+        <article class="game">
+          <div class="game-icon">💣</div>
+          <h3>Mines</h3>
+          <p>
+            Choose safe tiles and avoid the mines.
+          </p>
+          <button type="button">Play</button>
+        </article>
+
+        <article class="game">
+          <div class="game-icon">🔢</div>
+          <h3>Number Pick</h3>
+          <p>
+            Select numbers and test your prediction.
+          </p>
+          <button type="button">Play</button>
+        </article>
+
+        <article class="game">
+          <div class="game-icon">🃏</div>
+          <h3>High / Low</h3>
+          <p>
+            Predict whether the next card is higher or lower.
+          </p>
+          <button type="button">Play</button>
+        </article>
+
+        <article class="game">
+          <div class="game-icon">🎯</div>
+          <h3>Bingo</h3>
+          <p>
+            Classic bingo with a modern experience.
+          </p>
+          <button type="button">Play</button>
+        </article>
+
+        <article class="game">
+          <div class="game-icon">⚡</div>
+          <h3>Quick Draw</h3>
+          <p>
+            Fast number draws for quick rounds.
+          </p>
+          <button type="button">Play</button>
+        </article>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <footer>
+    © 2026 Ethiopia Betting. All rights reserved.
+  </footer>
+
+</body>
+</html>
