@@ -404,7 +404,219 @@ app.get("/api/user-test", async (req, res) => {
     });
   }
 });
+/*
+|--------------------------------------------------------------------------
+| Betting
+|--------------------------------------------------------------------------
+*/
 
+app.post("/api/bets/place", async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const {
+      telegram_id,
+      game,
+      selections,
+      stake
+    } = req.body;
+
+    if (!telegram_id) {
+      return res.status(400).json({
+        success: false,
+        message: "telegram_id is required."
+      });
+    }
+
+    if (!game) {
+      return res.status(400).json({
+        success: false,
+        message: "game is required."
+      });
+    }
+
+    if (!Array.isArray(selections) || selections.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one selection is required."
+      });
+    }
+
+    const amount = Number(stake);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid stake amount."
+      });
+    }
+
+    await client.query("BEGIN");
+
+    const userResult = await client.query(
+      `
+      SELECT *
+      FROM users
+      WHERE telegram_id = $1
+      FOR UPDATE
+      `,
+      [telegram_id]
+    );
+
+    if (userResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        success: false,
+        message: "User not found."
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    if (!user.is_active) {
+      await client.query("ROLLBACK");
+
+      return res.status(403).json({
+        success: false,
+        message: "User account is inactive."
+      });
+    }
+
+    const balance = Number(user.balance);
+
+    if (balance < amount) {
+      await client.query("ROLLBACK");
+
+      return res.status(400).json({
+        success: false,
+        message: "Insufficient balance."
+      });
+    }
+
+    let totalOdds = 1;
+
+    for (const selection of selections) {
+      const odd = Number(selection.odd);
+
+      if (
+        !Number.isFinite(odd) ||
+        odd <= 1
+      ) {
+        await client.query("ROLLBACK");
+
+        return res.status(400).json({
+          success: false,
+          message: "Invalid odds."
+        });
+      }
+
+      totalOdds *= odd;
+    }
+
+    totalOdds = Number(totalOdds.toFixed(4));
+
+    const potentialWin =
+      Number((amount * totalOdds).toFixed(2));
+
+    const betResult = await client.query(
+      `
+      INSERT INTO bets
+        (
+          user_id,
+          game,
+          stake,
+          potential_win,
+          actual_win,
+          status,
+          result
+        )
+      VALUES
+        ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *
+      `,
+      [
+        user.id,
+        game,
+        amount,
+        potentialWin,
+        0,
+        "pending",
+        JSON.stringify({
+          selections,
+          total_odds: totalOdds
+        })
+      ]
+    );
+
+    const newBalance =
+      Number((balance - amount).toFixed(2));
+
+    await client.query(
+      `
+      UPDATE users
+      SET
+        balance = $1,
+        updated_at = NOW()
+      WHERE id = $2
+      `,
+      [
+        newBalance,
+        user.id
+      ]
+    );
+
+    await client.query(
+      `
+      INSERT INTO transactions
+        (
+          user_id,
+          type,
+          amount,
+          status,
+          reference,
+          description
+        )
+      VALUES
+        ($1, $2, $3, $4, $5, $6)
+      `,
+      [
+        user.id,
+        "bet",
+        amount,
+        "completed",
+        `BET-${betResult.rows[0].id}`,
+        `${game} betting stake`
+      ]
+    );
+
+    await client.query("COMMIT");
+
+    res.json({
+      success: true,
+      message: "Bet placed successfully.",
+      bet: betResult.rows[0],
+      balance: newBalance
+    });
+
+  } catch (error) {
+
+    await client.query("ROLLBACK");
+
+    console.error(
+      "Place bet error:",
+      error.message
+    );
+
+    res.status(500).json({
+      success: false,
+      message: "Could not place bet."
+    });
+
+  } finally {
+    client.release();
+  }
+});
 /*
 |--------------------------------------------------------------------------
 | Socket.IO
