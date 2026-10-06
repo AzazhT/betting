@@ -1004,7 +1004,31 @@
 
 
 <script>
+function showMarket(button, market) {
 
+  const match =
+    button.closest(".match");
+
+  match
+    .querySelectorAll(".market-tab")
+    .forEach(tab => {
+      tab.classList.remove("active");
+    });
+
+  button.classList.add("active");
+
+  match
+    .querySelectorAll(".market-content")
+    .forEach(content => {
+
+      content.style.display =
+        content.dataset.market === market
+          ? "grid"
+          : "none";
+
+    });
+
+}
   const selections = [];
 
   const selectionContainer =
