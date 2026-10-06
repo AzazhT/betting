@@ -123,3 +123,24 @@ VALUES
     ('minimum_deposit', '51'),
     ('minimum_withdraw', '51')
 ON CONFLICT (key) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS matches (
+    id BIGSERIAL PRIMARY KEY,
+    external_id VARCHAR(150) UNIQUE,
+    home_team VARCHAR(255) NOT NULL,
+    away_team VARCHAR(255) NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'scheduled',
+    home_score INTEGER,
+    away_score INTEGER,
+    result VARCHAR(20),
+    started_at TIMESTAMPTZ,
+    finished_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_matches_status
+ON matches(status);
+
+CREATE INDEX IF NOT EXISTS idx_matches_started_at
+ON matches(started_at);
