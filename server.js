@@ -800,6 +800,27 @@ app.get("/api/football/diagnostic", async (req, res) => {
   }
 });
 
+app.get("/api/football/odds-test/:eventId", async (req, res) => {
+  try {
+    const eventId = String(req.params.eventId || "").trim();
+    if (!eventId) {
+      return res.status(400).json({ success: false, message: "eventId is required." });
+    }
+
+    const result = await fetchBsdEventOdds(eventId);
+    res.status(result.ok ? 200 : result.http_status || 502).json({
+      success: result.ok,
+      provider: "BSD",
+      event_id: eventId,
+      http_status: result.http_status,
+      data: result.data
+    });
+  } catch (error) {
+    console.error("BSD odds diagnostic error:", error.message);
+    res.status(500).json({ success: false, provider: "BSD", message: error.message });
+  }
+});
+
 app.get("/api/football/test", async (req, res) => {
   try {
     const result = await fetchBsdEvents({ limit: Number(req.query.limit) || 5 });
