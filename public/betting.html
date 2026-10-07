@@ -3,2811 +3,378 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <title>Betting - Ethiopia Betting</title>
-
+  <title>Ethiopia Betting — Football</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: Arial, sans-serif;
-      background: #06111d;
-      color: #fff;
-      min-height: 100vh;
-    }
-
-    button,
-    input {
-      font: inherit;
-    }
-
-    button {
-      cursor: pointer;
-    }
-
-    .header {
-      height: 70px;
-      background: #091a2b;
-      border-bottom: 1px solid #1b354d;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 5%;
-      position: sticky;
-      top: 0;
-      z-index: 20;
-    }
-
-    .logo {
-      font-size: 21px;
-      font-weight: 800;
-    }
-
-    .logo span {
-      color: #16d98a;
-    }
-
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .balance {
-      background: #0c263b;
-      border: 1px solid #21445f;
-      padding: 10px 15px;
-      border-radius: 10px;
-      color: #18df91;
-      font-weight: bold;
-    }
-
-    .back-btn {
-      color: #fff;
-      background: transparent;
-      border: 1px solid #29465d;
-      padding: 9px 13px;
-      border-radius: 9px;
-    }
-
-    .page {
-      max-width: 1250px;
-      margin: auto;
-      padding: 28px 20px 60px;
-    }
-
-    .title-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 15px;
-      margin-bottom: 22px;
-    }
-
-    .title-row h1 {
-      font-size: 30px;
-    }
-
-    .title-row p {
-      color: #86a0b8;
-      margin-top: 7px;
-    }
-
-    .sports {
-      display: flex;
-      gap: 10px;
-      overflow-x: auto;
-      padding-bottom: 8px;
-      margin-bottom: 22px;
-    }
-
-    .sport {
-      border: 1px solid #25435b;
-      background: #0b1c2c;
-      color: #b7c9d8;
-      padding: 11px 18px;
-      border-radius: 10px;
-      white-space: nowrap;
-    }
-
-    .sport.active {
-      background: #16cf83;
-      color: #04130d;
-      border-color: #16cf83;
-      font-weight: bold;
-    }
-
-    .layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 350px;
-      gap: 20px;
-      align-items: start;
-    }
-
-    .matches {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .match {
-      background: #0a1b2c;
-      border: 1px solid #1c3850;
-      border-radius: 15px;
-      overflow: hidden;
-    }
-
-    .match-head {
-      background: #0d2337;
-      padding: 14px 17px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 15px;
-      color: #91a8bb;
-      font-size: 13px;
-    }
-
-    .league {
-      color: #fff;
-      font-weight: bold;
-    }
-
-    .match-time {
-      white-space: nowrap;
-    }
-
-    .match-body {
-      padding: 18px;
-    }
-
-    .teams {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      align-items: center;
-      gap: 15px;
-      margin-bottom: 18px;
-    }
-
-    .team {
-      font-size: 17px;
-      font-weight: bold;
-    }
-
-    .team.right {
-      text-align: right;
-    }
-
-    .vs {
-      color: #718ba0;
-      font-size: 12px;
-      font-weight: bold;
-    }
-
-    .markets {
-      display: flex;
-      gap: 8px;
-      overflow-x: auto;
-      margin-bottom: 12px;
-      scrollbar-width: thin;
-    }
-
-    .market-tab {
-      background: transparent;
-      color: #8ea7ba;
-      border: 0;
-      padding: 8px 10px;
-      border-bottom: 2px solid transparent;
-      white-space: nowrap;
-    }
-
-    .market-tab.active {
-      color: #16db8b;
-      border-bottom-color: #16db8b;
-    }
-
-    .market-tab.hidden {
-      display: none;
-    }
-
-    .market-content {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    .odd {
-      background: #10283d;
-      border: 1px solid #24445d;
-      color: #fff;
-      border-radius: 9px;
-      padding: 11px 8px;
-      text-align: left;
-      transition: .15s;
-      min-height: 60px;
-    }
-
-    .odd:hover {
-      border-color: #16d98a;
-      background: #12344a;
-    }
-
-    .odd.selected {
-      background: #16d98a;
-      color: #04130d;
-      border-color: #16d98a;
-    }
-
-    .odd-name {
-      display: block;
-      font-size: 12px;
-      opacity: .75;
-      margin-bottom: 4px;
-      line-height: 1.3;
-    }
-
-    .odd-value {
-      font-size: 16px;
-      font-weight: bold;
-    }
-
-    .no-odds {
-      grid-column: 1 / -1;
-      text-align: center;
-      padding: 20px;
-      color: #718ba0;
-      border: 1px dashed #29465d;
-      border-radius: 9px;
-      line-height: 1.5;
-    }
-
-    .slip {
-      background: #091a2b;
-      border: 1px solid #1c3850;
-      border-radius: 15px;
-      position: sticky;
-      top: 90px;
-      overflow: hidden;
-    }
-
-    .slip-head {
-      padding: 17px;
-      border-bottom: 1px solid #1c3850;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .slip-head h2 {
-      font-size: 18px;
-    }
-
-    .count {
-      background: #16d98a;
-      color: #03150d;
-      border-radius: 20px;
-      padding: 3px 9px;
-      font-size: 12px;
-      font-weight: bold;
-    }
-
-    .slip-content {
-      padding: 15px;
-    }
-
-    .empty {
-      text-align: center;
-      padding: 35px 15px;
-      color: #718ba0;
-      line-height: 1.6;
-    }
-
-    .selection {
-      background: #0e2437;
-      border: 1px solid #203f57;
-      border-radius: 10px;
-      padding: 12px;
-      margin-bottom: 10px;
-    }
-
-    .selection-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .selection-name {
-      font-size: 13px;
-      font-weight: bold;
-      line-height: 1.4;
-    }
-
-    .remove {
-      border: 0;
-      background: transparent;
-      color: #7891a5;
-      font-size: 18px;
-    }
-
-    .selection-info {
-      color: #16d98a;
-      font-size: 13px;
-      margin-top: 7px;
-    }
-
-    .selection-match {
-      color: #7891a5;
-      font-size: 11px;
-      margin-top: 4px;
-      line-height: 1.4;
-    }
-
-    .bet-controls {
-      margin-top: 15px;
-    }
-
-    .bet-controls label {
-      display: block;
-      color: #91a8bb;
-      font-size: 13px;
-      margin-bottom: 7px;
-    }
-
-    .stake {
-      width: 100%;
-      padding: 12px;
-      background: #071625;
-      color: #fff;
-      border: 1px solid #28475f;
-      border-radius: 9px;
-      outline: none;
-    }
-
-    .stake:focus {
-      border-color: #16d98a;
-    }
-
-    .summary {
-      border-top: 1px solid #1c3850;
-      margin-top: 15px;
-      padding-top: 15px;
-    }
-
-    .summary-row {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 10px;
-      color: #9ab0c1;
-      font-size: 14px;
-    }
-
-    .summary-row strong {
-      color: #fff;
-    }
-
-    .potential {
-      color: #16d98a !important;
-      font-size: 17px;
-    }
-
-    .place-btn {
-      width: 100%;
-      margin-top: 8px;
-      border: 0;
-      background: #16d98a;
-      color: #03150d;
-      font-weight: 800;
-      padding: 14px;
-      border-radius: 10px;
-    }
-
-    .place-btn:disabled {
-      opacity: .45;
-      cursor: not-allowed;
-    }
-
-    .loading {
-      background: #0a1b2c;
-      border: 1px solid #1c3850;
-      border-radius: 15px;
-      padding: 40px 20px;
-      text-align: center;
-      color: #8fa6b9;
-    }
-
-    .error-box {
-      background: #27151a;
-      border: 1px solid #69333c;
-      border-radius: 12px;
-      padding: 20px;
-      color: #ffb4bd;
-      line-height: 1.6;
-    }
-
-    .retry-btn {
-      margin-top: 15px;
-      border: 0;
-      background: #16d98a;
-      color: #03150d;
-      padding: 10px 16px;
-      border-radius: 8px;
-      font-weight: bold;
-    }
-
-    .refresh-btn {
-      border: 1px solid #29465d;
-      background: #0b1c2c;
-      color: #c3d2de;
-      padding: 9px 13px;
-      border-radius: 9px;
-    }
-
-    .refresh-btn:hover {
-      border-color: #16d98a;
-    }
-
-    .notice {
-      margin-top: 12px;
-      color: #718ba0;
-      font-size: 11px;
-      line-height: 1.5;
-      text-align: center;
-    }
-
-    .status {
-      margin-bottom: 15px;
-      padding: 11px 13px;
-      border-radius: 9px;
-      background: #0c263b;
-      border: 1px solid #21445f;
-      color: #91a8bb;
-      font-size: 12px;
-      line-height: 1.5;
-    }
-
-    .status.success {
-      color: #69e6b0;
-      border-color: #1b6247;
-    }
-
-    @media (max-width: 900px) {
-      .layout {
-        grid-template-columns: 1fr;
-      }
-
-      .slip {
-        position: static;
-      }
-    }
-
-    @media (max-width: 600px) {
-      .header {
-        padding: 0 14px;
-      }
-
-      .page {
-        padding: 20px 12px 45px;
-      }
-
-      .title-row {
-        align-items: flex-start;
-      }
-
-      .title-row h1 {
-        font-size: 25px;
-      }
-
-      .title-row p {
-        font-size: 13px;
-      }
-
-      .balance {
-        padding: 8px 10px;
-        font-size: 12px;
-      }
-
-      .back-btn {
-        display: none;
-      }
-
-      .match-head {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 5px;
-      }
-
-      .market-content {
-        grid-template-columns: repeat(3, minmax(90px, 1fr));
-        overflow-x: auto;
-      }
-
-      .match-body {
-        padding: 14px;
-      }
-
-      .team {
-        font-size: 15px;
-      }
-    }
+    :root{
+      --bg:#07111f;
+      --panel:#0d1a2b;
+      --panel2:#12233a;
+      --border:#213754;
+      --text:#f5f7fb;
+      --muted:#96a7bc;
+      --green:#1fd17b;
+      --green2:#17b968;
+      --yellow:#ffc857;
+      --danger:#ff6374;
+      --shadow:0 14px 40px rgba(0,0,0,.24);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#06101d 0%,#091524 100%);color:var(--text);font-family:Inter,Arial,sans-serif}
+    button,input{font:inherit}
+    .wrap{max-width:1180px;margin:0 auto;padding:18px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+    .brand{font-size:22px;font-weight:800}.sub{color:var(--muted);font-size:13px;margin-top:3px}
+    .wallet{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:10px 14px;display:flex;gap:18px;align-items:center}
+    .wallet b{font-size:17px}.wallet small{display:block;color:var(--muted);font-size:11px;margin-bottom:2px}
+    .hero{background:linear-gradient(135deg,#10253a,#0a1727 58%,#113325);border:1px solid var(--border);border-radius:24px;padding:22px;margin-bottom:18px;box-shadow:var(--shadow)}
+    .hero h1{margin:0 0 7px;font-size:28px}.hero p{margin:0;color:var(--muted)}
+    .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 12px;flex-wrap:wrap}
+    .status{font-size:13px;color:var(--muted)}.status.ok{color:#8be4b7}.status.bad{color:#ff9ba5}
+    .btn{border:0;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:700}.refresh{background:var(--green);color:#03150d}.refresh:disabled{opacity:.55;cursor:not-allowed}
+    .layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+    .matches{display:grid;gap:14px}
+    .match{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+    .matchhead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:14px}
+    .league{font-size:11px;color:var(--yellow);font-weight:800;text-transform:uppercase;letter-spacing:.05em}.time{font-size:12px;color:var(--muted);text-align:right}
+    .teams{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-bottom:14px}.team{font-size:16px;font-weight:800}.team.away{text-align:right}.vs{font-size:11px;color:var(--muted);font-weight:800}
+    .markets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    .odd{background:var(--panel2);border:1px solid #29415f;color:var(--text);border-radius:11px;padding:10px;cursor:pointer;text-align:left;transition:.15s}.odd:hover{border-color:#3a6a8e;transform:translateY(-1px)}.odd.active{border-color:var(--green);background:#113526}.odd .name{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}.odd .price{font-size:16px;font-weight:800}
+    .empty{padding:30px;text-align:center;background:var(--panel);border:1px dashed var(--border);border-radius:18px;color:var(--muted)}
+    .slip{position:sticky;top:14px;background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:16px;box-shadow:var(--shadow)}
+    .slip h2{font-size:18px;margin:0 0 14px}.choice{background:var(--panel2);border-radius:14px;padding:13px;margin-bottom:14px;border:1px solid #29415f}.choice .row{display:flex;justify-content:space-between;gap:12px}.choice .small{font-size:12px;color:var(--muted);margin-top:5px}.x{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:18px}
+    label{display:block;font-size:12px;color:var(--muted);margin:0 0 7px}.stake{width:100%;background:#091321;border:1px solid var(--border);border-radius:12px;padding:12px;color:var(--text);outline:none}.stake:focus{border-color:var(--green)}
+    .calc{display:grid;gap:8px;margin:12px 0 16px}.calc div{display:flex;justify-content:space-between;font-size:13px}.calc span{color:var(--muted)}
+    .place{width:100%;background:var(--green);color:#04130c;border:0;border-radius:13px;padding:13px;font-weight:900;cursor:pointer}.place:disabled{opacity:.5;cursor:not-allowed}
+    .message{margin-top:10px;border-radius:11px;padding:10px;font-size:12px;display:none}.message.show{display:block}.message.ok{background:#103a29;color:#9bf2c2}.message.bad{background:#3a1820;color:#ffb4bc}
+    .note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:12px}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}.slip{position:static}.markets{grid-template-columns:repeat(3,1fr)}}
+    @media(max-width:580px){.wrap{padding:12px}.hero h1{font-size:23px}.teams{grid-template-columns:1fr}.team,.team.away{text-align:left}.vs{display:none}.markets{grid-template-columns:repeat(3,1fr)}.odd{padding:9px}.odd .price{font-size:15px}.wallet{width:100%;justify-content:space-between}}
   </style>
 </head>
-
 <body>
-
-<header class="header">
-
-  <div class="logo">
-    Ethiopia <span>Betting</span>
-  </div>
-
-  <div class="header-right">
-
-    <button
-      class="back-btn"
-      type="button"
-      onclick="location.href='/'">
-      ← Home
-    </button>
-
-    <div
-      class="balance"
-      id="balanceDisplay">
-      0.00 ETB
-    </div>
-
-  </div>
-
-</header>
-
-
-<main class="page">
-
-  <div class="title-row">
-
-    <div>
-      <h1>⚽ Sports Betting</h1>
-
-      <p>
-        Real football matches and available betting odds.
-      </p>
-    </div>
-
-    <button
-      class="refresh-btn"
-      id="refreshBtn"
-      type="button">
-      ↻ Refresh
-    </button>
-
-  </div>
-
-
-  <div class="sports">
-
-    <button
-      class="sport active"
-      type="button">
-      ⚽ Football
-    </button>
-
-    <button
-      class="sport"
-      type="button"
-      disabled>
-      🏀 Basketball
-    </button>
-
-    <button
-      class="sport"
-      type="button"
-      disabled>
-      🎾 Tennis
-    </button>
-
-    <button
-      class="sport"
-      type="button"
-      disabled>
-      🏐 Volleyball
-    </button>
-
-  </div>
-
-
-  <div class="layout">
-
-    <section class="matches" id="matches">
-
-      <div class="loading">
-        Loading real football matches...
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <div class="brand">Ethiopia Betting</div>
+        <div class="sub">Football betting · Live API data</div>
       </div>
+      <div class="wallet">
+        <div><small>Cash</small><b id="cashBalance">0.00 ETB</b></div>
+        <div><small>Bonus</small><b id="bonusBalance">0.00 ETB</b></div>
+      </div>
+    </div>
 
+    <section class="hero">
+      <h1>Football Betting</h1>
+      <p>Choose a match, select your odds and place your bet.</p>
     </section>
 
+    <div class="bar">
+      <div id="status" class="status">Loading matches…</div>
+      <button id="refreshBtn" class="btn refresh">Refresh</button>
+    </div>
 
-    <aside class="slip">
+    <div class="layout">
+      <main>
+        <div id="matches" class="matches"></div>
+      </main>
 
-      <div class="slip-head">
-
-        <h2>🎫 Bet Slip</h2>
-
-        <span
-          class="count"
-          id="count">
-          0
-        </span>
-
-      </div>
-
-
-      <div class="slip-content">
-
-        <div id="selections">
-
-          <div class="empty">
-            Your bet slip is empty.<br>
-            Select an odd to add it here.
+      <aside class="slip">
+        <h2>Bet Slip</h2>
+        <div id="choiceBox" class="empty">Select an outcome from a match.</div>
+        <div id="betForm" style="display:none">
+          <label for="stake">Stake (ETB)</label>
+          <input id="stake" class="stake" type="number" min="1" max="100000" step="0.01" value="10" />
+          <div class="calc">
+            <div><span>Odds</span><strong id="slipOdds">—</strong></div>
+            <div><span>Potential win</span><strong id="potentialWin">0.00 ETB</strong></div>
           </div>
-
+          <button id="placeBtn" class="place">Place Bet</button>
+          <div id="message" class="message"></div>
+          <div class="note">Your cash balance is used first, then eligible bonus balance. Server-side odds are checked again before the bet is accepted.</div>
         </div>
-
-
-        <div class="bet-controls">
-
-          <label for="stake">
-            Stake (ETB)
-          </label>
-
-          <input
-            id="stake"
-            class="stake"
-            type="number"
-            min="1"
-            step="1"
-            value="10"
-            placeholder="Enter stake"
-          />
-
-        </div>
-
-
-        <div class="summary">
-
-          <div class="summary-row">
-            <span>Selections</span>
-            <strong id="selectionCount">0</strong>
-          </div>
-
-          <div class="summary-row">
-            <span>Total Odds</span>
-            <strong id="totalOdds">0.00</strong>
-          </div>
-
-          <div class="summary-row">
-            <span>Stake</span>
-            <strong id="stakeDisplay">
-              10.00 ETB
-            </strong>
-          </div>
-
-          <div class="summary-row">
-            <span>Potential Win</span>
-
-            <strong
-              class="potential"
-              id="potentialWin">
-              0.00 ETB
-            </strong>
-
-          </div>
-
-
-          <button
-            class="place-btn"
-            id="placeBet"
-            disabled>
-            Place Bet
-          </button>
-
-
-          <div class="notice">
-            Odds are supplied by the server.
-            Final validation must be performed server-side.
-          </div>
-
-        </div>
-
-      </div>
-
-    </aside>
-
+      </aside>
+    </div>
   </div>
 
-</main>
-
-
 <script>
+  const TEST_USER = {
+    telegram_id: "TEST_USER_001",
+    name: "Test Player",
+    username: "test_player"
+  };
 
-  /* =========================================================
-     USER
-     ========================================================= */
+  const state = {
+    user: null,
+    matches: [],
+    selected: null,
+    loading: false
+  };
 
-  const TEST_USER_ID = "TEST_USER_001";
+  const $ = (id) => document.getElementById(id);
 
+  function money(value) {
+    const n = Number(value) || 0;
+    return n.toFixed(2) + " ETB";
+  }
 
-  /* =========================================================
-     STATE
-     ========================================================= */
+  function showMessage(text, type) {
+    const el = $("message");
+    el.textContent = text;
+    el.className = "message show " + (type || "bad");
+  }
 
-  const selections = [];
+  function clearMessage() {
+    const el = $("message");
+    el.textContent = "";
+    el.className = "message";
+  }
 
+  function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>'"]/g, ch => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"
+    })[ch]);
+  }
 
-  /* =========================================================
-     ELEMENTS
-     ========================================================= */
-
-  const matchesContainer =
-    document.getElementById("matches");
-
-  const refreshBtn =
-    document.getElementById("refreshBtn");
-
-  const balanceDisplay =
-    document.getElementById("balanceDisplay");
-
-  const selectionContainer =
-    document.getElementById("selections");
-
-  const count =
-    document.getElementById("count");
-
-  const selectionCount =
-    document.getElementById("selectionCount");
-
-  const totalOdds =
-    document.getElementById("totalOdds");
-
-  const stake =
-    document.getElementById("stake");
-
-  const stakeDisplay =
-    document.getElementById("stakeDisplay");
-
-  const potentialWin =
-    document.getElementById("potentialWin");
-
-  const placeBet =
-    document.getElementById("placeBet");
-
-
-  /* =========================================================
-     LOAD USER
-     ========================================================= */
-
-  async function loadUser() {
-
+  function formatDate(iso) {
+    if (!iso) return "";
     try {
-
-      const response = await fetch(
-        "/api/user",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            telegram_id: TEST_USER_ID,
-            name: "Test Player",
-            username: "test_player"
-          })
-        }
-      );
-
-
-      const data = await response.json();
-
-
-      if (
-        data &&
-        data.success &&
-        data.user
-      ) {
-
-        balanceDisplay.textContent =
-          Number(
-            data.user.balance || 0
-          ).toFixed(2) +
-          " ETB";
-
-      }
-
-    } catch (error) {
-
-      console.error(
-        "User loading error:",
-        error
-      );
-
+      return new Intl.DateTimeFormat("en-ET", {
+        timeZone: "Africa/Addis_Ababa",
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      }).format(new Date(iso));
+    } catch {
+      return new Date(iso).toLocaleString();
     }
-
   }
 
-
-  /* =========================================================
-     LOAD REAL MATCHES + ODDS
-     ========================================================= */
-
-  async function loadMatches() {
-
-    matchesContainer.innerHTML = `
-      <div class="loading">
-        Loading real football matches and odds...
-      </div>
-    `;
-
-
-    refreshBtn.disabled = true;
-    refreshBtn.textContent = "Loading...";
-
-
-    try {
-
-      /*
-       * IMPORTANT:
-       * This is the endpoint already implemented
-       * in your current server.js.
-       *
-       * We do NOT use API-Football directly here.
-       * The API key stays on the server.
-       */
-
-      const response = await fetch(
-        "/api/football/betting?days=1&limit=5",
-        {
-          cache: "no-store"
-        }
-      );
-
-
-      const data =
-        await response.json();
-
-
-      if (
-        !response.ok ||
-        !data.success
-      ) {
-
-        throw new Error(
-          data.message ||
-          "Could not load football betting data."
-        );
-
-      }
-
-
-      /*
-       * Your backend returns fixtures in `matches`.
-       */
-
-      const matches =
-        Array.isArray(data.matches)
-          ? data.matches
-          : [];
-
-
-      if (matches.length === 0) {
-
-        matchesContainer.innerHTML = `
-          <div class="loading">
-
-            <div style="font-size:35px;margin-bottom:10px;">
-              ⚽
-            </div>
-
-            <div>
-              No football matches with available
-              betting data are currently available.
-            </div>
-
-            <button
-              class="retry-btn"
-              type="button"
-              onclick="loadMatches()">
-              Try Again
-            </button>
-
-          </div>
-        `;
-
-        return;
-      }
-
-
-      renderMatches(matches);
-
-
-    } catch (error) {
-
-      console.error(
-        "Football loading error:",
-        error
-      );
-
-
-      matchesContainer.innerHTML = `
-        <div class="error-box">
-
-          <strong>
-            Could not load football betting.
-          </strong>
-
-          <div style="margin-top:8px;">
-            ${escapeHtml(error.message)}
-          </div>
-
-          <button
-            class="retry-btn"
-            type="button"
-            onclick="loadMatches()">
-            Try Again
-          </button>
-
-        </div>
-      `;
-
-    } finally {
-
-      refreshBtn.disabled = false;
-      refreshBtn.textContent = "↻ Refresh";
-
-    }
-
-  }
-
-
-  /* =========================================================
-     RENDER MATCHES
-     ========================================================= */
-
-  function renderMatches(matches) {
-
-    matchesContainer.innerHTML = "";
-
-
-    matches.forEach(
-      (match, matchIndex) => {
-
-        const article =
-          document.createElement("article");
-
-        article.className = "match";
-
-
-        const fixture =
-          match.fixture || {};
-
-
-        const leagueObject =
-          match.league || {};
-
-
-        const homeObject =
-          fixture.teams?.home ||
-          match.home ||
-          {};
-
-
-        const awayObject =
-          fixture.teams?.away ||
-          match.away ||
-          {};
-
-
-        const fixtureId =
-          fixture.id ||
-          match.fixture_id ||
-          match.id ||
-          match.external_id ||
-          matchIndex;
-
-
-        const league =
-          leagueObject.name ||
-          match.league_name ||
-          "Football";
-
-
-        const country =
-          leagueObject.country ||
-          match.country ||
-          "";
-
-
-        const home =
-          homeObject.name ||
-          match.home_team ||
-          match.home ||
-          "Home";
-
-
-        const away =
-          awayObject.name ||
-          match.away_team ||
-          match.away ||
-          "Away";
-
-
-        const date =
-          fixture.date ||
-          match.start_time ||
-          match.started_at ||
-          match.date ||
-          null;
-
-
-        const odds =
-          normalizeOdds(match);
-
-
-        const availableMarkets =
-          getAvailableMarkets(odds);
-
-
-        article.dataset.fixtureId =
-          String(fixtureId);
-
-
-        article.innerHTML = `
-
-          <div class="match-head">
-
-            <span class="league">
-
-              ⚽ ${escapeHtml(league)}
-
-              ${
-                country
-                  ? ` · ${escapeHtml(country)}`
-                  : ""
-              }
-
-            </span>
-
-            <span class="match-time">
-              ${escapeHtml(
-                formatMatchDate(date)
-              )}
-            </span>
-
-          </div>
-
-
-          <div class="match-body">
-
-            <div class="teams">
-
-              <div class="team">
-                ${escapeHtml(home)}
-              </div>
-
-              <div class="vs">
-                VS
-              </div>
-
-              <div class="team right">
-                ${escapeHtml(away)}
-              </div>
-
-            </div>
-
-
-            <div class="markets">
-
-              ${renderMarketTab(
-                "1x2",
-                "1X2",
-                availableMarkets
-              )}
-
-              ${renderMarketTab(
-                "double",
-                "Double Chance",
-                availableMarkets
-              )}
-
-              ${renderMarketTab(
-                "overunder",
-                "Over / Under",
-                availableMarkets
-              )}
-
-              ${renderMarketTab(
-                "btts",
-                "BTTS",
-                availableMarkets
-              )}
-
-              ${renderMarketTab(
-                "handicap",
-                "Handicap",
-                availableMarkets
-              )}
-
-            </div>
-
-
-            ${renderMarket(
-              fixtureId,
-              "1x2",
-              odds["1x2"],
-              getFirstAvailableMarket(
-                availableMarkets
-              ) === "1x2"
-            )}
-
-
-            ${renderMarket(
-              fixtureId,
-              "double",
-              odds.double,
-              getFirstAvailableMarket(
-                availableMarkets
-              ) === "double"
-            )}
-
-
-            ${renderMarket(
-              fixtureId,
-              "overunder",
-              odds.overunder,
-              getFirstAvailableMarket(
-                availableMarkets
-              ) === "overunder"
-            )}
-
-
-            ${renderMarket(
-              fixtureId,
-              "btts",
-              odds.btts,
-              getFirstAvailableMarket(
-                availableMarkets
-              ) === "btts"
-            )}
-
-
-            ${renderMarket(
-              fixtureId,
-              "handicap",
-              odds.handicap,
-              getFirstAvailableMarket(
-                availableMarkets
-              ) === "handicap"
-            )}
-
-          </div>
-
-        `;
-
-
-        matchesContainer.appendChild(
-          article
-        );
-
-      }
-    );
-
-
-    attachMatchEvents();
-
-  }
-
-
-  /* =========================================================
-     MARKET TAB
-     ========================================================= */
-
-  function renderMarketTab(
-    market,
-    label,
-    availableMarkets
-  ) {
-
-    const available =
-      availableMarkets.includes(
-        market
-      );
-
-
-    if (!available) {
-
-      return `
-        <button
-          class="market-tab hidden"
-          type="button"
-          data-market-tab="${market}">
-          ${label}
-        </button>
-      `;
-
-    }
-
-
-    const first =
-      getFirstAvailableMarket(
-        availableMarkets
-      );
-
-
-    return `
-      <button
-        class="market-tab ${
-          market === first
-            ? "active"
-            : ""
-        }"
-        type="button"
-        data-market-tab="${market}">
-        ${label}
-      </button>
-    `;
-
-  }
-
-
-  /* =========================================================
-     MARKET CONTENT
-     ========================================================= */
-
-  function renderMarket(
-    fixtureId,
-    market,
-    marketOdds,
-    visible
-  ) {
-
-    if (
-      !Array.isArray(marketOdds) ||
-      marketOdds.length === 0
-    ) {
-
-      return `
-        <div
-          class="market-content"
-          data-market="${escapeHtml(market)}"
-          style="display:${visible ? "grid" : "none"};">
-
-          <div class="no-odds">
-            No odds available for this market.
-          </div>
-
-        </div>
-      `;
-
-    }
-
-
-    return `
-      <div
-        class="market-content"
-        data-market="${escapeHtml(market)}"
-        style="display:${visible ? "grid" : "none"};">
-
-        ${marketOdds
-          .map(
-            item => {
-
-              const odd =
-                Number(item.odd);
-
-
-              if (
-                !Number.isFinite(odd) ||
-                odd <= 1
-              ) {
-
-                return "";
-
-              }
-
-
-              const name =
-                item.name ||
-                item.value ||
-                "";
-
-
-              const label =
-                item.label ||
-                name;
-
-
-              const line =
-                item.line ||
-                "";
-
-
-              return `
-                <button
-                  class="odd"
-                  type="button"
-
-                  data-fixture-id="${escapeHtml(
-                    String(fixtureId)
-                  )}"
-
-                  data-match="${escapeHtml(
-                    String(fixtureId)
-                  )}"
-
-                  data-market="${escapeHtml(
-                    market
-                  )}"
-
-                  data-name="${escapeHtml(
-                    name
-                  )}"
-
-                  data-label="${escapeHtml(
-                    label
-                  )}"
-
-                  data-odd="${odd}"
-
-                  data-line="${escapeHtml(
-                    String(line)
-                  )}">
-
-                  <span class="odd-name">
-                    ${escapeHtml(label)}
-                  </span>
-
-                  <span class="odd-value">
-                    ${odd.toFixed(2)}
-                  </span>
-
-                </button>
-              `;
-
-            }
-          )
-          .join("")}
-
-      </div>
-    `;
-
-  }
-
-
-  /* =========================================================
-     NORMALIZE API-FOOTBALL ODDS
-     ========================================================= */
-
-  function normalizeOdds(match) {
-
-    const result = {
-
-      "1x2": [],
-      "double": [],
-      "overunder": [],
-      "btts": [],
-      "handicap": []
-
-    };
-
-
-    /*
-     * Some backend shapes may already be normalized.
-     */
-
-    const direct =
-      match.markets ||
-      match.odds ||
-      null;
-
-
-    if (
-      direct &&
-      !Array.isArray(direct)
-    ) {
-
-      copyNormalizedMarket(
-        result,
-        "1x2",
-        direct["1x2"]
-      );
-
-      copyNormalizedMarket(
-        result,
-        "double",
-        direct.double
-      );
-
-      copyNormalizedMarket(
-        result,
-        "overunder",
-        direct.overunder
-      );
-
-      copyNormalizedMarket(
-        result,
-        "btts",
-        direct.btts
-      );
-
-      copyNormalizedMarket(
-        result,
-        "handicap",
-        direct.handicap
-      );
-
-    }
-
-
-    /*
-     * The current backend returns the raw
-     * API-Football odds response in `odds`.
-     */
-
-    const oddsResponse =
-      match.odds;
-
-
-    if (
-      Array.isArray(oddsResponse)
-    ) {
-
-      parseOddsRows(
-        oddsResponse,
-        result,
-        match
-      );
-
-    }
-
-
-    /*
-     * Sometimes the backend wraps the
-     * API response:
-     *
-     * {
-     *   response: [...]
-     * }
-     */
-
-    if (
-      oddsResponse &&
-      Array.isArray(
-        oddsResponse.response
-      )
-    ) {
-
-      parseOddsRows(
-        oddsResponse.response,
-        result,
-        match
-      );
-
-    }
-
-
-    /*
-     * Another possible shape:
-     *
-     * match.odds.response
-     */
-
-    if (
-      match.odds &&
-      Array.isArray(
-        match.odds.response
-      )
-    ) {
-
-      parseOddsRows(
-        match.odds.response,
-        result,
-        match
-      );
-
-    }
-
-
-    return result;
-
-  }
-
-
-  /* =========================================================
-     PARSE API-FOOTBALL BOOKMAKERS
-     ========================================================= */
-
-  function parseOddsRows(
-    rows,
-    result,
-    match
-  ) {
-
-    if (!Array.isArray(rows)) {
-      return;
-    }
-
-
-    /*
-     * API-Football:
-     *
-     * response[]
-     *   bookmakers[]
-     *      bets[]
-     *         values[]
-     */
-
-    rows.forEach(row => {
-
-      const bookmakers =
-        Array.isArray(
-          row.bookmakers
-        )
-          ? row.bookmakers
-          : [];
-
-
-      bookmakers.forEach(
-        bookmaker => {
-
-          const bets =
-            Array.isArray(
-              bookmaker.bets
-            )
-              ? bookmaker.bets
-              : [];
-
-
-          bets.forEach(bet => {
-
-            const marketName =
-              String(
-                bet.name ||
-                ""
-              ).toLowerCase();
-
-
-            const values =
-              Array.isArray(
-                bet.values
-              )
-                ? bet.values
-                : [];
-
-
-            if (
-              values.length === 0
-            ) {
-
-              return;
-
-            }
-
-
-            let target = null;
-
-
-            /*
-             * Match Winner / 1X2
-             */
-
-            if (
-              marketName.includes(
-                "match winner"
-              ) ||
-              marketName === "1x2"
-            ) {
-
-              target = "1x2";
-
-            }
-
-
-            /*
-             * Double Chance
-             */
-
-            else if (
-              marketName.includes(
-                "double chance"
-              )
-            ) {
-
-              target = "double";
-
-            }
-
-
-            /*
-             * Over / Under
-             */
-
-            else if (
-              marketName.includes(
-                "over/under"
-              ) ||
-              marketName.includes(
-                "goals over/under"
-              )
-            ) {
-
-              target = "overunder";
-
-            }
-
-
-            /*
-             * Both Teams Score
-             */
-
-            else if (
-              marketName.includes(
-                "both teams score"
-              ) ||
-              marketName.includes(
-                "btts"
-              )
-            ) {
-
-              target = "btts";
-
-            }
-
-
-            /*
-             * Handicap
-             */
-
-            else if (
-              marketName.includes(
-                "handicap"
-              )
-            ) {
-
-              target = "handicap";
-
-            }
-
-
-            if (!target) {
-              return;
-            }
-
-
-            /*
-             * Use the first available
-             * bookmaker market.
-             *
-             * This prevents duplicate
-             * selections from many bookmakers.
-             */
-
-            if (
-              result[target].length > 0
-            ) {
-
-              return;
-
-            }
-
-
-            result[target] =
-              values
-                .map(value => {
-
-                  const odd =
-                    Number(
-                      value.odd
-                    );
-
-
-                  if (
-                    !Number.isFinite(
-                      odd
-                    ) ||
-                    odd <= 1
-                  ) {
-
-                    return null;
-
-                  }
-
-
-                  const rawValue =
-                    String(
-                      value.value ||
-                      ""
-                    );
-
-
-                  let label =
-                    rawValue;
-
-
-                  if (
-                    target === "1x2"
-                  ) {
-
-                    label =
-                      convertWinnerLabel(
-                        rawValue,
-                        match
-                      );
-
-                  }
-
-
-                  let line = "";
-
-
-                  /*
-                   * Over 1.5 / Under 1.5
-                   *
-                   * Keep original value as line
-                   * because API-Football may use
-                   * different formats.
-                   */
-
-                  if (
-                    target === "overunder" ||
-                    target === "handicap"
-                  ) {
-
-                    line =
-                      rawValue;
-
-                  }
-
-
-                  return {
-
-                    name:
-                      rawValue,
-
-                    label,
-
-                    odd,
-
-                    line
-
-                  };
-
-                })
-                .filter(Boolean);
-
-          });
-
-        }
-      );
-
+  async function ensureUser() {
+    const res = await fetch("/api/user", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(TEST_USER)
     });
-
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || "Could not load user");
+    state.user = data.user;
+    updateWallet();
   }
 
+  function updateWallet() {
+    if (!state.user) return;
+    $("cashBalance").textContent = money(state.user.balance);
+    $("bonusBalance").textContent = money(state.user.bonus_balance);
+  }
 
-  /* =========================================================
-     COPY NORMALIZED MARKET
-     ========================================================= */
+  function marketSelections(match) {
+    const oneXTwo = Array.isArray(match.markets?.["1x2"]) ? match.markets["1x2"] : [];
+    return oneXTwo;
+  }
 
-  function copyNormalizedMarket(
-    result,
-    market,
-    source
-  ) {
+  function renderMatches() {
+    const root = $("matches");
+    root.innerHTML = "";
 
-    if (
-      !Array.isArray(source)
-    ) {
-
+    if (!state.matches.length) {
+      root.innerHTML = '<div class="empty">No football matches are available right now.</div>';
       return;
-
     }
 
+    for (const match of state.matches) {
+      const selections = marketSelections(match);
+      const card = document.createElement("section");
+      card.className = "match";
 
-    result[market] =
-      source
-        .map(item => {
+      const marketHtml = selections.length
+        ? selections.slice(0, 3).map((item, index) => {
+            const key = `${match.id}|${item.name}|${item.odd}|${item.bookmaker_key || ""}`;
+            const active = state.selected?.key === key ? " active" : "";
+            return `
+              <button class="odd${active}" data-key="${escapeHtml(key)}" data-match="${escapeHtml(match.id)}" data-name="${escapeHtml(item.name)}" data-odds="${Number(item.odd)}" data-bookmaker="${escapeHtml(item.bookmaker_key || "")}" data-bookmaker-title="${escapeHtml(item.bookmaker_title || "")}">
+                <span class="name">${escapeHtml(item.name)}</span>
+                <span class="price">${Number(item.odd).toFixed(2)}</span>
+              </button>`;
+          }).join("")
+        : '<div class="empty">No odds</div>';
 
-          const odd =
-            Number(
-              item.odd
-            );
+      card.innerHTML = `
+        <div class="matchhead">
+          <div><div class="league">${escapeHtml(match.league || match.sport_key || "Football")}</div></div>
+          <div class="time">${escapeHtml(formatDate(match.date))}</div>
+        </div>
+        <div class="teams">
+          <div class="team">${escapeHtml(match.home_team)}</div>
+          <div class="vs">VS</div>
+          <div class="team away">${escapeHtml(match.away_team)}</div>
+        </div>
+        <div class="markets">${marketHtml}</div>`;
 
-
-          if (
-            !Number.isFinite(odd) ||
-            odd <= 1
-          ) {
-
-            return null;
-
-          }
-
-
-          return {
-
-            name:
-              item.name ||
-              item.value ||
-              "",
-
-            label:
-              item.label ||
-              item.name ||
-              item.value ||
-              "",
-
-            odd,
-
-            line:
-              item.line ||
-              ""
-
-          };
-
-        })
-        .filter(Boolean);
-
-  }
-
-
-  /* =========================================================
-     AVAILABLE MARKETS
-     ========================================================= */
-
-  function getAvailableMarkets(
-    odds
-  ) {
-
-    const markets = [];
-
-
-    [
-      "1x2",
-      "double",
-      "overunder",
-      "btts",
-      "handicap"
-    ].forEach(
-      market => {
-
-        if (
-          Array.isArray(
-            odds[market]
-          ) &&
-          odds[market].length > 0
-        ) {
-
-          markets.push(
-            market
-          );
-
-        }
-
-      }
-    );
-
-
-    return markets;
-
-  }
-
-
-  function getFirstAvailableMarket(
-    markets
-  ) {
-
-    return markets.length
-      ? markets[0]
-      : null;
-
-  }
-
-
-  /* =========================================================
-     1X2 LABEL
-     ========================================================= */
-
-  function convertWinnerLabel(
-    value,
-    match
-  ) {
-
-    const text =
-      String(
-        value || ""
-      )
-        .toLowerCase()
-        .trim();
-
-
-    if (
-      text === "home" ||
-      text === "1"
-    ) {
-
-      return "Home";
-
+      root.appendChild(card);
     }
 
-
-    if (
-      text === "draw" ||
-      text === "x"
-    ) {
-
-      return "Draw";
-
-    }
-
-
-    if (
-      text === "away" ||
-      text === "2"
-    ) {
-
-      return "Away";
-
-    }
-
-
-    return String(
-      value || ""
-    );
-
-  }
-
-
-  /* =========================================================
-     MATCH EVENTS
-     ========================================================= */
-
-  function attachMatchEvents() {
-
-    document
-      .querySelectorAll(".market-tab")
-      .forEach(button => {
-
-        button.addEventListener(
-          "click",
-          () => {
-
-            const match =
-              button.closest(
-                ".match"
-              );
-
-
-            if (!match) {
-              return;
-            }
-
-
-            const market =
-              button.dataset.marketTab;
-
-
-            match
-              .querySelectorAll(
-                ".market-tab"
-              )
-              .forEach(tab => {
-
-                tab.classList.remove(
-                  "active"
-                );
-
-              });
-
-
-            button.classList.add(
-              "active"
-            );
-
-
-            match
-              .querySelectorAll(
-                ".market-content"
-              )
-              .forEach(content => {
-
-                content.style.display =
-                  content.dataset.market ===
-                  market
-                    ? "grid"
-                    : "none";
-
-              });
-
-          }
-        );
-
+    root.querySelectorAll(".odd").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const match = state.matches.find(m => String(m.id) === String(btn.dataset.match));
+        state.selected = {
+          key: btn.dataset.key,
+          matchId: Number(btn.dataset.match),
+          externalId: match?.external_id || "",
+          homeTeam: match?.home_team || "",
+          awayTeam: match?.away_team || "",
+          selection: btn.dataset.name,
+          odds: Number(btn.dataset.odds),
+          bookmakerKey: btn.dataset.bookmaker,
+          bookmakerTitle: btn.dataset.bookmakerTitle
+        };
+        clearMessage();
+        renderMatches();
+        renderSlip();
       });
-
-
-    document
-      .querySelectorAll(".odd")
-      .forEach(button => {
-
-        button.addEventListener(
-          "click",
-          () => {
-
-            selectOdd(button);
-
-          }
-        );
-
-      });
-
-  }
-
-
-  /* =========================================================
-     SELECT ODD
-     ========================================================= */
-
-  function selectOdd(button) {
-
-    const match =
-      button.dataset.fixtureId ||
-      button.dataset.match;
-
-
-    const market =
-      button.dataset.market;
-
-
-    const name =
-      button.dataset.name;
-
-
-    const label =
-      button.dataset.label ||
-      name;
-
-
-    const odd =
-      Number(
-        button.dataset.odd
-      );
-
-
-    const line =
-      button.dataset.line ||
-      "";
-
-
-    if (
-      !match ||
-      !market ||
-      !name ||
-      !Number.isFinite(odd) ||
-      odd <= 1
-    ) {
-
-      return;
-
-    }
-
-
-    /*
-     * One selection per fixture.
-     */
-
-    const existing =
-      selections.find(
-        item =>
-          item.match ===
-          String(match)
-      );
-
-
-    /*
-     * Same exact selection:
-     * remove it.
-     */
-
-    if (
-      existing &&
-      existing.button ===
-      button
-    ) {
-
-      existing.button
-        .classList
-        .remove(
-          "selected"
-        );
-
-
-      const index =
-        selections.indexOf(
-          existing
-        );
-
-
-      selections.splice(
-        index,
-        1
-      );
-
-
-      renderSlip();
-
-      return;
-
-    }
-
-
-    /*
-     * If another selection exists
-     * for the same match, replace it.
-     */
-
-    if (existing) {
-
-      existing.button
-        .classList
-        .remove(
-          "selected"
-        );
-
-
-      const index =
-        selections.indexOf(
-          existing
-        );
-
-
-      selections.splice(
-        index,
-        1
-      );
-
-    }
-
-
-    selections.push({
-
-      match:
-        String(match),
-
-      fixture_id:
-        String(match),
-
-      market,
-
-      name,
-
-      label,
-
-      odd,
-
-      line,
-
-      button
-
     });
-
-
-    button.classList.add(
-      "selected"
-    );
-
-
-    renderSlip();
-
   }
-
-
-  /* =========================================================
-     BET SLIP
-     ========================================================= */
 
   function renderSlip() {
-
-    selectionContainer.innerHTML =
-      "";
-
-
-    if (
-      selections.length === 0
-    ) {
-
-      selectionContainer.innerHTML = `
-        <div class="empty">
-          Your bet slip is empty.<br>
-          Select an odd to add it here.
-        </div>
-      `;
-
-    } else {
-
-      selections.forEach(
-        (item, index) => {
-
-          const div =
-            document.createElement(
-              "div"
-            );
-
-
-          div.className =
-            "selection";
-
-
-          div.innerHTML = `
-
-            <div class="selection-top">
-
-              <div class="selection-name">
-                ${escapeHtml(
-                  item.label ||
-                  item.name
-                )}
-              </div>
-
-              <button
-                class="remove"
-                type="button"
-                data-remove-index="${index}">
-                ×
-              </button>
-
-            </div>
-
-
-            <div class="selection-info">
-              Odds:
-              ${item.odd.toFixed(2)}
-            </div>
-
-
-            <div class="selection-match">
-
-              ${escapeHtml(
-                item.market
-                  .toUpperCase()
-              )}
-
-              · Fixture:
-              ${escapeHtml(
-                item.match
-              )}
-
-            </div>
-
-          `;
-
-
-          selectionContainer
-            .appendChild(
-              div
-            );
-
-        }
-      );
-
-
-      selectionContainer
-        .querySelectorAll(
-          "[data-remove-index]"
-        )
-        .forEach(button => {
-
-          button.addEventListener(
-            "click",
-            () => {
-
-              const index =
-                Number(
-                  button.dataset
-                    .removeIndex
-                );
-
-
-              removeSelection(
-                index
-              );
-
-            }
-          );
-
-        });
-
-    }
-
-
-    updateSummary();
-
-  }
-
-
-  /* =========================================================
-     REMOVE SELECTION
-     ========================================================= */
-
-  function removeSelection(
-    index
-  ) {
-
-    const item =
-      selections[index];
-
-
-    if (!item) {
+    const box = $("choiceBox");
+    const form = $("betForm");
+    if (!state.selected) {
+      box.className = "empty";
+      box.textContent = "Select an outcome from a match.";
+      form.style.display = "none";
       return;
     }
 
+    box.className = "choice";
+    box.innerHTML = `
+      <div class="row">
+        <strong>${escapeHtml(state.selected.homeTeam)} vs ${escapeHtml(state.selected.awayTeam)}</strong>
+        <button class="x" id="clearChoice" aria-label="Clear selection">×</button>
+      </div>
+      <div class="small">${escapeHtml(state.selected.selection)} · ${state.selected.odds.toFixed(2)}</div>`;
+    form.style.display = "block";
+    $("slipOdds").textContent = state.selected.odds.toFixed(2);
+    updatePotential();
 
-    if (item.button) {
+    $("clearChoice").addEventListener("click", () => {
+      state.selected = null;
+      clearMessage();
+      renderMatches();
+      renderSlip();
+    });
+  }
 
-      item.button
-        .classList
-        .remove(
-          "selected"
-        );
+  function updatePotential() {
+    if (!state.selected) return;
+    const stake = Number($("stake").value) || 0;
+    const potential = stake * state.selected.odds;
+    $("potentialWin").textContent = money(potential);
+  }
 
+  async function loadMatches() {
+    if (state.loading) return;
+    state.loading = true;
+    $("refreshBtn").disabled = true;
+    $("status").textContent = "Loading matches…";
+    $("status").className = "status";
+    try {
+      const res = await fetch("/api/football/betting?limit=10", {cache:"no-store"});
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Could not load matches");
+      state.matches = Array.isArray(data.matches) ? data.matches : [];
+      $("status").textContent = state.matches.length
+        ? `${state.matches.length} football matches loaded`
+        : "No football matches available";
+      $("status").className = state.matches.length ? "status ok" : "status bad";
+      renderMatches();
+      renderSlip();
+    } catch (error) {
+      state.matches = [];
+      renderMatches();
+      $("status").textContent = error.message || "Could not load matches";
+      $("status").className = "status bad";
+    } finally {
+      state.loading = false;
+      $("refreshBtn").disabled = false;
     }
-
-
-    selections.splice(
-      index,
-      1
-    );
-
-
-    renderSlip();
-
   }
 
+  async function placeBet() {
+    clearMessage();
+    if (!state.user) return showMessage("User is not ready.", "bad");
+    if (!state.selected) return showMessage("Select an outcome first.", "bad");
 
-  /* =========================================================
-     SUMMARY
-     ========================================================= */
+    const stake = Number($("stake").value);
+    if (!Number.isFinite(stake) || stake <= 0) return showMessage("Enter a valid stake.", "bad");
+    if (stake > 100000) return showMessage("Maximum stake is 100,000 ETB.", "bad");
 
-  function updateSummary() {
+    $("placeBtn").disabled = true;
+    $("placeBtn").textContent = "Placing…";
 
-    const total =
-      selections.reduce(
-        (value, item) =>
-          value *
-          Number(item.odd),
-        selections.length
-          ? 1
-          : 0
-      );
-
-
-    const amount =
-      Math.max(
-        0,
-        Number(
-          stake.value
-        ) || 0
-      );
-
-
-    const win =
-      total *
-      amount;
-
-
-    count.textContent =
-      selections.length;
-
-
-    selectionCount.textContent =
-      selections.length;
-
-
-    totalOdds.textContent =
-      total.toFixed(2);
-
-
-    stakeDisplay.textContent =
-      amount.toFixed(2) +
-      " ETB";
-
-
-    potentialWin.textContent =
-      win.toFixed(2) +
-      " ETB";
-
-
-    placeBet.disabled =
-      selections.length === 0 ||
-      amount <= 0;
-
-  }
-
-
-  /* =========================================================
-     STAKE
-     ========================================================= */
-
-  stake.addEventListener(
-    "input",
-    updateSummary
-  );
-
-
-  /* =========================================================
-     PLACE BET
-     ========================================================= */
-
-  placeBet.addEventListener(
-    "click",
-    async () => {
-
-      if (
-        selections.length === 0
-      ) {
-
-        return;
-
-      }
-
-
-      const amount =
-        Number(
-          stake.value
-        );
-
-
-      if (
-        !Number.isFinite(
-          amount
-        ) ||
-        amount <= 0
-      ) {
-
-        alert(
-          "Please enter a valid stake."
-        );
-
-        return;
-
-      }
-
-
-      /*
-       * IMPORTANT:
-       *
-       * The backend MUST validate:
-       *
-       * - fixture status
-       * - fixture ID
-       * - market
-       * - selection
-       * - current odds
-       * - stake
-       *
-       * before accepting a real-money bet.
-       */
-
+    try {
       const payload = {
-
-        telegram_id:
-          TEST_USER_ID,
-
-        game:
-          "football",
-
-        stake:
-          amount,
-
-        selections:
-          selections.map(
-            item => ({
-
-              fixture_id:
-                item.fixture_id,
-
-              match:
-                item.match,
-
-              market:
-                item.market,
-
-              name:
-                item.name,
-
-              label:
-                item.label,
-
-              value:
-                item.name,
-
-              line:
-                item.line ||
-                null,
-
-              odd:
-                item.odd
-
-            })
-          )
-
+        user_id: state.user.id,
+        match_id: state.selected.matchId,
+        external_id: state.selected.externalId,
+        game: "football",
+        selection: state.selected.selection,
+        stake,
+        odds: state.selected.odds
       };
 
+      const res = await fetch("/api/bets/place", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
 
-      placeBet.disabled =
-        true;
-
-
-      placeBet.textContent =
-        "Placing Bet...";
-
-
-      try {
-
-        const response =
-          await fetch(
-            "/api/bets/place",
-            {
-
-              method:
-                "POST",
-
-              headers: {
-
-                "Content-Type":
-                  "application/json"
-
-              },
-
-              body:
-                JSON.stringify(
-                  payload
-                )
-
-            }
-          );
-
-
-        const data =
-          await response.json();
-
-
-        if (
-          !response.ok ||
-          !data.success
-        ) {
-
-          throw new Error(
-            data.message ||
-            "Bet failed."
-          );
-
+      if (!res.ok || !data.success) {
+        if (res.status === 409) {
+          await loadMatches();
+          showMessage(data.message || "The odds changed. Please select the outcome again.", "bad");
+        } else {
+          showMessage(data.message || "Could not place bet.", "bad");
         }
-
-
-        const bet =
-          data.bet ||
-          {};
-
-
-        alert(
-
-          "Bet placed successfully!\n\n" +
-
-          "Bet ID: " +
-          (
-            bet.id ||
-            "-"
-          ) +
-
-          "\nStake: " +
-          amount.toFixed(2) +
-          " ETB" +
-
-          "\nPotential Win: " +
-          Number(
-            bet.potential_win ||
-            0
-          ).toFixed(2) +
-          " ETB" +
-
-          "\nNew Balance: " +
-          Number(
-            data.balance ||
-            0
-          ).toFixed(2) +
-          " ETB"
-
-        );
-
-
-        balanceDisplay.textContent =
-          Number(
-            data.balance ||
-            0
-          ).toFixed(2) +
-          " ETB";
-
-
-        selections.forEach(
-          item => {
-
-            if (
-              item.button
-            ) {
-
-              item.button
-                .classList
-                .remove(
-                  "selected"
-                );
-
-            }
-
-          }
-        );
-
-
-        selections.length = 0;
-
-
-        renderSlip();
-
-
-      } catch (error) {
-
-        console.error(
-          "Place bet error:",
-          error
-        );
-
-
-        alert(
-          error.message ||
-          "Server connection failed."
-        );
-
-      } finally {
-
-        updateSummary();
-
-        placeBet.textContent =
-          "Place Bet";
-
+        return;
       }
 
-    }
-  );
-
-
-  /* =========================================================
-     DATE
-     ========================================================= */
-
-  function formatMatchDate(
-    value
-  ) {
-
-    if (!value) {
-
-      return "Time unavailable";
-
-    }
-
-
-    const date =
-      new Date(value);
-
-
-    if (
-      Number.isNaN(
-        date.getTime()
-      )
-    ) {
-
-      return String(
-        value
-      );
-
-    }
-
-
-    return date.toLocaleString(
-      undefined,
-      {
-        month:
-          "short",
-
-        day:
-          "numeric",
-
-        hour:
-          "2-digit",
-
-        minute:
-          "2-digit"
+      if (data.wallet) {
+        state.user.balance = Number(data.wallet.balance) || 0;
+        state.user.bonus_balance = Number(data.wallet.bonus_balance) || 0;
+        updateWallet();
       }
-    );
 
+      showMessage("Bet placed successfully.", "ok");
+      state.selected = null;
+      $("stake").value = "10";
+      renderMatches();
+      renderSlip();
+      showMessage("Bet placed successfully.", "ok");
+    } catch (error) {
+      showMessage(error.message || "Network error.", "bad");
+    } finally {
+      $("placeBtn").disabled = false;
+      $("placeBtn").textContent = "Place Bet";
+    }
   }
 
+  $("stake").addEventListener("input", updatePotential);
+  $("refreshBtn").addEventListener("click", loadMatches);
+  $("placeBtn").addEventListener("click", placeBet);
 
-  /* =========================================================
-     HTML ESCAPE
-     ========================================================= */
-
-  function escapeHtml(
-    value
-  ) {
-
-    return String(
-      value ?? ""
-    )
-      .replaceAll(
-        "&",
-        "&amp;"
-      )
-      .replaceAll(
-        "<",
-        "&lt;"
-      )
-      .replaceAll(
-        ">",
-        "&gt;"
-      )
-      .replaceAll(
-        '"',
-        "&quot;"
-      )
-      .replaceAll(
-        "'",
-        "&#039;"
-      );
-
-  }
-
-
-  /* =========================================================
-     REFRESH
-     ========================================================= */
-
-  refreshBtn.addEventListener(
-    "click",
-    async () => {
-
+  (async function init(){
+    try {
+      await ensureUser();
       await loadMatches();
-
+    } catch (error) {
+      $("status").textContent = error.message || "Could not initialize betting page";
+      $("status").className = "status bad";
     }
-  );
-
-
-  /* =========================================================
-     INITIALIZE
-     ========================================================= */
-
-  async function init() {
-
-    renderSlip();
-
-    await loadUser();
-
-    await loadMatches();
-
-  }
-
-
-  init();
-
+  })();
 </script>
-
 </body>
 </html>
