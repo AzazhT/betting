@@ -56,6 +56,34 @@
     .slip-tab{flex:1;border:1px solid var(--border);background:var(--panel2);color:var(--muted);border-radius:10px;padding:8px;font-size:12px;font-weight:800}
     .slip-tab.active{color:#a5f2c7;border-color:var(--green);background:#123d2d}
     @media(max-width:900px){.layout{grid-template-columns:1fr}.slip{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:50;border-radius:18px 18px 0 0;padding:10px 12px;box-shadow:0 -12px 35px rgba(0,0,0,.35);max-height:46vh;overflow:auto}.matches{padding-bottom:190px}.slip h2{font-size:16px;margin-bottom:9px}.choice{margin-bottom:9px;padding:10px}.place{padding:12px}.wrap{padding-bottom:20px}.slip:before{content:"";display:block;width:42px;height:4px;background:#38506d;border-radius:99px;margin:0 auto 8px}}
+    .sportsbook-list{display:grid;gap:8px}
+    .match{padding:0;overflow:hidden;border-radius:12px}
+    .matchhead{padding:9px 11px;margin:0;background:#0b1828;border-bottom:1px solid var(--border);align-items:center}
+    .league{font-size:10px}.time{font-size:11px}
+    .teams{grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr);gap:6px;margin:0;padding:10px 11px 7px}
+    .team{font-size:13px;line-height:1.25}.vs{font-size:9px;text-align:center}
+    .market-group{margin:0;padding:0 8px 8px}
+    .market-title{margin:0;padding:5px 3px;font-size:10px}
+    .markets{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+    .odd{border-radius:7px;padding:7px 8px;min-height:45px}
+    .odd .name{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+    .odd .price{font-size:13px}
+    .match-actions{display:flex;gap:5px;padding:0 8px 8px}
+    .more-btn{flex:1;border:1px solid var(--border);background:#101f31;color:#b9c8d8;border-radius:7px;padding:7px;font-size:11px;font-weight:800;cursor:pointer}
+    .more-btn.active{background:#123d2d;color:#a5f2c7;border-color:var(--green)}
+    .match .market-group:not(.main-market){display:none}
+    .match.expanded .market-group:not(.main-market){display:block}
+    .mobile-slip-bar{display:none}
+    @media(max-width:900px){
+      .layout{display:block}
+      .slip{position:fixed;left:0;right:0;bottom:48px;top:auto;z-index:60;border-radius:16px 16px 0 0;padding:10px 12px;box-shadow:0 -12px 35px rgba(0,0,0,.4);max-height:58vh;overflow:auto;display:none}
+      .slip.open{display:block}
+      .matches{padding-bottom:68px}
+      .mobile-slip-bar{position:fixed;display:flex;left:10px;right:10px;bottom:10px;z-index:70;background:#102235;border:1px solid var(--border);border-radius:13px;padding:7px;box-shadow:0 8px 28px rgba(0,0,0,.35)}
+      .mobile-slip-toggle{width:100%;border:0;border-radius:9px;background:var(--green);color:#04130c;padding:10px;font-weight:900;cursor:pointer}
+      .mobile-slip-toggle span{margin-left:5px}
+    }
+    @media(min-width:901px){.slip{display:block!important}}
     .empty{padding:30px;text-align:center;background:var(--panel);border:1px dashed var(--border);border-radius:18px;color:var(--muted)}
     .slip{position:sticky;top:14px;background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:16px;box-shadow:var(--shadow)}
     .slip h2{font-size:18px;margin:0 0 14px}.choice{background:var(--panel2);border-radius:14px;padding:13px;margin-bottom:14px;border:1px solid #29415f}.choice .row{display:flex;justify-content:space-between;gap:12px}.choice .small{font-size:12px;color:var(--muted);margin-top:5px}.slip-leg{border-top:1px solid #29415f;padding:10px 0;display:grid;gap:4px}.remove-leg{border:0;background:transparent;color:var(--danger);padding:0;text-align:left;cursor:pointer;font-size:11px}.x{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:18px}
@@ -101,7 +129,8 @@
 
     <div class="layout">
       <main>
-        <div id="matches" class="matches"></div>
+        <div id="matches" class="matches sportsbook-list"></div>
+        <div class="mobile-slip-bar"><button id="mobileSlipToggle" class="mobile-slip-toggle" type="button">Bet Slip <span id="mobileSlipCount">0</span></button></div>
       </main>
 
       <aside class="slip">
@@ -289,7 +318,8 @@
                 </button>`;
             }).join("");
             const filter = ["1x2"].includes(group.key) ? "1x2" : ["overunder","handicap"].includes(group.key) ? "goals" : "special";
-            return `<div class="market-group" data-filter="${filter}"><div class="market-title">${escapeHtml(group.label)}</div><div class="markets">${buttons}</div></div>`;
+            const mainClass = group.key === "1x2" ? " main-market" : "";
+            return `<div class="market-group${mainClass}" data-filter="${filter}"><div class="market-title">${escapeHtml(group.label)}</div><div class="markets">${buttons}</div></div>`;
           }).join("")
         : '<div class="empty">No odds</div>';
 
@@ -303,7 +333,8 @@
           <div class="vs">VS</div>
           <div class="team away">${escapeHtml(match.away_team)}</div>
         </div>
-        ${groupsHtml}`;
+        ${groupsHtml}
+        ${groups.length > 1 ? '<div class="match-actions"><button class="more-btn" type="button">More markets</button></div>' : ''}`;
 
       root.appendChild(card);
     }
@@ -349,6 +380,15 @@
     });
   }
 
+    root.querySelectorAll(".more-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const card = btn.closest(".match");
+        const expanded = card.classList.toggle("expanded");
+        btn.classList.toggle("active", expanded);
+        btn.textContent = expanded ? "Less markets" : "More markets";
+      });
+    });
+
   function applyMarketFilter() {
     document.querySelectorAll(".market-group").forEach(group => {
       const wanted = state.filter;
@@ -362,9 +402,15 @@
     return state.selected.reduce((total, item) => total * Number(item.odds || 0), 1);
   }
 
+  function updateMobileSlipBar() {
+    const count = $("mobileSlipCount");
+    if (count) count.textContent = state.selected.length;
+  }
+
   function renderSlip() {
     const box = $("choiceBox");
     const form = $("betForm");
+    updateMobileSlipBar();
 
     if (!state.selected.length) {
       box.className = "empty";
@@ -543,6 +589,9 @@
   $("stake").addEventListener("input", updatePotential);
   $("refreshBtn").addEventListener("click", loadMatches);
   $("placeBtn").addEventListener("click", placeBet);
+  $("mobileSlipToggle")?.addEventListener("click", () => {
+    $("betForm").closest(".slip").classList.toggle("open");
+  });
 
   (async function init(){
     try {
