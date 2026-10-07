@@ -740,20 +740,28 @@ async function fetchBsdEventOdds(eventId) {
 function normalizeBsdDetailedOdds(data, event) {
   const markets = normalizeBsdOdds(event || {});
 
-  // BSD may expose consensus 1X2 prices directly on the odds response.
-  // Use them as a fallback even when the detailed markets array is empty.
-  const directHome = Number(data?.odds_home);
-  const directDraw = Number(data?.odds_draw);
-  const directAway = Number(data?.odds_away);
-  if (Number.isFinite(directHome) && directHome > 1) {
-    pushMarket(markets, "1x2", event?.home_team?.name || event?.home_team || "Home", event?.home_team?.name || event?.home_team || "Home", directHome);
+  // BSD odds endpoint returns a compact direct odds object.
+  const direct = data?.odds || {};
+  const home = event?.home_team?.name || event?.home_team || "Home";
+  const away = event?.away_team?.name || event?.away_team || "Away";
+  const pushDirect = (market, name, odd, extra = {}) => {
+    const n = Number(odd);
+    if (!Number.isFinite(n) || n <= 1) return;
+    pushMarket(markets, market, name, name, n, extra);
+  };
+
+  pushDirect("1x2", home, direct.home_win);
+  pushDirect("1x2", "Draw", direct.draw);
+  pushDirect("1x2", away, direct.away_win);
+
+  for (const line of [1.5, 2.5, 3.5]) {
+    const key = String(line).replace(".", "_");
+    pushDirect("overunder", `Over ${line}`, direct[`over_${key}_goals`], { line });
+    pushDirect("overunder", `Under ${line}`, direct[`under_${key}_goals`], { line });
   }
-  if (Number.isFinite(directDraw) && directDraw > 1) {
-    pushMarket(markets, "1x2", "Draw", "Draw", directDraw);
-  }
-  if (Number.isFinite(directAway) && directAway > 1) {
-    pushMarket(markets, "1x2", event?.away_team?.name || event?.away_team || "Away", event?.away_team?.name || event?.away_team || "Away", directAway);
-  }
+
+  pushDirect("btts", "Yes", direct.btts_yes);
+  pushDirect("btts", "No", direct.btts_no);
 
   const list = Array.isArray(data?.markets) ? data.markets : [];
 
@@ -797,27 +805,6 @@ app.get("/api/football/diagnostic", async (req, res) => {
     res.json({ success: result.ok, http_status: result.http_status, provider: "BSD", count: result.events.length, errors: result.ok ? {} : result.data, events: result.events });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-app.get("/api/football/odds-test/:eventId", async (req, res) => {
-  try {
-    const eventId = String(req.params.eventId || "").trim();
-    if (!eventId) {
-      return res.status(400).json({ success: false, message: "eventId is required." });
-    }
-
-    const result = await fetchBsdEventOdds(eventId);
-    res.status(result.ok ? 200 : result.http_status || 502).json({
-      success: result.ok,
-      provider: "BSD",
-      event_id: eventId,
-      http_status: result.http_status,
-      data: result.data
-    });
-  } catch (error) {
-    console.error("BSD odds diagnostic error:", error.message);
-    res.status(500).json({ success: false, provider: "BSD", message: error.message });
   }
 });
 
@@ -1308,10 +1295,7 @@ app.get(
           console.error("BSD odds detail error:", error.message);
         }
 
-        const detailedHasMarkets = detailed && Object.values(detailed).some(
-          items => Array.isArray(items) && items.length
-        );
-        const finalMarkets = detailedHasMarkets ? detailed : markets;
+        const finalMarkets = detailed || markets;
         if (!Object.values(finalMarkets).some(items => Array.isArray(items) && items.length)) continue;
 
         const home = event.home_team?.name || event.home_team || "Home";
