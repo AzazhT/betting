@@ -2381,6 +2381,17 @@ app.get(
 |--------------------------------------------------------------------------
 */
 
+/*
+|--------------------------------------------------------------------------
+| PLACE BET
+|--------------------------------------------------------------------------
+|
+| Football bets use server-side validated
+| match and odds data.
+|
+|--------------------------------------------------------------------------
+*/
+
 app.post(
   "/api/bets/place",
   async (req, res) => {
@@ -2424,12 +2435,8 @@ app.post(
       ) {
 
         return res.status(400).json({
-
           success: false,
-
-          message:
-            "Invalid user."
-
+          message: "Invalid user."
         });
 
       }
@@ -2440,12 +2447,8 @@ app.post(
       ) {
 
         return res.status(400).json({
-
           success: false,
-
-          message:
-            "Invalid match."
-
+          message: "Invalid match."
         });
 
       }
@@ -2456,12 +2459,8 @@ app.post(
       ) {
 
         return res.status(400).json({
-
           success: false,
-
-          message:
-            "Invalid stake."
-
+          message: "Invalid stake."
         });
 
       }
@@ -2472,12 +2471,8 @@ app.post(
       ) {
 
         return res.status(400).json({
-
           success: false,
-
-          message:
-            "Invalid odds."
-
+          message: "Invalid odds."
         });
 
       }
@@ -2488,17 +2483,581 @@ app.post(
       ) {
 
         return res.status(400).json({
+          success: false,
+          message: "Selection is required."
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Maximum stake
+      |--------------------------------------------------------------------------
+      */
+
+      if (
+        stakeAmount > 100000
+      ) {
+
+        return res.status(400).json({
+          success: false,
+          message: "Maximum stake exceeded."
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Only football betting uses this endpoint
+      |--------------------------------------------------------------------------
+      */
+
+      if (
+        game &&
+        String(game).toLowerCase() !== "football"
+      ) {
+
+        return res.status(400).json({
+          success: false,
+          message: "Invalid betting game."
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Begin transaction
+      |--------------------------------------------------------------------------
+      */
+
+      await client.query(
+        "BEGIN"
+      );
+
+      /*
+      |--------------------------------------------------------------------------
+      | Lock user
+      |--------------------------------------------------------------------------
+      */
+
+      const userResult =
+        await client.query(
+          `
+          SELECT
+            id,
+            balance,
+            bonus_balance,
+            is_active
+          FROM users
+          WHERE id = $1
+          FOR UPDATE
+          `,
+          [userId]
+        );
+
+      if (
+        userResult.rows.length === 0
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(404).json({
+          success: false,
+          message: "User not found."
+        });
+
+      }
+
+      const user =
+        userResult.rows[0];
+
+      if (
+        !user.is_active
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(403).json({
+          success: false,
+          message: "User account is inactive."
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Find match
+      |--------------------------------------------------------------------------
+      */
+
+      const matchResult =
+        await client.query(
+          `
+          SELECT *
+          FROM matches
+          WHERE id = $1
+          LIMIT 1
+          `,
+          [matchId]
+        );
+
+      if (
+        matchResult.rows.length === 0
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(404).json({
+          success: false,
+          message: "Match not found."
+        });
+
+      }
+
+      const match =
+        matchResult.rows[0];
+
+      /*
+      |--------------------------------------------------------------------------
+      | External ID validation
+      |--------------------------------------------------------------------------
+      */
+
+      if (
+        external_id &&
+        String(external_id) !==
+        String(match.external_id)
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(400).json({
+          success: false,
+          message: "Match information is invalid."
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Server-side odds validation
+      |--------------------------------------------------------------------------
+      |
+      | IMPORTANT:
+      | The odds sent by the browser are NOT trusted.
+      |
+      | validateFootballBet() loads the current
+      | odds from API-Football and verifies:
+      |
+      | 1. Match is still scheduled
+      | 2. Match has a valid external ID
+      | 3. Selection still exists
+      | 4. Odds have not changed
+      |
+      |--------------------------------------------------------------------------
+      */
+
+      const validation =
+        await validateFootballBet(
+          match,
+          selection,
+          selectedOdds
+        );
+
+      if (
+        !validation.valid
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(409).json({
 
           success: false,
 
           message:
-            "Selection is required."
+            validation.message ||
+            "Bet validation failed.",
+
+          odds_changed:
+            validation.odds_changed ||
+            false,
+
+          old_odds:
+            validation.old_odds ??
+            null,
+
+          current_odds:
+            validation.current_odds ??
+            null
 
         });
 
       }
 
       /*
+      |--------------------------------------------------------------------------
+      | IMPORTANT:
+      | Use SERVER odds, not client odds.
+      |--------------------------------------------------------------------------
+      */
+
+      const serverOdds =
+        Number(
+          validation.odds
+        );
+
+      if (
+        !Number.isFinite(serverOdds) ||
+        serverOdds <= 1
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(409).json({
+          success: false,
+          message: "Server odds are invalid."
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Wallet
+      |--------------------------------------------------------------------------
+      */
+
+      const cashBalance =
+        Number(
+          user.balance
+        ) || 0;
+
+      const bonusBalance =
+        Number(
+          user.bonus_balance
+        ) || 0;
+
+      /*
+      |--------------------------------------------------------------------------
+      | Cash first, then bonus
+      |--------------------------------------------------------------------------
+      */
+
+      const cashUsed =
+        Math.min(
+          cashBalance,
+          stakeAmount
+        );
+
+      const bonusUsed =
+        stakeAmount -
+        cashUsed;
+
+      if (
+        bonusUsed >
+        bonusBalance
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(400).json({
+          success: false,
+          message: "Insufficient balance."
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Potential win
+      |--------------------------------------------------------------------------
+      |
+      | Calculated from SERVER odds.
+      |--------------------------------------------------------------------------
+      */
+
+      const potentialWin =
+        Number(
+          (
+            stakeAmount *
+            serverOdds
+          ).toFixed(2)
+        );
+
+      /*
+      |--------------------------------------------------------------------------
+      | Deduct wallet
+      |--------------------------------------------------------------------------
+      */
+
+      const updatedUser =
+        await client.query(
+          `
+          UPDATE users
+          SET
+            balance =
+              balance - $1,
+            bonus_balance =
+              bonus_balance - $2,
+            updated_at =
+              NOW()
+          WHERE id = $3
+          RETURNING
+            id,
+            balance,
+            bonus_balance
+          `,
+          [
+            cashUsed,
+            bonusUsed,
+            userId
+          ]
+        );
+
+      /*
+      |--------------------------------------------------------------------------
+      | Create bet
+      |--------------------------------------------------------------------------
+      */
+
+      const betResult =
+        await client.query(
+          `
+          INSERT INTO bets
+          (
+            user_id,
+            game,
+            stake,
+            potential_win,
+            actual_win,
+            status,
+            result
+          )
+          VALUES
+          (
+            $1,
+            $2,
+            $3,
+            $4,
+            $5,
+            $6,
+            $7
+          )
+          RETURNING *
+          `,
+          [
+            userId,
+
+            game ||
+              "football",
+
+            stakeAmount,
+
+            potentialWin,
+
+            0,
+
+            "pending",
+
+            JSON.stringify({
+
+              match_id:
+                match.id,
+
+              external_id:
+                match.external_id,
+
+              home_team:
+                match.home_team,
+
+              away_team:
+                match.away_team,
+
+              market:
+                validation.market,
+
+              selection:
+                validation.selection,
+
+              odds:
+                serverOdds,
+
+              client_odds:
+                selectedOdds,
+
+              cash_used:
+                Number(
+                  cashUsed.toFixed(2)
+                ),
+
+              bonus_used:
+                Number(
+                  bonusUsed.toFixed(2)
+                )
+
+            })
+          ]
+        );
+
+      const bet =
+        betResult.rows[0];
+
+      /*
+      |--------------------------------------------------------------------------
+      | Transaction record
+      |--------------------------------------------------------------------------
+      */
+
+      await client.query(
+        `
+        INSERT INTO transactions
+        (
+          user_id,
+          type,
+          amount,
+          status,
+          reference,
+          description
+        )
+        VALUES
+        (
+          $1,
+          $2,
+          $3,
+          $4,
+          $5,
+          $6
+        )
+        `,
+        [
+          userId,
+
+          "bet",
+
+          stakeAmount,
+
+          "completed",
+
+          `BET-${bet.id}`,
+
+          `Football bet: ${validation.selection}`
+        ]
+      );
+
+      /*
+      |--------------------------------------------------------------------------
+      | Commit
+      |--------------------------------------------------------------------------
+      */
+
+      await client.query(
+        "COMMIT"
+      );
+
+      /*
+      |--------------------------------------------------------------------------
+      | Socket balance update
+      |--------------------------------------------------------------------------
+      */
+
+      io.emit(
+        "balance:update",
+        {
+          user_id:
+            userId,
+
+          balance:
+            Number(
+              updatedUser.rows[0]
+                .balance
+            ),
+
+          bonus_balance:
+            Number(
+              updatedUser.rows[0]
+                .bonus_balance
+            )
+        }
+      );
+
+      /*
+      |--------------------------------------------------------------------------
+      | Response
+      |--------------------------------------------------------------------------
+      */
+
+      res.json({
+
+        success: true,
+
+        message:
+          "Bet placed successfully.",
+
+        bet,
+
+        wallet: {
+
+          balance:
+            Number(
+              updatedUser.rows[0]
+                .balance
+            ),
+
+          bonus_balance:
+            Number(
+              updatedUser.rows[0]
+                .bonus_balance
+            )
+
+        }
+
+      });
+
+    } catch (error) {
+
+      try {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+      } catch (_) {}
+
+      console.error(
+        "Place bet error:",
+        error.message
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Could not place bet."
+
+      });
+
+    } finally {
+
+      client.release();
+
+    }
+
+  }
+);
       |--------------------------------------------------------------------------
       | Maximum safe values
       |--------------------------------------------------------------------------
