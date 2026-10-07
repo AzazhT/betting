@@ -1246,104 +1246,254 @@ function mergeBookmakerMarkets(baseEvent, additionalEvent) {
 
 /*
 |--------------------------------------------------------------------------
-| FOOTBALL BETTING DATA — THE ODDS API
+| FOOTBALL BETTING DATA — BSD
 |--------------------------------------------------------------------------
 */
 
-app.get(
-  "/api/football/betting",
-  async (req, res) => {
-    try {
-      let limit = Number(req.query.limit);
-      if (!Number.isFinite(limit)) limit = 30;
-      limit = Math.max(1, Math.min(30, Math.floor(limit)));
+function getEventTeamName(value, fallback) {
+  if (value && typeof value === "object") {
+    return String(value.name || value.team_name || fallback);
+  }
+  return String(value || fallback);
+}
 
-      let days = Number(req.query.days);
-      if (!Number.isFinite(days)) days = 3;
-      days = Math.max(1, Math.min(7, Math.floor(days)));
+function getEventScore(event, side) {
+  const direct = side === "home" ? event?.home_score : event?.away_score;
+  if (direct !== undefined && direct !== null && direct !== "") return Number(direct);
 
-      const dateFrom = getAddisDate(0);
-      const dateTo = getAddisDate(days);
-      const result = await fetchBsdEvents({ dateFrom, dateTo, limit: Math.min(200, Math.max(50, limit * 4)) });
+  const scores = event?.scores || event?.score || {};
+  const candidates = side === "home"
+    ? [scores.home, scores.home_score, scores["1"], scores["homeTeam"]]
+    : [scores.away, scores.away_score, scores["2"], scores["awayTeam"]];
 
-      if (!result.ok) {
-        return res.status(result.http_status || 502).json({
-          success: false,
-          provider: "BSD",
-          message: result.data?.detail || result.data?.error || "BSD football API request failed.",
-          http_status: result.http_status,
-          matches: []
-        });
-      }
-
-      const matches = [];
-      for (const event of result.events) {
-        if (matches.length >= limit) break;
-        if (!event?.id || !event?.event_date) continue;
-        const status = String(event.status || "").toLowerCase();
-        if (!["upcoming", "notstarted", "scheduled", "postponed"].includes(status)) continue;
-
-        const startedAt = new Date(event.event_date);
-        if (Number.isNaN(startedAt.getTime()) || startedAt.getTime() <= Date.now()) continue;
-
-        const markets = normalizeBsdOdds(event);
-        let detailed = null;
-        try {
-          const oddsResult = await fetchBsdEventOdds(event.id);
-          if (oddsResult.ok) detailed = normalizeBsdDetailedOdds(oddsResult.data, event);
-        } catch (error) {
-          console.error("BSD odds detail error:", error.message);
-        }
-
-        const finalMarkets = detailed || markets;
-        if (!Object.values(finalMarkets).some(items => Array.isArray(items) && items.length)) continue;
-
-        const home = event.home_team?.name || event.home_team || "Home";
-        const away = event.away_team?.name || event.away_team || "Away";
-        const league = event.league?.name || event.competition?.name || "Football";
-
-        let savedMatch = null;
-        try {
-          savedMatch = await saveOddsEventToDatabase({
-            id: String(event.id),
-            sport_key: "bsd",
-            home_team: home,
-            away_team: away,
-            commence_time: event.event_date
-          });
-        } catch (dbError) {
-          console.error("Match database save error:", dbError.message);
-        }
-
-        matches.push({
-          id: savedMatch?.id || null,
-          external_id: buildBsdExternalId(event.id),
-          event_id: String(event.id),
-          sport_key: "bsd",
-          home_team: home,
-          away_team: away,
-          league,
-          country: event.league?.country || "",
-          date: event.event_date,
-          timezone: FOOTBALL_TIMEZONE,
-          status: "NS",
-          markets: finalMarkets,
-          raw_event: event
-        });
-      }
-
-      res.json({
-        success: true,
-        provider: "BSD",
-        count: matches.length,
-        matches
-      });
-    } catch (error) {
-      console.error("BSD football betting error:", error.message);
-      res.status(500).json({ success: false, provider: "BSD", message: error.message, matches: [] });
+  for (const value of candidates) {
+    if (value !== undefined && value !== null && value !== "" && Number.isFinite(Number(value))) {
+      return Number(value);
     }
   }
-);
+  return null;
+}
+
+function getEventStatus(event) {
+  return String(
+    event?.status ||
+    event?.event_status ||
+    event?.state ||
+    event?.match_status ||
+    ""
+  ).trim().toLowerCase();
+}
+
+function classifyBsdEvent(event) {
+  const status = getEventStatus(event);
+  const date = new Date(event?.event_date || event?.commence_time || event?.start_time || "");
+  const now = Date.now();
+
+  const finishedStatuses = new Set([
+    "finished", "completed", "final", "ended", "cancelled", "canceled",
+    "abandoned", "closed", "postponed", "suspended", "void"
+  ]);
+  if (finishedStatuses.has(status)) return { display: false, live: false, date, section: "finished" };
+
+  const live = ["live", "inplay", "in_play", "playing", "started", "1h", "2h", "ht", "extra_time", "penalties"].includes(status)
+    || event?.live === true
+    || event?.is_live === true
+    || event?.in_play === true
+    || event?.inplay === true;
+
+  if (live) return { display: true, live: true, date, section: "live" };
+  if (Number.isNaN(date.getTime())) return { display: false, live: false, date, section: "unknown" };
+
+  // A future event is scheduled. If BSD does not provide a status and the
+  // event time has passed, do NOT guess that it is live; keep it visible as
+  // scheduled so a provider status problem cannot create false live bets.
+  if (date.getTime() > now) {
+    const today = getAddisDate(0);
+    const tomorrow = getAddisDate(1);
+    const eventDate = new Intl.DateTimeFormat("en-CA", {
+      timeZone: FOOTBALL_TIMEZONE,
+      year: "numeric", month: "2-digit", day: "2-digit"
+    }).format(date);
+    const section = eventDate === today ? "today" : eventDate === tomorrow ? "tomorrow" : "upcoming";
+    return { display: true, live: false, date, section };
+  }
+
+  // Past events without a live/finished status are hidden rather than
+  // incorrectly offered for betting.
+  return { display: false, live: false, date, section: "past" };
+}
+
+function hasAnyBsdMarket(markets) {
+  return Object.values(markets || {}).some(items => Array.isArray(items) && items.length > 0);
+}
+
+async function buildBsdBettingMatch(event) {
+  if (!event?.id) return null;
+
+  const classification = classifyBsdEvent(event);
+  if (!classification.display) return null;
+
+  const home = getEventTeamName(event.home_team, "Home");
+  const away = getEventTeamName(event.away_team, "Away");
+  const league = String(
+    event?.league?.name ||
+    event?.competition?.name ||
+    event?.tournament?.name ||
+    event?.league_name ||
+    "Football"
+  );
+  const country = String(
+    event?.league?.country ||
+    event?.competition?.country ||
+    event?.country ||
+    ""
+  );
+
+  let markets = normalizeBsdOdds(event);
+
+  try {
+    const oddsResult = await fetchBsdEventOdds(event.id);
+    if (oddsResult.ok) {
+      const detailed = normalizeBsdDetailedOdds(oddsResult.data, event);
+      if (hasAnyBsdMarket(detailed)) markets = detailed;
+    }
+  } catch (error) {
+    console.error("BSD odds detail error:", error.message);
+  }
+
+  if (!hasAnyBsdMarket(markets)) return null;
+
+  let savedMatch = null;
+  try {
+    savedMatch = await saveOddsEventToDatabase({
+      id: String(event.id),
+      sport_key: "bsd",
+      home_team: home,
+      away_team: away,
+      commence_time: event.event_date
+    });
+  } catch (dbError) {
+    // Betting feed must still work when PostgreSQL is temporarily unavailable.
+    console.error("Match database save error:", dbError.message);
+  }
+
+  return {
+    id: savedMatch?.id || null,
+    external_id: buildBsdExternalId(event.id),
+    event_id: String(event.id),
+    sport_key: "bsd",
+    provider: "BSD",
+    home_team: home,
+    away_team: away,
+    league,
+    country,
+    date: event.event_date,
+    timezone: FOOTBALL_TIMEZONE,
+    status: classification.live ? "LIVE" : "NS",
+    live: classification.live,
+    section: classification.section,
+    home_score: getEventScore(event, "home"),
+    away_score: getEventScore(event, "away"),
+    markets,
+    raw_event: event
+  };
+}
+
+async function getBsdBettingFeed(limit, days) {
+  const dateFrom = getAddisDate(0);
+  const dateTo = getAddisDate(days);
+  const result = await fetchBsdEvents({
+    dateFrom,
+    dateTo,
+    limit: Math.min(200, Math.max(50, limit * 5))
+  });
+
+  if (!result.ok) {
+    return {
+      ok: false,
+      status: result.http_status || 502,
+      message: result.data?.detail || result.data?.error || "BSD football API request failed.",
+      matches: []
+    };
+  }
+
+  const matches = [];
+  // Keep provider/API load reasonable: only process enough events to fill the requested page.
+  for (const event of result.events) {
+    if (matches.length >= limit) break;
+    try {
+      const match = await buildBsdBettingMatch(event);
+      if (match) matches.push(match);
+    } catch (error) {
+      console.error("BSD event normalization error:", error.message);
+    }
+  }
+
+  matches.sort((a, b) => {
+    if (a.live !== b.live) return a.live ? -1 : 1;
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  });
+
+  const leagues = [...new Map(
+    matches.map(match => [
+      `${match.country}|${match.league}`,
+      { name: match.league, country: match.country }
+    ])
+  ).values()];
+
+  return { ok: true, status: 200, matches, leagues };
+}
+
+app.get("/api/football/betting", async (req, res) => {
+  try {
+    let limit = Number(req.query.limit);
+    if (!Number.isFinite(limit)) limit = 30;
+    limit = Math.max(1, Math.min(100, Math.floor(limit)));
+
+    let days = Number(req.query.days);
+    if (!Number.isFinite(days)) days = 3;
+    days = Math.max(1, Math.min(7, Math.floor(days)));
+
+    const feed = await getBsdBettingFeed(limit, days);
+    if (!feed.ok) {
+      return res.status(feed.status).json({
+        success: false,
+        provider: "BSD",
+        message: feed.message,
+        matches: [],
+        leagues: []
+      });
+    }
+
+    res.json({
+      success: true,
+      provider: "BSD",
+      count: feed.matches.length,
+      matches: feed.matches,
+      leagues: feed.leagues
+    });
+  } catch (error) {
+    console.error("BSD football betting error:", error);
+    res.status(500).json({
+      success: false,
+      provider: "BSD",
+      message: error.message || "Could not load BSD football matches.",
+      matches: [],
+      leagues: []
+    });
+  }
+});
+
+// Compatibility aliases for older betting.html versions.
+app.get("/api/football/betting/", (req, res) => {
+  req.url = "/api/football/betting" + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
+  return res.redirect(307, req.url);
+});
+
+app.get("/api/football/matches", async (req, res) => {
+  req.url = "/api/football/betting" + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
+  return res.redirect(307, req.url);
+});
 
 /*
 |--------------------------------------------------------------------------
