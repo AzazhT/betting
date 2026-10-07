@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ethiopia Betting — Football</title>
+  <script src="https://telegram.org/js/telegram-web-app.js?63"></script>
   <style>
     :root{
       --bg:#07111f;
@@ -40,6 +41,9 @@
     .teams{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-bottom:14px}.team{font-size:16px;font-weight:800}.team.away{text-align:right}.vs{font-size:11px;color:var(--muted);font-weight:800}
     .market-group{margin-top:12px}.market-title{font-size:12px;color:var(--yellow);font-weight:800;margin:0 0 7px}.markets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
     .odd{background:var(--panel2);border:1px solid #29415f;color:var(--text);border-radius:11px;padding:10px;cursor:pointer;text-align:left;transition:.15s}.odd:hover{border-color:#3a6a8e;transform:translateY(-1px)}.odd.active{border-color:var(--green);background:#113526}.odd .name{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}.odd .price{font-size:16px;font-weight:800}
+
+    .filters{display:flex;gap:8px;overflow:auto;padding:2px 0 14px;margin-bottom:2px;scrollbar-width:none}.filters::-webkit-scrollbar{display:none}.filter{border:1px solid var(--border);background:#0b1929;color:var(--muted);border-radius:999px;padding:9px 14px;white-space:nowrap;cursor:pointer;font-weight:700;font-size:12px}.filter.active{background:#123d2d;color:#a5f2c7;border-color:var(--green)}
+    .market-group.hidden{display:none}
     .empty{padding:30px;text-align:center;background:var(--panel);border:1px dashed var(--border);border-radius:18px;color:var(--muted)}
     .slip{position:sticky;top:14px;background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:16px;box-shadow:var(--shadow)}
     .slip h2{font-size:18px;margin:0 0 14px}.choice{background:var(--panel2);border-radius:14px;padding:13px;margin-bottom:14px;border:1px solid #29415f}.choice .row{display:flex;justify-content:space-between;gap:12px}.choice .small{font-size:12px;color:var(--muted);margin-top:5px}.slip-leg{border-top:1px solid #29415f;padding:10px 0;display:grid;gap:4px}.remove-leg{border:0;background:transparent;color:var(--danger);padding:0;text-align:left;cursor:pointer;font-size:11px}.x{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:18px}
@@ -49,7 +53,7 @@
     .message{margin-top:10px;border-radius:11px;padding:10px;font-size:12px;display:none}.message.show{display:block}.message.ok{background:#103a29;color:#9bf2c2}.message.bad{background:#3a1820;color:#ffb4bc}
     .note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:12px}
     @media(max-width:900px){.layout{grid-template-columns:1fr}.slip{position:static}.markets{grid-template-columns:repeat(3,1fr)}}
-    @media(max-width:580px){.wrap{padding:12px}.hero h1{font-size:23px}.teams{grid-template-columns:1fr}.team,.team.away{text-align:left}.vs{display:none}.markets{grid-template-columns:repeat(3,1fr)}.odd{padding:9px}.odd .price{font-size:15px}.wallet{width:100%;justify-content:space-between}}
+    @media(max-width:580px){.wrap{padding:12px}.hero h1{font-size:23px}.teams{grid-template-columns:1fr}.team,.team.away{text-align:left}.vs{display:none}.markets{grid-template-columns:repeat(2,1fr)}.odd{padding:9px}.odd .price{font-size:15px}.wallet{width:100%;justify-content:space-between}}
   </style>
 </head>
 <body>
@@ -73,6 +77,13 @@
     <div class="bar">
       <div id="status" class="status">Loading matches…</div>
       <button id="refreshBtn" class="btn refresh">Refresh</button>
+    </div>
+
+    <div class="filters" aria-label="Betting filters">
+      <button class="filter active" data-filter="all" type="button">All</button>
+      <button class="filter" data-filter="1x2" type="button">1X2</button>
+      <button class="filter" data-filter="goals" type="button">Goals</button>
+      <button class="filter" data-filter="special" type="button">More Markets</button>
     </div>
 
     <div class="layout">
@@ -99,17 +110,21 @@
   </div>
 
 <script>
-  const TEST_USER = {
-    telegram_id: "TEST_USER_001",
-    name: "Test Player",
-    username: "test_player"
-  };
+  const telegramWebApp =
+    window.Telegram?.WebApp || null;
+
+  if (telegramWebApp) {
+    telegramWebApp.ready();
+    telegramWebApp.expand();
+  }
 
   const state = {
     user: null,
     matches: [],
     selected: [],
-    loading: false
+    loading: false,
+    telegramInitData:
+      telegramWebApp?.initData || ""
   };
 
   const $ = (id) => document.getElementById(id);
@@ -154,15 +169,48 @@
   }
 
   async function ensureUser() {
-    const res = await fetch("/api/user", {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify(TEST_USER)
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.message || "Could not load user");
+    if (!state.telegramInitData) {
+      throw new Error(
+        "Please open the betting app from Telegram."
+      );
+    }
+
+    const res = await fetch(
+      "/api/telegram/auth",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+        body: JSON.stringify({
+          initData:
+            state.telegramInitData
+        })
+      }
+    );
+
+    const data =
+      await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(
+        data.message ||
+          "Telegram authentication failed."
+      );
+    }
+
     state.user = data.user;
     updateWallet();
+  }
+
+  function telegramHeaders() {
+    return {
+      "Content-Type":
+        "application/json",
+      "X-Telegram-Init-Data":
+        state.telegramInitData
+    };
   }
 
   function updateWallet() {
@@ -227,7 +275,8 @@
                   <span class="price">${Number(item.odd).toFixed(2)}</span>
                 </button>`;
             }).join("");
-            return `<div class="market-group"><div class="market-title">${escapeHtml(group.label)}</div><div class="markets">${buttons}</div></div>`;
+            const filter = ["1x2"].includes(group.key) ? "1x2" : ["overunder","handicap"].includes(group.key) ? "goals" : "special";
+            return `<div class="market-group" data-filter="${filter}"><div class="market-title">${escapeHtml(group.label)}</div><div class="markets">${buttons}</div></div>`;
           }).join("")
         : '<div class="empty">No odds</div>';
 
@@ -245,6 +294,8 @@
 
       root.appendChild(card);
     }
+
+    applyMarketFilter();
 
     root.querySelectorAll(".odd").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -271,8 +322,8 @@
           state.selected.splice(existingIndex, 1);
         } else if (sameMatchIndex >= 0) {
           state.selected[sameMatchIndex] = selection;
-        } else if (state.selected.length >= 10) {
-          showMessage("Maximum 10 selections per accumulator.", "bad");
+        } else if (state.selected.length >= 20) {
+          showMessage("Maximum 20 selections per accumulator.", "bad");
           return;
         } else {
           state.selected.push(selection);
@@ -283,6 +334,14 @@
         renderSlip();
       });
     });
+  }
+
+  function applyMarketFilter() {
+    document.querySelectorAll(".market-group").forEach(group => {
+      const wanted = state.filter;
+      group.classList.toggle("hidden", wanted !== "all" && group.dataset.filter !== wanted);
+    });
+    document.querySelectorAll(".filter").forEach(btn => btn.classList.toggle("active", btn.dataset.filter === state.filter));
   }
 
   function getCombinedOdds() {
@@ -351,7 +410,7 @@
     $("status").textContent = "Loading matches…";
     $("status").className = "status";
     try {
-      const res = await fetch("/api/football/betting?limit=10", {cache:"no-store"});
+      const res = await fetch("/api/football/betting?limit=30&days=3", {cache:"no-store"});
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Could not load matches");
       state.matches = Array.isArray(data.matches) ? data.matches : [];
@@ -402,7 +461,7 @@
 
         res = await fetch("/api/bets/place-accumulator", {
           method: "POST",
-          headers: {"Content-Type":"application/json"},
+          headers: telegramHeaders(),
           body: JSON.stringify(payload)
         });
       } else {
@@ -419,7 +478,7 @@
 
         res = await fetch("/api/bets/place", {
           method: "POST",
-          headers: {"Content-Type":"application/json"},
+          headers: telegramHeaders(),
           body: JSON.stringify(payload)
         });
       }
@@ -460,6 +519,13 @@
       $("placeBtn").textContent = "Place Bet";
     }
   }
+
+  document.querySelectorAll(".filter").forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.filter = btn.dataset.filter;
+      applyMarketFilter();
+    });
+  });
 
   $("stake").addEventListener("input", updatePotential);
   $("refreshBtn").addEventListener("click", loadMatches);
