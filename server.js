@@ -29,7 +29,7 @@ const ODDS_API_REGION =
 
 const ODDS_API_MARKETS =
   process.env.ODDS_API_MARKETS ||
-  "h2h";
+  "h2h,spreads,totals";
 
 const ODDS_API_BOOKMAKER_KEY =
   process.env.ODDS_API_BOOKMAKER_KEY ||
@@ -53,6 +53,10 @@ const ODDS_API_SPORTS =
 
 const ODDS_CACHE_TTL_MS =
   60 * 1000;
+
+const ODDS_API_ADDITIONAL_MARKETS =
+  process.env.ODDS_API_ADDITIONAL_MARKETS ||
+  "btts,double_chance,draw_no_bet";
 
 const oddsCache =
   new Map();
@@ -1138,7 +1142,10 @@ function normalizeOdds(
     double: [],
     overunder: [],
     btts: [],
-    handicap: []
+    handicap: [],
+    draw_no_bet: [],
+    correct_score: [],
+    halftime_fulltime: []
   };
 
   const events =
@@ -1302,6 +1309,33 @@ function normalizeOdds(
         ) {
 
           markets.double.push(
+            base
+          );
+
+        } else if (
+          marketKey ===
+          "draw_no_bet"
+        ) {
+
+          markets.draw_no_bet.push(
+            base
+          );
+
+        } else if (
+          marketKey ===
+          "correct_score"
+        ) {
+
+          markets.correct_score.push(
+            base
+          );
+
+        } else if (
+          marketKey ===
+          "halftime_fulltime"
+        ) {
+
+          markets.halftime_fulltime.push(
             base
           );
 
@@ -1503,6 +1537,47 @@ async function saveOddsEventToDatabase(
 
 /*
 |--------------------------------------------------------------------------
+| ADDITIONAL SOCCER MARKETS
+|--------------------------------------------------------------------------
+*/
+async function fetchAdditionalSoccerMarkets(sportKey, eventId) {
+  const markets = ODDS_API_ADDITIONAL_MARKETS;
+  if (!markets) return { ok: true, data: null, headers: {} };
+  const cacheKey = `event|${sportKey}|${eventId}|${markets}`;
+  const cached = oddsCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < ODDS_CACHE_TTL_MS) return cached.value;
+  const result = await oddsApiRequest(
+    `/sports/${encodeURIComponent(sportKey)}/events/${encodeURIComponent(eventId)}/odds/`,
+    { regions: ODDS_API_REGION, markets, oddsFormat: "decimal", dateFormat: "iso" }
+  );
+  oddsCache.set(cacheKey, { timestamp: Date.now(), value: result });
+  return result;
+}
+
+function mergeBookmakerMarkets(baseEvent, additionalEvent) {
+  const merged = { ...(baseEvent || {}) };
+  const map = new Map();
+  for (const b of Array.isArray(baseEvent?.bookmakers) ? baseEvent.bookmakers : []) {
+    if (b?.key) map.set(String(b.key), { ...b, markets: Array.isArray(b.markets) ? [...b.markets] : [] });
+  }
+  for (const b of Array.isArray(additionalEvent?.bookmakers) ? additionalEvent.bookmakers : []) {
+    if (!b?.key) continue;
+    const k = String(b.key);
+    if (!map.has(k)) { map.set(k, { ...b, markets: Array.isArray(b.markets) ? [...b.markets] : [] }); continue; }
+    const cur = map.get(k);
+    const idx = new Map((cur.markets || []).map((m,i)=>[String(m?.key || ""),i]));
+    for (const m of Array.isArray(b.markets) ? b.markets : []) {
+      const mk = String(m?.key || "");
+      if (idx.has(mk)) cur.markets[idx.get(mk)] = m; else { idx.set(mk, cur.markets.length); cur.markets.push(m); }
+    }
+    map.set(k, cur);
+  }
+  merged.bookmakers = Array.from(map.values());
+  return merged;
+}
+
+/*
+|--------------------------------------------------------------------------
 | FOOTBALL BETTING DATA — THE ODDS API
 |--------------------------------------------------------------------------
 */
@@ -1542,6 +1617,7 @@ app.get(
         odds_requests: 0,
         events_found: 0,
         matches_with_odds: 0,
+        additional_market_requests: 0,
         errors: [],
         quota: []
       };
@@ -1592,9 +1668,21 @@ app.get(
           of oddsData.events
         ) {
 
+          let enrichedEvent = event;
+
+          try {
+            const additional = await fetchAdditionalSoccerMarkets(event.sport_key, event.id);
+            diagnostics.additional_market_requests++;
+            if (additional.ok && additional.data) {
+              enrichedEvent = mergeBookmakerMarkets(event, additional.data);
+            }
+          } catch (additionalError) {
+            diagnostics.errors.push({ type: "additional_markets", sport: event.sport_key, event_id: event.id, error: additionalError.message });
+          }
+
           const markets =
             normalizeOdds(
-              event
+              enrichedEvent
             );
 
           const hasOdds =
@@ -1697,7 +1785,7 @@ app.get(
             markets,
 
             raw_event:
-              event
+              enrichedEvent
 
           });
 
@@ -1750,6 +1838,511 @@ app.get(
           error.message
       });
 
+    }
+  }
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| PLACE ACCUMULATOR BET
+|--------------------------------------------------------------------------
+*/
+
+app.post(
+  "/api/bets/place-accumulator",
+  async (req, res) => {
+
+    const client =
+      await pool.connect();
+
+    try {
+
+      const userId =
+        Number(
+          req.body.user_id
+        );
+
+      const stakeAmount =
+        Number(
+          req.body.stake
+        );
+
+      const requestedBets =
+        Array.isArray(
+          req.body.bets
+        )
+          ? req.body.bets
+          : [];
+
+      if (
+        !Number.isInteger(userId) ||
+        userId <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid user."
+        });
+      }
+
+      if (
+        !Number.isFinite(stakeAmount) ||
+        stakeAmount <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid stake."
+        });
+      }
+
+      if (
+        stakeAmount > 100000
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Maximum stake exceeded."
+        });
+      }
+
+      if (
+        requestedBets.length < 2
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Select at least two outcomes for an accumulator."
+        });
+      }
+
+      if (
+        requestedBets.length > 10
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "A maximum of 10 selections is allowed."
+        });
+      }
+
+      const uniqueMatchIds =
+        new Set();
+
+      for (
+        const item of requestedBets
+      ) {
+        const matchId =
+          Number(item?.match_id);
+
+        if (
+          !Number.isInteger(matchId) ||
+          matchId <= 0
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "One or more match IDs are invalid."
+          });
+        }
+
+        if (
+          uniqueMatchIds.has(matchId)
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Only one selection per match is allowed."
+          });
+        }
+
+        uniqueMatchIds.add(matchId);
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Validate every selection against current server-side odds.
+      |--------------------------------------------------------------------------
+      */
+
+      const validatedLegs = [];
+
+      for (
+        const item of requestedBets
+      ) {
+
+        const matchId =
+          Number(item.match_id);
+
+        const clientOdds =
+          Number(item.odds);
+
+        const selection =
+          String(
+            item.selection ||
+            ""
+          ).trim();
+
+        if (
+          !Number.isFinite(clientOdds) ||
+          clientOdds <= 1 ||
+          !selection
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "One or more betting selections are invalid."
+          });
+        }
+
+        const matchResult =
+          await pool.query(
+            `
+            SELECT *
+            FROM matches
+            WHERE id = $1
+            LIMIT 1
+            `,
+            [matchId]
+          );
+
+        if (
+          matchResult.rows.length === 0
+        ) {
+          return res.status(404).json({
+            success: false,
+            message:
+              `Match ${matchId} was not found.`
+          });
+        }
+
+        const match =
+          matchResult.rows[0];
+
+        if (
+          item.external_id &&
+          String(item.external_id) !==
+          String(match.external_id)
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Match information is invalid."
+          });
+        }
+
+        const validation =
+          await validateFootballBet(
+            match,
+            selection,
+            clientOdds
+          );
+
+        if (
+          !validation.valid
+        ) {
+          return res.status(409).json({
+            success: false,
+            message:
+              validation.message,
+            odds_changed:
+              validation.odds_changed || false,
+            old_odds:
+              validation.old_odds ?? null,
+            current_odds:
+              validation.current_odds ?? null,
+            failed_match_id:
+              match.id
+          });
+        }
+
+        validatedLegs.push({
+          match_id:
+            match.id,
+          external_id:
+            match.external_id,
+          home_team:
+            match.home_team,
+          away_team:
+            match.away_team,
+          selection:
+            validation.selection,
+          odds:
+            Number(validation.odds),
+          market:
+            validation.market,
+          bookmaker_key:
+            validation.bookmaker_key,
+          bookmaker_title:
+            validation.bookmaker_title
+        });
+      }
+
+      const combinedOdds =
+        validatedLegs.reduce(
+          (total, leg) =>
+            total * Number(leg.odds),
+          1
+        );
+
+      const potentialWin =
+        Number(
+          (
+            stakeAmount *
+            combinedOdds
+          ).toFixed(2)
+        );
+
+      await client.query(
+        "BEGIN"
+      );
+
+      const userResult =
+        await client.query(
+          `
+          SELECT
+            id,
+            balance,
+            bonus_balance,
+            is_active
+          FROM users
+          WHERE id = $1
+          FOR UPDATE
+          `,
+          [userId]
+        );
+
+      if (
+        userResult.rows.length === 0
+      ) {
+        await client.query(
+          "ROLLBACK"
+        );
+        return res.status(404).json({
+          success: false,
+          message:
+            "User not found."
+        });
+      }
+
+      const user =
+        userResult.rows[0];
+
+      if (!user.is_active) {
+        await client.query(
+          "ROLLBACK"
+        );
+        return res.status(403).json({
+          success: false,
+          message:
+            "User account is inactive."
+        });
+      }
+
+      const cashBalance =
+        Number(user.balance) || 0;
+
+      const bonusBalance =
+        Number(user.bonus_balance) || 0;
+
+      const cashUsed =
+        Math.min(
+          cashBalance,
+          stakeAmount
+        );
+
+      const bonusUsed =
+        stakeAmount -
+        cashUsed;
+
+      if (
+        bonusUsed > bonusBalance
+      ) {
+        await client.query(
+          "ROLLBACK"
+        );
+        return res.status(400).json({
+          success: false,
+          message:
+            "Insufficient balance."
+        });
+      }
+
+      const updatedUser =
+        await client.query(
+          `
+          UPDATE users
+          SET
+            balance = balance - $1,
+            bonus_balance = bonus_balance - $2,
+            updated_at = NOW()
+          WHERE id = $3
+          RETURNING
+            id,
+            balance,
+            bonus_balance
+          `,
+          [
+            cashUsed,
+            bonusUsed,
+            userId
+          ]
+        );
+
+      const betResult =
+        await client.query(
+          `
+          INSERT INTO bets
+          (
+            user_id,
+            game,
+            stake,
+            potential_win,
+            actual_win,
+            status,
+            result
+          )
+          VALUES
+          (
+            $1,
+            $2,
+            $3,
+            $4,
+            $5,
+            $6,
+            $7
+          )
+          RETURNING *
+          `,
+          [
+            userId,
+            "football_accumulator",
+            stakeAmount,
+            potentialWin,
+            0,
+            "pending",
+            JSON.stringify({
+              type:
+                "accumulator",
+              combined_odds:
+                Number(
+                  combinedOdds.toFixed(4)
+                ),
+              legs:
+                validatedLegs,
+              cash_used:
+                Number(
+                  cashUsed.toFixed(2)
+                ),
+              bonus_used:
+                Number(
+                  bonusUsed.toFixed(2)
+                )
+            })
+          ]
+        );
+
+      const bet =
+        betResult.rows[0];
+
+      await client.query(
+        `
+        INSERT INTO transactions
+        (
+          user_id,
+          type,
+          amount,
+          status,
+          reference,
+          description
+        )
+        VALUES
+        (
+          $1,
+          $2,
+          $3,
+          $4,
+          $5,
+          $6
+        )
+        `,
+        [
+          userId,
+          "bet",
+          stakeAmount,
+          "completed",
+          `BET-${bet.id}`,
+          `Football accumulator (${validatedLegs.length} selections)`
+        ]
+      );
+
+      await client.query(
+        "COMMIT"
+      );
+
+      io.emit(
+        "balance:update",
+        {
+          user_id:
+            userId,
+          balance:
+            Number(
+              updatedUser.rows[0].balance
+            ),
+          bonus_balance:
+            Number(
+              updatedUser.rows[0].bonus_balance
+            )
+        }
+      );
+
+      res.json({
+        success: true,
+        message:
+          "Accumulator bet placed successfully.",
+        bet,
+        selections:
+          validatedLegs.length,
+        combined_odds:
+          Number(
+            combinedOdds.toFixed(4)
+          ),
+        potential_win:
+          potentialWin,
+        wallet: {
+          balance:
+            Number(
+              updatedUser.rows[0].balance
+            ),
+          bonus_balance:
+            Number(
+              updatedUser.rows[0].bonus_balance
+            )
+        }
+      });
+
+    } catch (error) {
+
+      try {
+        await client.query(
+          "ROLLBACK"
+        );
+      } catch (_) {}
+
+      console.error(
+        "Accumulator bet error:",
+        error.message
+      );
+
+      res.status(500).json({
+        success: false,
+        message:
+          "Could not place accumulator bet."
+      });
+
+    } finally {
+      client.release();
     }
   }
 );
@@ -4799,60 +5392,25 @@ function findSelectionInMarkets(
 async function getServerOddsForMatch(
   externalId
 ) {
+  const parsed = parseOddsExternalId(externalId);
+  if (!parsed) return null;
 
-  const parsed =
-    parseOddsExternalId(
-      externalId
-    );
+  const featuredResult = await oddsApiRequest(
+    `/sports/${encodeURIComponent(parsed.sportKey)}/events/${encodeURIComponent(parsed.eventId)}/odds/`,
+    { regions: ODDS_API_REGION, markets: ODDS_API_MARKETS, oddsFormat: "decimal", dateFormat: "iso" }
+  );
+  if (!featuredResult.ok || !featuredResult.data?.id) return null;
 
-  if (!parsed) {
-    return null;
-  }
-
-  const result =
-    await oddsApiRequest(
-      `/sports/${encodeURIComponent(
-        parsed.sportKey
-      )}/events/${encodeURIComponent(
-        parsed.eventId
-      )}/odds/`,
-      {
-        regions:
-          ODDS_API_REGION,
-        markets:
-          ODDS_API_MARKETS,
-        oddsFormat:
-          "decimal",
-        dateFormat:
-          "iso"
-      }
-    );
-
-  if (
-    !result.ok
-  ) {
-    return null;
-  }
-
-  const event =
-    result.data;
-
-  if (
-    !event ||
-    !event.id
-  ) {
-    return null;
-  }
+  let event = featuredResult.data;
+  try {
+    const additional = await fetchAdditionalSoccerMarkets(parsed.sportKey, parsed.eventId);
+    if (additional.ok && additional.data) event = mergeBookmakerMarkets(event, additional.data);
+  } catch (_) {}
 
   return {
-    markets:
-      normalizeOdds(
-        event
-      ),
-    raw:
-      event,
-    headers:
-      result.headers
+    markets: normalizeOdds(event),
+    raw: event,
+    headers: featuredResult.headers
   };
 }
 
