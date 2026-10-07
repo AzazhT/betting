@@ -10,18 +10,40 @@ require("dotenv").config();
 
 /*
 |--------------------------------------------------------------------------
-| API-Football
+| BSD — Bzzoiro Sports Data
 |--------------------------------------------------------------------------
 */
 
-const API_FOOTBALL_KEY =
-  process.env.API_FOOTBALL_KEY;
+const BSD_API_KEY =
+  process.env.BSD_API_KEY;
 
-const API_FOOTBALL_URL =
-  "https://v3.football.api-sports.io";
+const BSD_API_URL =
+  "https://sports.bzzoiro.com/api/v2";
 
 const FOOTBALL_TIMEZONE =
   "Africa/Addis_Ababa";
+
+const BSD_CACHE_TTL_MS =
+  60 * 1000;
+
+const bsdCache =
+  new Map();
+
+
+const ODDS_API_KEY = BSD_API_KEY;
+const ODDS_API_REGION = "";
+const ODDS_API_MARKETS = "";
+const ODDS_API_SPORTS = ["bsd"];
+const ODDS_API_BOOKMAKER_KEY = "";
+const ODDS_API_ADDITIONAL_MARKETS = "";
+
+async function oddsApiRequest(pathname, params = {}) {
+  return bsdRequest(pathname, params);
+}
+
+function fetchAdditionalSoccerMarkets() {
+  return Promise.resolve({ ok: true, data: null, headers: {} });
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -582,610 +604,191 @@ app.get(
 
 /*
 |--------------------------------------------------------------------------
-| API-FOOTBALL REQUEST HELPER
+| BSD REQUEST HELPER
 |--------------------------------------------------------------------------
 */
 
-async function footballRequest(
-  endpoint,
-  params = {}
-) {
-
-  if (
-    !API_FOOTBALL_KEY
-  ) {
-
-    throw new Error(
-      "API_FOOTBALL_KEY is not configured."
-    );
-
+async function bsdRequest(pathname, params = {}) {
+  if (!BSD_API_KEY) {
+    throw new Error("BSD_API_KEY is not configured.");
   }
 
-  const query =
-    new URLSearchParams();
-
-  for (
-    const [key, value]
-    of Object.entries(params)
-  ) {
-
-    if (
-      value !== undefined &&
-      value !== null &&
-      value !== ""
-    ) {
-
-      query.append(
-        key,
-        String(value)
-      );
-
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, String(value));
     }
-
   }
 
-  const url =
-    `${API_FOOTBALL_URL}/${endpoint}?${query.toString()}`;
+  const url = `${BSD_API_URL}${pathname}${query.toString() ? `?${query}` : ""}`;
 
-  console.log(
-    "⚽ API-Football request:",
-    endpoint,
-    params
-  );
+  console.log("⚽ BSD request:", pathname, params);
 
-  const response =
-    await fetch(
-      url,
-      {
-        headers: {
-          "x-apisports-key":
-            API_FOOTBALL_KEY,
-          Accept:
-            "application/json"
-        }
-      }
-    );
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Token ${BSD_API_KEY}`,
+      Accept: "application/json"
+    }
+  });
 
-  let data;
-
+  let data = null;
   try {
-
-    data =
-      await response.json();
-
-  } catch (error) {
-
-    data = {
-      errors: {
-        parse:
-          "API returned invalid JSON."
-      }
-    };
-
+    data = await response.json();
+  } catch (_) {
+    data = { error: "BSD returned invalid JSON." };
   }
 
   return {
-    http_status:
-      response.status,
-
-    ok:
-      response.ok,
-
+    http_status: response.status,
+    ok: response.ok,
     data
   };
 }
 
-/*
-|--------------------------------------------------------------------------
-| DATE HELPERS
-|--------------------------------------------------------------------------
-*/
-
-function getAddisDate(
-  offsetDays = 0
-) {
-
-  const now =
-    new Date();
-
-  const parts =
-    new Intl.DateTimeFormat(
-      "en-CA",
-      {
-        timeZone:
-          FOOTBALL_TIMEZONE,
-        year:
-          "numeric",
-        month:
-          "2-digit",
-        day:
-          "2-digit"
-      }
-    ).formatToParts(now);
-
-  const year =
-    Number(
-      parts.find(
-        p =>
-          p.type === "year"
-      ).value
-    );
-
-  const month =
-    Number(
-      parts.find(
-        p =>
-          p.type === "month"
-      ).value
-    );
-
-  const day =
-    Number(
-      parts.find(
-        p =>
-          p.type === "day"
-      ).value
-    );
-
-  const date =
-    new Date(
-      Date.UTC(
-        year,
-        month - 1,
-        day + offsetDays
-      )
-    );
-
-  return date
-    .toISOString()
-    .slice(0, 10);
+function addDays(dateString, days) {
+  const d = new Date(`${dateString}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
-function getDateFromString(
-  dateString,
-  offsetDays
-) {
-
-  const base =
-    new Date(
-      `${dateString}T00:00:00Z`
-    );
-
-  base.setUTCDate(
-    base.getUTCDate() +
-      offsetDays
-  );
-
-  return base
-    .toISOString()
-    .slice(0, 10);
+function getAddisDate(offsetDays = 0) {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: FOOTBALL_TIMEZONE,
+    year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(now);
+  const y = Number(parts.find(p => p.type === "year").value);
+  const m = Number(parts.find(p => p.type === "month").value);
+  const d = Number(parts.find(p => p.type === "day").value);
+  const base = new Date(Date.UTC(y, m - 1, d));
+  base.setUTCDate(base.getUTCDate() + offsetDays);
+  return base.toISOString().slice(0, 10);
 }
 
-function isValidDateString(
-  value
-) {
+async function fetchBsdEvents(options = {}) {
+  const dateFrom = options.dateFrom || getAddisDate(0);
+  const dateTo = options.dateTo || getAddisDate(3);
+  const limit = Math.max(1, Math.min(200, Number(options.limit) || 100));
+  const cacheKey = `events|${dateFrom}|${dateTo}|${limit}`;
+  const cached = bsdCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < BSD_CACHE_TTL_MS) return cached.value;
 
-  if (
-    typeof value !==
-    "string"
-  ) {
+  const result = await bsdRequest("/events/", {
+    date_from: dateFrom,
+    date_to: dateTo,
+    status: "notstarted",
+    limit,
+    offset: 0
+  });
 
-    return false;
+  const value = {
+    ...result,
+    events: Array.isArray(result.data?.results) ? result.data.results : []
+  };
+  bsdCache.set(cacheKey, { timestamp: Date.now(), value });
+  return value;
+}
+
+function buildBsdExternalId(eventId) {
+  return `bsd:${eventId}`;
+}
+
+function parseBsdExternalId(externalId) {
+  const value = String(externalId || "").trim();
+  if (!value.startsWith("bsd:")) return null;
+  const id = value.slice(4);
+  return id ? id : null;
+}
+
+function normalizeBsdOdds(event) {
+  const markets = {
+    "1x2": [],
+    double: [],
+    overunder: [],
+    btts: [],
+    handicap: [],
+    draw_no_bet: [],
+    correct_score: [],
+    halftime_fulltime: []
+  };
+
+  const push = (market, name, value, odd, extra = {}) => {
+    const n = Number(odd);
+    if (!Number.isFinite(n) || n <= 1) return;
+    markets[market].push({ name, value: value ?? name, odd: n, ...extra });
+  };
+
+  push("1x2", event.home_team?.name || event.home_team, event.home_team?.name || event.home_team, event.odds_home);
+  push("1x2", "Draw", "Draw", event.odds_draw);
+  push("1x2", event.away_team?.name || event.away_team, event.away_team?.name || event.away_team, event.odds_away);
+
+  return markets;
+}
+
+async function fetchBsdEventOdds(eventId) {
+  const cacheKey = `event-odds|${eventId}`;
+  const cached = bsdCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < BSD_CACHE_TTL_MS) return cached.value;
+  const result = await bsdRequest(`/events/${encodeURIComponent(eventId)}/odds/`);
+  bsdCache.set(cacheKey, { timestamp: Date.now(), value: result });
+  return result;
+}
+
+function normalizeBsdDetailedOdds(data, event) {
+  const markets = normalizeBsdOdds(event || {});
+  const list = Array.isArray(data?.markets) ? data.markets : [];
+
+  for (const market of list) {
+    const kind = String(market?.market_kind || market?.market_family || "").toUpperCase();
+    const family = String(market?.market_family || "").toUpperCase();
+    const line = market?.market_line;
+    const period = market?.market_period || "FT";
+    const books = Array.isArray(market?.bookmakers) ? market.bookmakers : [];
+    const prices = books[0]?.prices || {};
+    for (const [selection, obj] of Object.entries(prices)) {
+      const price = Number(obj?.price);
+      if (!Number.isFinite(price) || price <= 1) continue;
+      const suffix = line !== null && line !== undefined ? ` ${line}` : "";
+      const name = `${selection}${suffix}`;
+      if (kind === "WINNER" || family === "1X2") pushMarket(markets, "1x2", name, name, price, { period });
+      else if (kind === "OU" || family.startsWith("OU")) pushMarket(markets, "overunder", name, name, price, { line, period });
+      else if (kind === "AH" || family.includes("HANDICAP")) pushMarket(markets, "handicap", name, name, price, { line, period });
+      else if (family === "BTTS") pushMarket(markets, "btts", name, name, price, { period });
+      else if (family === "DNB") pushMarket(markets, "draw_no_bet", name, name, price, { period });
+      else if (family === "CS" || kind === "CORRECT_SCORE") pushMarket(markets, "correct_score", name, name, price, { period });
+      else if (family === "HTFT") pushMarket(markets, "halftime_fulltime", name, name, price, { period });
+    }
   }
+  return markets;
+}
 
-  if (
-    !/^\d{4}-\d{2}-\d{2}$/.test(
-      value
-    )
-  ) {
-
-    return false;
-  }
-
-  const date =
-    new Date(
-      `${value}T00:00:00Z`
-    );
-
-  return (
-    !Number.isNaN(
-      date.getTime()
-    ) &&
-    date
-      .toISOString()
-      .slice(0, 10) ===
-      value
-  );
+function pushMarket(markets, market, name, value, odd, extra = {}) {
+  if (!markets[market]) markets[market] = [];
+  markets[market].push({ name, value, odd: Number(odd), ...extra });
 }
 
 /*
 |--------------------------------------------------------------------------
-| FOOTBALL DIAGNOSTIC
+| BSD DIAGNOSTIC / TEST
 |--------------------------------------------------------------------------
 */
-
-app.get(
-  "/api/football/diagnostic",
-  async (req, res) => {
-
-    try {
-
-      const date =
-        req.query.date ||
-        getAddisDate(0);
-
-      if (
-        !isValidDateString(date)
-      ) {
-
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid date. Use YYYY-MM-DD."
-        });
-
-      }
-
-      const result =
-        await footballRequest(
-          "fixtures",
-          {
-            date,
-            timezone:
-              FOOTBALL_TIMEZONE
-          }
-        );
-
-      const data =
-        result.data;
-
-      res.json({
-
-        success:
-          result.ok,
-
-        http_status:
-          result.http_status,
-
-        api: {
-
-          endpoint:
-            data?.get ||
-            "fixtures",
-
-          parameters:
-            data?.parameters ||
-            {},
-
-          errors:
-            data?.errors ||
-            {},
-
-          results:
-            data?.results ||
-            0,
-
-          paging:
-            data?.paging ||
-            {}
-
-        },
-
-        date,
-
-        matches:
-          Array.isArray(
-            data?.response
-          )
-            ? data.response
-            : []
-
-      });
-
-    } catch (error) {
-
-      console.error(
-        "Football diagnostic error:",
-        error.message
-      );
-
-      res.status(500).json({
-        success: false,
-        message:
-          "Failed to connect to API-Football."
-      });
-
-    }
-
+app.get("/api/football/diagnostic", async (req, res) => {
+  try {
+    const result = await fetchBsdEvents({ limit: 5 });
+    res.json({ success: result.ok, http_status: result.http_status, provider: "BSD", count: result.events.length, errors: result.ok ? {} : result.data, events: result.events });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
-);
+});
 
-/*
-|--------------------------------------------------------------------------
-| FOOTBALL FIXTURES TEST
-|--------------------------------------------------------------------------
-*/
-
-app.get(
-  "/api/football/test",
-  async (req, res) => {
-
-    try {
-
-      const date =
-        req.query.date ||
-        getAddisDate(0);
-
-      if (
-        !isValidDateString(date)
-      ) {
-
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid date. Use YYYY-MM-DD."
-        });
-
-      }
-
-      const result =
-        await footballRequest(
-          "fixtures",
-          {
-            date,
-            timezone:
-              FOOTBALL_TIMEZONE
-          }
-        );
-
-      const data =
-        result.data;
-
-      res.json({
-
-        success:
-          result.ok,
-
-        http_status:
-          result.http_status,
-
-        date,
-
-        errors:
-          data?.errors ||
-          {},
-
-        results:
-          data?.results ||
-          0,
-
-        paging:
-          data?.paging ||
-          {},
-
-        response:
-          Array.isArray(
-            data?.response
-          )
-            ? data.response
-            : []
-
-      });
-
-    } catch (error) {
-
-      console.error(
-        "API-Football test error:",
-        error.message
-      );
-
-      res.status(500).json({
-        success: false,
-        message:
-          "Failed to connect to API-Football."
-      });
-
-    }
-
+app.get("/api/football/test", async (req, res) => {
+  try {
+    const result = await fetchBsdEvents({ limit: Number(req.query.limit) || 5 });
+    res.json({ success: result.ok, provider: "BSD", http_status: result.http_status, count: result.events.length, errors: result.ok ? {} : result.data, events: result.events });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
-);
-
-/*
-|--------------------------------------------------------------------------
-| FOOTBALL ODDS BY FIXTURE
-|--------------------------------------------------------------------------
-*/
-
-app.get(
-  "/api/football/odds/:fixtureId",
-  async (req, res) => {
-
-    try {
-
-      const fixtureId =
-        Number(
-          req.params.fixtureId
-        );
-
-      if (
-        !Number.isInteger(fixtureId) ||
-        fixtureId <= 0
-      ) {
-
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid fixture ID."
-        });
-
-      }
-
-      const result =
-        await footballRequest(
-          "odds",
-          {
-            fixture:
-              fixtureId
-          }
-        );
-
-      const data =
-        result.data;
-
-      res.json({
-
-        success:
-          result.ok,
-
-        http_status:
-          result.http_status,
-
-        fixture_id:
-          fixtureId,
-
-        errors:
-          data?.errors ||
-          {},
-
-        results:
-          data?.results ||
-          0,
-
-        paging:
-          data?.paging ||
-          {},
-
-        response:
-          Array.isArray(
-            data?.response
-          )
-            ? data.response
-            : []
-
-      });
-
-    } catch (error) {
-
-      console.error(
-        "Fixture odds error:",
-        error.message
-      );
-
-      res.status(500).json({
-        success: false,
-        message:
-          "Failed to load fixture odds."
-      });
-
-    }
-
-  }
-);
-
-/*
-|--------------------------------------------------------------------------
-| ODDS BY DATE
-|--------------------------------------------------------------------------
-|
-| IMPORTANT:
-| Free API-Football plan can return
-| odds by date even when individual
-| fixture requests return no odds.
-|
-|--------------------------------------------------------------------------
-*/
-
-app.get(
-  "/api/football/odds-test",
-  async (req, res) => {
-
-    try {
-
-      const date =
-        req.query.date ||
-        getAddisDate(0);
-
-      if (
-        !isValidDateString(date)
-      ) {
-
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid date. Use YYYY-MM-DD."
-        });
-
-      }
-
-      const result =
-        await footballRequest(
-          "odds",
-          {
-            date
-          }
-        );
-
-      const data =
-        result.data;
-
-      res.json({
-
-        success:
-          result.ok,
-
-        http_status:
-          result.http_status,
-
-        date,
-
-        errors:
-          data?.errors ||
-          {},
-
-        results:
-          data?.results ||
-          0,
-
-        paging:
-          data?.paging ||
-          {},
-
-        response:
-          Array.isArray(
-            data?.response
-          )
-            ? data.response
-            : []
-
-      });
-
-    } catch (error) {
-
-      console.error(
-        "API-Football odds error:",
-        error.message
-      );
-
-      res.status(500).json({
-        success: false,
-        message:
-          "Failed to load football odds."
-      });
-
-    }
-
-  }
-);
-
-/*
-|--------------------------------------------------------------------------
-| NORMALIZE ODDS
-|--------------------------------------------------------------------------
-|
-| Converts API-Football bookmaker
-| data into simple frontend markets.
-|--------------------------------------------------------------------------
-*/
+});
 
 function normalizeOdds(
   oddsResponse
@@ -1196,304 +799,235 @@ function normalizeOdds(
     double: [],
     overunder: [],
     btts: [],
-    handicap: []
+    handicap: [],
+    draw_no_bet: [],
+    correct_score: [],
+    halftime_fulltime: [],
+    correct_score_h1: [],
+    btts_h1: [],
+    alternate_totals: [],
+    alternate_spreads: [],
+    alternate_totals_corners: [],
+    alternate_spreads_corners: [],
+    corners_1x2: []
   };
 
-  if (
-    !Array.isArray(
-      oddsResponse
-    )
-  ) {
-
-    return markets;
-  }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Helper
-  |--------------------------------------------------------------------------
-  */
-
-  function addMarket(
-    marketKey,
-    name,
-    value,
-    odd,
-    extra = {}
-  ) {
-
-    const numericOdd =
-      Number(odd);
-
-    if (
-      !Number.isFinite(
-        numericOdd
-      ) ||
-      numericOdd <= 1
-    ) {
-
-      return;
-    }
-
-    markets[marketKey].push({
-
-      name,
-
-      value,
-
-      odd:
-        numericOdd,
-
-      ...extra
-
-    });
-
-  }
-
-  /*
-  |--------------------------------------------------------------------------
-  | API-Football odds structure
-  |--------------------------------------------------------------------------
-  */
+  const events =
+    Array.isArray(oddsResponse)
+      ? oddsResponse
+      : oddsResponse
+        ? [oddsResponse]
+        : [];
 
   for (
-    const bookmakerResponse
-    of oddsResponse
+    const event
+    of events
   ) {
 
-    const bookmakers =
+    const bookmaker =
+      chooseOddsBookmaker(
+        event
+      );
+
+    if (!bookmaker) {
+      continue;
+    }
+
+    const bookmakerKey =
+      bookmaker.key ||
+      "";
+
+    const bookmakerTitle =
+      bookmaker.title ||
+      bookmakerKey ||
+      "Bookmaker";
+
+    const eventMarkets =
       Array.isArray(
-        bookmakerResponse?.bookmakers
+        bookmaker.markets
       )
-        ? bookmakerResponse.bookmakers
+        ? bookmaker.markets
         : [];
 
     for (
-      const bookmaker
-      of bookmakers
+      const market
+      of eventMarkets
     ) {
 
-      const bets =
-        Array.isArray(
-          bookmaker?.bets
+      const marketKey =
+        String(
+          market?.key ||
+          ""
         )
-          ? bookmaker.bets
+          .trim()
+          .toLowerCase();
+
+      const outcomes =
+        Array.isArray(
+          market?.outcomes
+        )
+          ? market.outcomes
           : [];
 
       for (
-        const bet
-        of bets
+        const outcome
+        of outcomes
       ) {
 
-        const betName =
+        const odd =
+          Number(
+            outcome?.price
+          );
+
+        if (
+          !Number.isFinite(odd) ||
+          odd <= 1
+        ) {
+          continue;
+        }
+
+        const rawName =
           String(
-            bet?.name ||
+            outcome?.name ||
             ""
-          ).toLowerCase();
+          );
 
-        const values =
-          Array.isArray(
-            bet?.values
-          )
-            ? bet.values
-            : [];
+        const point =
+          outcome?.point ??
+          null;
 
-        /*
-        |--------------------------------------------------------------------------
-        | Match Winner / 1X2
-        |--------------------------------------------------------------------------
-        */
+        let displayName =
+          rawName;
 
         if (
-          betName.includes(
-            "match winner"
-          )
+          (marketKey === "totals" ||
+            marketKey === "spreads") &&
+          point !== null &&
+          point !== undefined &&
+          point !== ""
         ) {
 
-          for (
-            const item
-            of values
-          ) {
-
-            addMarket(
-              "1x2",
-              item?.value,
-              item?.value,
-              item?.odd
-            );
-
-          }
+          displayName =
+            `${rawName} ${Number(point) > 0 ? "+" : ""}${point}`;
 
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Double Chance
-        |--------------------------------------------------------------------------
-        */
+        const base = {
+          name:
+            displayName,
+          value:
+            displayName,
+          odd,
+          bookmaker_key:
+            bookmakerKey,
+          bookmaker_title:
+            bookmakerTitle,
+          point
+        };
 
         if (
-          betName.includes(
-            "double chance"
-          )
+          marketKey ===
+          "h2h"
         ) {
 
-          for (
-            const item
-            of values
-          ) {
+          markets["1x2"].push(
+            base
+          );
 
-            addMarket(
-              "double",
-              item?.value,
-              item?.value,
-              item?.odd
-            );
-
-          }
-
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Over / Under
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-          betName.includes(
-            "over/under"
-          ) ||
-          betName.includes(
-            "over under"
-          )
+        } else if (
+          marketKey ===
+          "spreads"
         ) {
 
-          for (
-            const item
-            of values
-          ) {
+          markets.handicap.push({
+            ...base,
+            line:
+              outcome?.point ??
+              null
+          });
 
-            addMarket(
-              "overunder",
-              item?.value,
-              item?.value,
-              item?.odd,
-              {
-                line:
-                  item?.handicap ||
-                  null
-              }
-            );
-
-          }
-
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Both Teams To Score
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-          betName.includes(
-            "both teams to score"
-          )
+        } else if (
+          marketKey ===
+          "totals"
         ) {
 
-          for (
-            const item
-            of values
-          ) {
+          markets.overunder.push({
+            ...base,
+            line:
+              outcome?.point ??
+              null
+          });
 
-            addMarket(
-              "btts",
-              item?.value,
-              item?.value,
-              item?.odd
-            );
-
-          }
-
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Handicap
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-          betName.includes(
-            "handicap"
-          ) &&
-          !betName.includes(
-            "asian"
-          )
+        } else if (
+          marketKey ===
+          "btts"
         ) {
 
-          for (
-            const item
-            of values
-          ) {
+          markets.btts.push(
+            base
+          );
 
-            addMarket(
-              "handicap",
-              item?.value,
-              item?.value,
-              item?.odd,
-              {
-                line:
-                  item?.handicap ||
-                  null
-              }
-            );
+        } else if (
+          marketKey ===
+          "double_chance"
+        ) {
 
-          }
+          markets.double.push(
+            base
+          );
 
+        } else if (
+          marketKey ===
+          "draw_no_bet"
+        ) {
+
+          markets.draw_no_bet.push(
+            base
+          );
+
+        } else if (
+          marketKey ===
+          "correct_score"
+        ) {
+
+          markets.correct_score.push(
+            base
+          );
+
+        } else if (
+          marketKey ===
+          "halftime_fulltime"
+        ) {
+
+          markets.halftime_fulltime.push(
+            base
+          );
+
+        } else if (marketKey === "correct_score_h1") {
+          markets.correct_score_h1.push(base);
+        } else if (marketKey === "btts_h1") {
+          markets.btts_h1.push(base);
+        } else if (marketKey === "alternate_totals") {
+          markets.alternate_totals.push({...base, line: outcome?.point ?? null});
+        } else if (marketKey === "alternate_spreads") {
+          markets.alternate_spreads.push({...base, line: outcome?.point ?? null});
+        } else if (marketKey === "alternate_totals_corners") {
+          markets.alternate_totals_corners.push({...base, line: outcome?.point ?? null});
+        } else if (marketKey === "alternate_spreads_corners") {
+          markets.alternate_spreads_corners.push({...base, line: outcome?.point ?? null});
+        } else if (marketKey === "corners_1x2") {
+          markets.corners_1x2.push(base);
         }
 
       }
 
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Stop once useful markets
-    | are found.
-    |--------------------------------------------------------------------------
-    */
-
-    const hasUsefulMarket =
-      Object.values(
-        markets
-      ).some(
-        market =>
-          market.length > 0
-      );
-
-    if (
-      hasUsefulMarket
-    ) {
-
-      break;
-
-    }
-
   }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Remove duplicates
-  |--------------------------------------------------------------------------
-  */
 
   for (
     const key
-    of Object.keys(
-      markets
-    )
+    of Object.keys(markets)
   ) {
 
     const seen =
@@ -1506,144 +1040,95 @@ function normalizeOdds(
           const identifier =
             JSON.stringify([
               item.name,
-              item.value,
-              item.line,
-              item.odd
+              item.point ??
+                item.line ??
+                null,
+              item.odd,
+              item.bookmaker_key
             ]);
 
           if (
-            seen.has(
-              identifier
-            )
+            seen.has(identifier)
           ) {
-
             return false;
           }
 
-          seen.add(
-            identifier
-          );
-
+          seen.add(identifier);
           return true;
-
         }
       );
-
   }
 
   return markets;
-
 }
+
 /*
 |--------------------------------------------------------------------------
-| SAVE / UPDATE MATCH
+| BSD EXTERNAL MATCH ID
 |--------------------------------------------------------------------------
 */
 
-async function saveMatchToDatabase(
-  fixture
+function buildOddsExternalId(eventId) {
+  return buildBsdExternalId(eventId);
+}
+
+function parseOddsExternalId(externalId) {
+  const id = parseBsdExternalId(externalId);
+  return id ? { eventId: id, sportKey: "bsd" } : null;
+}
+
+/*
+|--------------------------------------------------------------------------
+| SAVE / UPDATE MATCH FROM THE ODDS API
+|--------------------------------------------------------------------------
+*/
+
+async function saveOddsEventToDatabase(
+  event
 ) {
 
-  if (!fixture?.fixture?.id) {
+  if (
+    !event?.id ||
+    !event?.sport_key
+  ) {
     return null;
   }
 
-  const fixtureId =
-    String(fixture.fixture.id);
+  const externalId =
+    buildOddsExternalId(
+      event.sport_key,
+      event.id
+    );
 
   const homeTeam =
-    fixture.teams?.home?.name ||
+    event.home_team ||
     "Home";
 
   const awayTeam =
-    fixture.teams?.away?.name ||
+    event.away_team ||
     "Away";
 
-  const status =
-    fixture.fixture?.status?.short ||
-    "NS";
-
-  const homeScore =
-    Number.isInteger(
-      fixture.goals?.home
-    )
-      ? fixture.goals.home
-      : null;
-
-  const awayScore =
-    Number.isInteger(
-      fixture.goals?.away
-    )
-      ? fixture.goals.away
-      : null;
-
-  let matchStatus =
-    "scheduled";
-
-  if (
-    [
-      "1H",
-      "HT",
-      "2H",
-      "ET",
-      "BT",
-      "P"
-    ].includes(status)
-  ) {
-
-    matchStatus =
-      "live";
-
-  } else if (
-    [
-      "FT",
-      "AET",
-      "PEN"
-    ].includes(status)
-  ) {
-
-    matchStatus =
-      "finished";
-
-  } else if (
-    [
-      "PST",
-      "CANC",
-      "ABD",
-      "AWD",
-      "WO"
-    ].includes(status)
-  ) {
-
-    matchStatus =
-      "cancelled";
-
-  }
-
-  const result =
-    matchStatus === "finished" &&
-    homeScore !== null &&
-    awayScore !== null
-      ? (
-          homeScore > awayScore
-            ? "HOME"
-            : homeScore < awayScore
-              ? "AWAY"
-              : "DRAW"
-        )
-      : null;
-
   const startedAt =
-    fixture.fixture?.date
+    event.commence_time
       ? new Date(
-          fixture.fixture.date
+          event.commence_time
         )
       : null;
 
-  const finishedAt =
-    matchStatus === "finished"
+  const validStartedAt =
+    startedAt &&
+    !Number.isNaN(
+      startedAt.getTime()
+    )
       ? startedAt
       : null;
+
+  const matchStatus =
+    validStartedAt &&
+    validStartedAt.getTime() <=
+      Date.now()
+      ? "live"
+      : "scheduled";
 
   const query = `
     INSERT INTO matches
@@ -1667,11 +1152,7 @@ async function saveMatchToDatabase(
       home_team = EXCLUDED.home_team,
       away_team = EXCLUDED.away_team,
       status = EXCLUDED.status,
-      home_score = EXCLUDED.home_score,
-      away_score = EXCLUDED.away_score,
-      result = EXCLUDED.result,
       started_at = EXCLUDED.started_at,
-      finished_at = EXCLUDED.finished_at,
       updated_at = NOW()
     RETURNING *
   `;
@@ -1680,215 +1161,663 @@ async function saveMatchToDatabase(
     await pool.query(
       query,
       [
-        fixtureId,
+        externalId,
         homeTeam,
         awayTeam,
         matchStatus,
-        homeScore,
-        awayScore,
-        result,
-        startedAt,
-        finishedAt
+        null,
+        null,
+        null,
+        validStartedAt,
+        null
       ]
     );
 
   return dbResult.rows[0];
-
 }
 
 /*
 |--------------------------------------------------------------------------
-| FETCH FIXTURES FOR DATE
+| ADDITIONAL SOCCER MARKETS
 |--------------------------------------------------------------------------
 */
+async function fetchAdditionalSoccerMarkets(sportKey, eventId) {
+  const markets = ODDS_API_ADDITIONAL_MARKETS;
+  if (!markets) return { ok: true, data: null, headers: {} };
+  const cacheKey = `event|${sportKey}|${eventId}|${markets}`;
+  const cached = oddsCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < ODDS_CACHE_TTL_MS) return cached.value;
+  const result = await oddsApiRequest(
+    `/sports/${encodeURIComponent(sportKey)}/events/${encodeURIComponent(eventId)}/odds/`,
+    { regions: ODDS_API_REGION, markets, oddsFormat: "decimal", dateFormat: "iso" }
+  );
+  oddsCache.set(cacheKey, { timestamp: Date.now(), value: result });
+  return result;
+}
 
-async function fetchFootballFixtures(
-  date
-) {
-
-  const result =
-    await footballRequest(
-      "fixtures",
-      {
-        date,
-        timezone:
-          FOOTBALL_TIMEZONE
-      }
-    );
-
-  if (
-    !result.ok
-  ) {
-
-    return {
-      success: false,
-      fixtures: [],
-      errors:
-        result.data?.errors ||
-        {},
-      http_status:
-        result.http_status
-    };
-
+function mergeBookmakerMarkets(baseEvent, additionalEvent) {
+  const merged = { ...(baseEvent || {}) };
+  const map = new Map();
+  for (const b of Array.isArray(baseEvent?.bookmakers) ? baseEvent.bookmakers : []) {
+    if (b?.key) map.set(String(b.key), { ...b, markets: Array.isArray(b.markets) ? [...b.markets] : [] });
   }
-
-  const fixtures =
-    Array.isArray(
-      result.data?.response
-    )
-      ? result.data.response
-      : [];
-
-  return {
-    success: true,
-    fixtures,
-    errors:
-      result.data?.errors ||
-      {},
-    http_status:
-      result.http_status
-  };
-
+  for (const b of Array.isArray(additionalEvent?.bookmakers) ? additionalEvent.bookmakers : []) {
+    if (!b?.key) continue;
+    const k = String(b.key);
+    if (!map.has(k)) { map.set(k, { ...b, markets: Array.isArray(b.markets) ? [...b.markets] : [] }); continue; }
+    const cur = map.get(k);
+    const idx = new Map((cur.markets || []).map((m,i)=>[String(m?.key || ""),i]));
+    for (const m of Array.isArray(b.markets) ? b.markets : []) {
+      const mk = String(m?.key || "");
+      if (idx.has(mk)) cur.markets[idx.get(mk)] = m; else { idx.set(mk, cur.markets.length); cur.markets.push(m); }
+    }
+    map.set(k, cur);
+  }
+  merged.bookmakers = Array.from(map.values());
+  return merged;
 }
 
 /*
 |--------------------------------------------------------------------------
-| FETCH ODDS FOR DATE
-|--------------------------------------------------------------------------
-*/
-
-async function fetchFootballOddsByDate(
-  date
-) {
-
-  const result =
-    await footballRequest(
-      "odds",
-      {
-        date
-      }
-    );
-
-  if (
-    !result.ok
-  ) {
-
-    return {
-      success: false,
-      odds: [],
-      errors:
-        result.data?.errors ||
-        {},
-      http_status:
-        result.http_status
-    };
-
-  }
-
-  const odds =
-    Array.isArray(
-      result.data?.response
-    )
-      ? result.data.response
-      : [];
-
-  return {
-    success: true,
-    odds,
-    errors:
-      result.data?.errors ||
-      {},
-    http_status:
-      result.http_status
-  };
-
-}
-
-/*
-|--------------------------------------------------------------------------
-| FOOTBALL BETTING DATA
-|--------------------------------------------------------------------------
-|
-| IMPORTANT:
-| We fetch odds by DATE instead of making
-| one odds request for every fixture.
-|
-| This greatly reduces API-Football
-| request usage.
+| FOOTBALL BETTING DATA — THE ODDS API
 |--------------------------------------------------------------------------
 */
 
 app.get(
   "/api/football/betting",
   async (req, res) => {
-    const started = Date.now();
     try {
-      const limit = Math.max(1, Math.min(30, Number(req.query.limit) || 30));
-      const key = process.env.ODDS_API_KEY;
-      if (!key) return res.status(500).json({ success:false, message:"ODDS_API_KEY is not configured on the server." });
+      let limit = Number(req.query.limit);
+      if (!Number.isFinite(limit)) limit = 30;
+      limit = Math.max(1, Math.min(30, Math.floor(limit)));
 
-      const sport = String(req.query.sport || "soccer_epl");
-      const url = new URL(`https://api.the-odds-api.com/v4/sports/${encodeURIComponent(sport)}/odds`);
-      url.searchParams.set("apiKey", key);
-      url.searchParams.set("regions", "eu");
-      url.searchParams.set("markets", "h2h");
-      url.searchParams.set("oddsFormat", "decimal");
-      url.searchParams.set("dateFormat", "iso");
+      let days = Number(req.query.days);
+      if (!Number.isFinite(days)) days = 3;
+      days = Math.max(1, Math.min(7, Math.floor(days)));
 
-      console.log("⚽ The Odds API betting request:", sport);
-      const response = await fetch(url, { headers:{Accept:"application/json"}, signal:AbortSignal.timeout(8000) });
-      const raw = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        console.error("❌ The Odds API:", response.status, raw?.message || raw);
-        return res.status(response.status).json({ success:false, message:raw?.message || `Odds API error (${response.status})` });
-      }
+      const dateFrom = getAddisDate(0);
+      const dateTo = getAddisDate(days);
+      const result = await fetchBsdEvents({ dateFrom, dateTo, limit: Math.min(200, Math.max(50, limit * 4)) });
 
-      const events = Array.isArray(raw) ? raw : [];
-      const matches = [];
-      for (const event of events) {
-        const t = new Date(event.commence_time).getTime();
-        if (!Number.isFinite(t) || t < Date.now() - 120000) continue;
-        const best = new Map();
-        for (const bookmaker of (event.bookmakers || [])) {
-          for (const market of (bookmaker.markets || [])) {
-            if (market.key !== "h2h") continue;
-            for (const outcome of (market.outcomes || [])) {
-              const name = String(outcome.name || "");
-              const odd = Number(outcome.price);
-              if (!name || !Number.isFinite(odd) || odd <= 1) continue;
-              const old = best.get(name);
-              if (!old || odd > old.odd) best.set(name, {
-                name, value:name, odd,
-                bookmaker_key:bookmaker.key || "",
-                bookmaker_title:bookmaker.title || ""
-              });
-            }
-          }
-        }
-        const oneXtwo = [...best.values()];
-        if (!oneXtwo.length) continue;
-        let id = null;
-        try {
-          const db = await pool.query(`
-            INSERT INTO matches (external_id,home_team,away_team,status,started_at,updated_at)
-            VALUES ($1,$2,$3,'scheduled',$4,NOW())
-            ON CONFLICT (external_id) DO UPDATE SET home_team=EXCLUDED.home_team,away_team=EXCLUDED.away_team,started_at=EXCLUDED.started_at,updated_at=NOW()
-            RETURNING id`, [String(event.id),event.home_team,event.away_team,new Date(event.commence_time)]);
-          id = db.rows[0]?.id || null;
-        } catch (e) { console.error("Match save warning:", e.message); }
-        matches.push({
-          id, external_id:String(event.id), home_team:event.home_team, away_team:event.away_team,
-          league:event.sport_title || sport, date:event.commence_time, timezone:FOOTBALL_TIMEZONE,
-          status:"NS", markets:{"1x2":oneXtwo,double:[],overunder:[],btts:[],handicap:[],draw_no_bet:[],correct_score:[],halftime_fulltime:[]}
+      if (!result.ok) {
+        return res.status(result.http_status || 502).json({
+          success: false,
+          provider: "BSD",
+          message: result.data?.detail || result.data?.error || "BSD football API request failed.",
+          http_status: result.http_status,
+          matches: []
         });
-        if (matches.length >= limit) break;
       }
-      matches.sort((a,b)=>new Date(a.date)-new Date(b.date));
-      console.log(`✅ Betting matches: ${matches.length} (${Date.now()-started}ms)`);
-      return res.json({success:true,count:matches.length,matches,diagnostics:{provider:"The Odds API",sport,events_received:events.length,requests_made:1,duration_ms:Date.now()-started}});
+
+      const matches = [];
+      for (const event of result.events) {
+        if (matches.length >= limit) break;
+        if (!event?.id || !event?.event_date) continue;
+        const status = String(event.status || "").toLowerCase();
+        if (!["upcoming", "notstarted", "scheduled", "postponed"].includes(status)) continue;
+
+        const startedAt = new Date(event.event_date);
+        if (Number.isNaN(startedAt.getTime()) || startedAt.getTime() <= Date.now()) continue;
+
+        const markets = normalizeBsdOdds(event);
+        let detailed = null;
+        try {
+          const oddsResult = await fetchBsdEventOdds(event.id);
+          if (oddsResult.ok) detailed = normalizeBsdDetailedOdds(oddsResult.data, event);
+        } catch (error) {
+          console.error("BSD odds detail error:", error.message);
+        }
+
+        const finalMarkets = detailed || markets;
+        if (!Object.values(finalMarkets).some(items => Array.isArray(items) && items.length)) continue;
+
+        const home = event.home_team?.name || event.home_team || "Home";
+        const away = event.away_team?.name || event.away_team || "Away";
+        const league = event.league?.name || event.competition?.name || "Football";
+
+        let savedMatch = null;
+        try {
+          savedMatch = await saveOddsEventToDatabase({
+            id: String(event.id),
+            sport_key: "bsd",
+            home_team: home,
+            away_team: away,
+            commence_time: event.event_date
+          });
+        } catch (dbError) {
+          console.error("Match database save error:", dbError.message);
+        }
+
+        matches.push({
+          id: savedMatch?.id || null,
+          external_id: buildBsdExternalId(event.id),
+          event_id: String(event.id),
+          sport_key: "bsd",
+          home_team: home,
+          away_team: away,
+          league,
+          country: event.league?.country || "",
+          date: event.event_date,
+          timezone: FOOTBALL_TIMEZONE,
+          status: "NS",
+          markets: finalMarkets,
+          raw_event: event
+        });
+      }
+
+      res.json({
+        success: true,
+        provider: "BSD",
+        count: matches.length,
+        matches
+      });
     } catch (error) {
-      console.error("❌ Football betting API error:", error.message);
-      return res.status(error.name === "TimeoutError" ? 504 : 500).json({success:false,message:error.name === "TimeoutError" ? "Football odds service timed out. Please refresh." : "Could not load football betting data."});
+      console.error("BSD football betting error:", error.message);
+      res.status(500).json({ success: false, provider: "BSD", message: error.message, matches: [] });
+    }
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| PLACE ACCUMULATOR BET
+|--------------------------------------------------------------------------
+*/
+
+app.post(
+  "/api/bets/place-accumulator",
+  async (req, res) => {
+
+    const client =
+      await pool.connect();
+
+    try {
+
+      const userId =
+        Number(
+          req.body.user_id
+        );
+
+      const stakeAmount =
+        Number(
+          req.body.stake
+        );
+
+      const requestedBets =
+        Array.isArray(
+          req.body.bets
+        )
+          ? req.body.bets
+          : [];
+
+      if (
+        !Number.isInteger(userId) ||
+        userId <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid user."
+        });
+      }
+
+      if (
+        !Number.isFinite(stakeAmount) ||
+        stakeAmount <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid stake."
+        });
+      }
+
+      if (
+        stakeAmount > 100000
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Maximum stake exceeded."
+        });
+      }
+
+      if (
+        requestedBets.length < 2
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Select at least two outcomes for an accumulator."
+        });
+      }
+
+      if (
+        requestedBets.length > 10
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "A maximum of 10 selections is allowed."
+        });
+      }
+
+      const uniqueMatchIds =
+        new Set();
+
+      for (
+        const item of requestedBets
+      ) {
+        const matchId =
+          Number(item?.match_id);
+
+        if (
+          !Number.isInteger(matchId) ||
+          matchId <= 0
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "One or more match IDs are invalid."
+          });
+        }
+
+        if (
+          uniqueMatchIds.has(matchId)
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Only one selection per match is allowed."
+          });
+        }
+
+        uniqueMatchIds.add(matchId);
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Validate every selection against current server-side odds.
+      |--------------------------------------------------------------------------
+      */
+
+      const validatedLegs = [];
+
+      for (
+        const item of requestedBets
+      ) {
+
+        const matchId =
+          Number(item.match_id);
+
+        const clientOdds =
+          Number(item.odds);
+
+        const selection =
+          String(
+            item.selection ||
+            ""
+          ).trim();
+
+        if (
+          !Number.isFinite(clientOdds) ||
+          clientOdds <= 1 ||
+          !selection
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "One or more betting selections are invalid."
+          });
+        }
+
+        const matchResult =
+          await pool.query(
+            `
+            SELECT *
+            FROM matches
+            WHERE id = $1
+            LIMIT 1
+            `,
+            [matchId]
+          );
+
+        if (
+          matchResult.rows.length === 0
+        ) {
+          return res.status(404).json({
+            success: false,
+            message:
+              `Match ${matchId} was not found.`
+          });
+        }
+
+        const match =
+          matchResult.rows[0];
+
+        if (
+          item.external_id &&
+          String(item.external_id) !==
+          String(match.external_id)
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Match information is invalid."
+          });
+        }
+
+        const validation =
+          await validateFootballBet(
+            match,
+            selection,
+            clientOdds
+          );
+
+        if (
+          !validation.valid
+        ) {
+          return res.status(409).json({
+            success: false,
+            message:
+              validation.message,
+            odds_changed:
+              validation.odds_changed || false,
+            old_odds:
+              validation.old_odds ?? null,
+            current_odds:
+              validation.current_odds ?? null,
+            failed_match_id:
+              match.id
+          });
+        }
+
+        validatedLegs.push({
+          match_id:
+            match.id,
+          external_id:
+            match.external_id,
+          home_team:
+            match.home_team,
+          away_team:
+            match.away_team,
+          selection:
+            validation.selection,
+          odds:
+            Number(validation.odds),
+          market:
+            validation.market,
+          bookmaker_key:
+            validation.bookmaker_key,
+          bookmaker_title:
+            validation.bookmaker_title
+        });
+      }
+
+      const combinedOdds =
+        validatedLegs.reduce(
+          (total, leg) =>
+            total * Number(leg.odds),
+          1
+        );
+
+      const potentialWin =
+        Number(
+          (
+            stakeAmount *
+            combinedOdds
+          ).toFixed(2)
+        );
+
+      await client.query(
+        "BEGIN"
+      );
+
+      const userResult =
+        await client.query(
+          `
+          SELECT
+            id,
+            balance,
+            bonus_balance,
+            is_active
+          FROM users
+          WHERE id = $1
+          FOR UPDATE
+          `,
+          [userId]
+        );
+
+      if (
+        userResult.rows.length === 0
+      ) {
+        await client.query(
+          "ROLLBACK"
+        );
+        return res.status(404).json({
+          success: false,
+          message:
+            "User not found."
+        });
+      }
+
+      const user =
+        userResult.rows[0];
+
+      if (!user.is_active) {
+        await client.query(
+          "ROLLBACK"
+        );
+        return res.status(403).json({
+          success: false,
+          message:
+            "User account is inactive."
+        });
+      }
+
+      const cashBalance =
+        Number(user.balance) || 0;
+
+      const bonusBalance =
+        Number(user.bonus_balance) || 0;
+
+      const cashUsed =
+        Math.min(
+          cashBalance,
+          stakeAmount
+        );
+
+      const bonusUsed =
+        stakeAmount -
+        cashUsed;
+
+      if (
+        bonusUsed > bonusBalance
+      ) {
+        await client.query(
+          "ROLLBACK"
+        );
+        return res.status(400).json({
+          success: false,
+          message:
+            "Insufficient balance."
+        });
+      }
+
+      const updatedUser =
+        await client.query(
+          `
+          UPDATE users
+          SET
+            balance = balance - $1,
+            bonus_balance = bonus_balance - $2,
+            updated_at = NOW()
+          WHERE id = $3
+          RETURNING
+            id,
+            balance,
+            bonus_balance
+          `,
+          [
+            cashUsed,
+            bonusUsed,
+            userId
+          ]
+        );
+
+      const betResult =
+        await client.query(
+          `
+          INSERT INTO bets
+          (
+            user_id,
+            game,
+            stake,
+            potential_win,
+            actual_win,
+            status,
+            result
+          )
+          VALUES
+          (
+            $1,
+            $2,
+            $3,
+            $4,
+            $5,
+            $6,
+            $7
+          )
+          RETURNING *
+          `,
+          [
+            userId,
+            "football_accumulator",
+            stakeAmount,
+            potentialWin,
+            0,
+            "pending",
+            JSON.stringify({
+              type:
+                "accumulator",
+              combined_odds:
+                Number(
+                  combinedOdds.toFixed(4)
+                ),
+              legs:
+                validatedLegs,
+              cash_used:
+                Number(
+                  cashUsed.toFixed(2)
+                ),
+              bonus_used:
+                Number(
+                  bonusUsed.toFixed(2)
+                )
+            })
+          ]
+        );
+
+      const bet =
+        betResult.rows[0];
+
+      await client.query(
+        `
+        INSERT INTO transactions
+        (
+          user_id,
+          type,
+          amount,
+          status,
+          reference,
+          description
+        )
+        VALUES
+        (
+          $1,
+          $2,
+          $3,
+          $4,
+          $5,
+          $6
+        )
+        `,
+        [
+          userId,
+          "bet",
+          stakeAmount,
+          "completed",
+          `BET-${bet.id}`,
+          `Football accumulator (${validatedLegs.length} selections)`
+        ]
+      );
+
+      await client.query(
+        "COMMIT"
+      );
+
+      io.emit(
+        "balance:update",
+        {
+          user_id:
+            userId,
+          balance:
+            Number(
+              updatedUser.rows[0].balance
+            ),
+          bonus_balance:
+            Number(
+              updatedUser.rows[0].bonus_balance
+            )
+        }
+      );
+
+      res.json({
+        success: true,
+        message:
+          "Accumulator bet placed successfully.",
+        bet,
+        selections:
+          validatedLegs.length,
+        combined_odds:
+          Number(
+            combinedOdds.toFixed(4)
+          ),
+        potential_win:
+          potentialWin,
+        wallet: {
+          balance:
+            Number(
+              updatedUser.rows[0].balance
+            ),
+          bonus_balance:
+            Number(
+              updatedUser.rows[0].bonus_balance
+            )
+        }
+      });
+
+    } catch (error) {
+
+      try {
+        await client.query(
+          "ROLLBACK"
+        );
+      } catch (_) {}
+
+      console.error(
+        "Accumulator bet error:",
+        error.message
+      );
+
+      res.status(500).json({
+        success: false,
+        message:
+          "Could not place accumulator bet."
+      });
+
+    } finally {
+      client.release();
     }
   }
 );
@@ -2097,7 +2026,7 @@ app.post(
       const stakeAmount =
         Number(stake);
 
-      const selectedOdds =
+      const clientOdds =
         Number(odds);
 
       if (
@@ -2149,8 +2078,8 @@ app.post(
       }
 
       if (
-        !Number.isFinite(selectedOdds) ||
-        selectedOdds <= 1
+        !Number.isFinite(clientOdds) ||
+        clientOdds <= 1
       ) {
 
         return res.status(400).json({
@@ -2180,6 +2109,22 @@ app.post(
 
       }
 
+      if (
+        game &&
+        game !== "football"
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Unsupported game."
+
+        });
+
+      }
+
       /*
       |--------------------------------------------------------------------------
       | Maximum safe values
@@ -2203,7 +2148,124 @@ app.post(
 
       /*
       |--------------------------------------------------------------------------
-      | Transaction
+      | Load match before wallet transaction
+      |--------------------------------------------------------------------------
+      */
+
+      const matchLookup =
+        await pool.query(
+          `
+          SELECT *
+          FROM matches
+          WHERE id = $1
+          LIMIT 1
+          `,
+          [matchId]
+        );
+
+      if (
+        matchLookup.rows.length === 0
+      ) {
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "Match not found."
+
+        });
+
+      }
+
+      const matchForValidation =
+        matchLookup.rows[0];
+
+      if (
+        external_id &&
+        String(external_id) !==
+        String(matchForValidation.external_id)
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Match information is invalid."
+
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Server-side odds validation
+      |--------------------------------------------------------------------------
+      |
+      | The frontend supplied odds are never trusted for settlement.
+      | We load the current odds from The Odds API and require the
+      | requested selection and price to still match.
+      |--------------------------------------------------------------------------
+      */
+
+      const validation =
+        await validateFootballBet(
+          matchForValidation,
+          selection,
+          clientOdds
+        );
+
+      if (!validation.valid) {
+
+        return res.status(409).json({
+
+          success: false,
+
+          message:
+            validation.message,
+
+          odds_changed:
+            validation.odds_changed || false,
+
+          old_odds:
+            validation.old_odds ?? null,
+
+          current_odds:
+            validation.current_odds ?? null
+
+        });
+
+      }
+
+      const serverOdds =
+        Number(validation.odds);
+
+      const canonicalSelection =
+        validation.selection;
+
+      const market =
+        validation.market;
+
+      if (
+        !Number.isFinite(serverOdds) ||
+        serverOdds <= 1
+      ) {
+
+        return res.status(409).json({
+
+          success: false,
+
+          message:
+            "Current odds are invalid. Please select again."
+
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Wallet transaction
       |--------------------------------------------------------------------------
       */
 
@@ -2290,15 +2352,6 @@ app.post(
       |
       | Real cash is used first.
       | Bonus can cover the remaining stake.
-      |
-      | Example:
-      |
-      | Cash = 20
-      | Bonus = 50
-      | Stake = 40
-      |
-      | Cash used = 20
-      | Bonus used = 20
       |--------------------------------------------------------------------------
       */
 
@@ -2334,23 +2387,24 @@ app.post(
 
       /*
       |--------------------------------------------------------------------------
-      | Match validation
+      | Re-load and lock match row before final wallet/bet commit
       |--------------------------------------------------------------------------
       */
 
-      const matchResult =
+      const lockedMatchResult =
         await client.query(
           `
           SELECT *
           FROM matches
           WHERE id = $1
           LIMIT 1
+          FOR UPDATE
           `,
           [matchId]
         );
 
       if (
-        matchResult.rows.length === 0
+        lockedMatchResult.rows.length === 0
       ) {
 
         await client.query(
@@ -2368,18 +2422,11 @@ app.post(
 
       }
 
-      const match =
-        matchResult.rows[0];
-
-      /*
-      |--------------------------------------------------------------------------
-      | Do not allow betting on finished,
-      | cancelled or live matches here.
-      |--------------------------------------------------------------------------
-      */
+      const lockedMatch =
+        lockedMatchResult.rows[0];
 
       if (
-        match.status !==
+        lockedMatch.status !==
         "scheduled"
       ) {
 
@@ -2387,7 +2434,7 @@ app.post(
           "ROLLBACK"
         );
 
-        return res.status(400).json({
+        return res.status(409).json({
 
           success: false,
 
@@ -2398,32 +2445,22 @@ app.post(
 
       }
 
-      /*
-      |--------------------------------------------------------------------------
-      | External ID validation
-      |--------------------------------------------------------------------------
-      */
-
       if (
-        external_id &&
-        String(
-          external_id
-        ) !==
-        String(
-          match.external_id
-        )
+        lockedMatch.external_id &&
+        String(lockedMatch.external_id) !==
+        String(matchForValidation.external_id)
       ) {
 
         await client.query(
           "ROLLBACK"
         );
 
-        return res.status(400).json({
+        return res.status(409).json({
 
           success: false,
 
           message:
-            "Match information is invalid."
+            "Match information changed. Please select again."
 
         });
 
@@ -2431,13 +2468,7 @@ app.post(
 
       /*
       |--------------------------------------------------------------------------
-      | NOTE:
-      |
-      | Client supplied odds are NOT trusted for
-      | production settlement.
-      |
-      | The next production step will store and
-      | validate the exact server-side odds.
+      | Potential win uses server-side odds
       |--------------------------------------------------------------------------
       */
 
@@ -2445,7 +2476,7 @@ app.post(
         Number(
           (
             stakeAmount *
-            selectedOdds
+            serverOdds
           ).toFixed(2)
         );
 
@@ -2478,6 +2509,25 @@ app.post(
             userId
           ]
         );
+
+      if (
+        updatedUser.rows.length === 0
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(500).json({
+
+          success: false,
+
+          message:
+            "Could not update wallet."
+
+        });
+
+      }
 
       /*
       |--------------------------------------------------------------------------
@@ -2521,21 +2571,38 @@ app.post(
             JSON.stringify({
 
               match_id:
-                match.id,
+                lockedMatch.id,
 
               external_id:
-                match.external_id,
+                lockedMatch.external_id,
 
               home_team:
-                match.home_team,
+                lockedMatch.home_team,
 
               away_team:
-                match.away_team,
+                lockedMatch.away_team,
 
-              selection,
+              market,
+
+              selection:
+                canonicalSelection,
+
+              client_selection:
+                selection,
 
               odds:
-                selectedOdds,
+                serverOdds,
+
+              bookmaker_key:
+                validation.bookmaker_key ||
+                null,
+
+              bookmaker_title:
+                validation.bookmaker_title ||
+                null,
+
+              client_odds:
+                clientOdds,
 
               cash_used:
                 Number(
@@ -2587,7 +2654,7 @@ app.post(
           stakeAmount,
           "completed",
           `BET-${bet.id}`,
-          `Football bet: ${selection}`
+          `Football bet: ${canonicalSelection}`
         ]
       );
 
@@ -2651,9 +2718,11 @@ app.post(
     } catch (error) {
 
       try {
+
         await client.query(
           "ROLLBACK"
         );
+
       } catch (_) {}
 
       console.error(
@@ -4791,51 +4860,25 @@ function findSelectionInMarkets(
 
 /*
 |--------------------------------------------------------------------------
-| Load current server-side odds
+| LOAD CURRENT SERVER-SIDE ODDS
 |--------------------------------------------------------------------------
 */
 
 async function getServerOddsForMatch(externalId) {
-  if (!externalId) return null;
-  const key = process.env.ODDS_API_KEY;
-  if (!key) return null;
-  try {
-    const url = new URL("https://api.the-odds-api.com/v4/sports/soccer_epl/events/" + encodeURIComponent(externalId) + "/odds");
-    url.searchParams.set("apiKey", key);
-    url.searchParams.set("regions", "eu");
-    url.searchParams.set("markets", "h2h,totals,btts,double_chance,draw_no_bet,spreads");
-    url.searchParams.set("oddsFormat", "decimal");
-    url.searchParams.set("dateFormat", "iso");
-    const response = await fetch(url,{headers:{Accept:"application/json"},signal:AbortSignal.timeout(8000)});
-    if (!response.ok) return null;
-    const event = await response.json();
-    const bestByMarket = {};
-    for (const bookmaker of (event.bookmakers || [])) {
-      for (const market of (bookmaker.markets || [])) {
-        const keyName = market.key;
-        if (!bestByMarket[keyName]) bestByMarket[keyName] = new Map();
-        for (const outcome of (market.outcomes || [])) {
-          const name = String(outcome.name || "");
-          const odd = Number(outcome.price);
-          if (!name || !Number.isFinite(odd) || odd <= 1) continue;
-          const old = bestByMarket[keyName].get(name);
-          if (!old || odd > old.odd) bestByMarket[keyName].set(name,{name,value:name,odd,point:outcome.point,bookmaker_key:bookmaker.key || "",bookmaker_title:bookmaker.title || ""});
-        }
-      }
-    }
-    const markets = {
-      "1x2":[...(bestByMarket.h2h || new Map()).values()],
-      double:[...(bestByMarket.double_chance || new Map()).values()],
-      overunder:[...(bestByMarket.totals || new Map()).values()],
-      btts:[...(bestByMarket.btts || new Map()).values()],
-      handicap:[...(bestByMarket.spreads || new Map()).values()],
-      draw_no_bet:[...(bestByMarket.draw_no_bet || new Map()).values()]
-    };
-    return {markets,raw:event};
-  } catch (error) {
-    console.error("Server odds lookup error:",error.message);
-    return null;
-  }
+  const parsed = parseBsdExternalId(externalId);
+  if (!parsed) return null;
+
+  const oddsResult = await fetchBsdEventOdds(parsed);
+  if (!oddsResult.ok) return null;
+
+  const eventResult = await bsdRequest(`/events/${encodeURIComponent(parsed)}/`);
+  const event = eventResult.ok ? eventResult.data : {};
+
+  return {
+    markets: normalizeBsdDetailedOdds(oddsResult.data, event),
+    raw: oddsResult.data,
+    headers: {}
+  };
 }
 
 /*
@@ -4850,26 +4893,14 @@ async function validateFootballBet(
   clientOdds
 ) {
 
-  if (
-    !match
-  ) {
+  if (!match) {
 
     return {
-
       valid: false,
-
       message:
         "Match not found."
-
     };
-
   }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Match must still be scheduled
-  |--------------------------------------------------------------------------
-  */
 
   if (
     match.status !==
@@ -4877,68 +4908,36 @@ async function validateFootballBet(
   ) {
 
     return {
-
       valid: false,
-
       message:
         "Betting is closed for this match."
-
     };
-
   }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Match must have external API ID
-  |--------------------------------------------------------------------------
-  */
 
   if (
     !match.external_id
   ) {
 
     return {
-
       valid: false,
-
       message:
         "Match data is incomplete."
-
     };
-
   }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Get current odds from server
-  |--------------------------------------------------------------------------
-  */
 
   const oddsData =
     await getServerOddsForMatch(
       match.external_id
     );
 
-  if (
-    !oddsData
-  ) {
+  if (!oddsData) {
 
     return {
-
       valid: false,
-
       message:
         "Current odds are unavailable for this match."
-
     };
-
   }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Find requested selection
-  |--------------------------------------------------------------------------
-  */
 
   const found =
     findSelectionInMarkets(
@@ -4946,19 +4945,13 @@ async function validateFootballBet(
       selection
     );
 
-  if (
-    !found
-  ) {
+  if (!found) {
 
     return {
-
       valid: false,
-
       message:
         "Selected betting option is no longer available."
-
     };
-
   }
 
   const currentOdds =
@@ -4979,91 +4972,63 @@ async function validateFootballBet(
   ) {
 
     return {
-
       valid: false,
-
       message:
         "Current odds are invalid."
-
     };
-
   }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Compare client odds with server odds
-  |--------------------------------------------------------------------------
-  |
-  | If odds changed, do NOT silently accept
-  | the old price.
-  |--------------------------------------------------------------------------
-  */
 
   if (
     !Number.isFinite(
       submittedOdds
-    )
+    ) ||
+    submittedOdds <= 1
   ) {
 
     return {
-
       valid: false,
-
       message:
-        "Odds are required."
-
+        "Submitted odds are invalid."
     };
-
   }
 
-  const difference =
+  if (
     Math.abs(
       currentOdds -
       submittedOdds
-    );
-
-  if (
-    difference >
-    0.0001
+    ) > 0.0001
   ) {
 
     return {
-
       valid: false,
-
-      odds_changed: true,
-
+      message:
+        "The odds have changed. Please select the bet again.",
+      odds_changed:
+        true,
       old_odds:
         submittedOdds,
-
       current_odds:
-        currentOdds,
-
-      message:
-        `Odds changed from ${submittedOdds.toFixed(2)} to ${currentOdds.toFixed(2)}. Please select again.`
-
+        currentOdds
     };
-
   }
 
   return {
-
     valid: true,
-
-    market:
-      found.market,
-
-    selection:
-      found.selection,
-
     odds:
       currentOdds,
-
+    selection:
+      found.selection,
+    market:
+      found.market,
+    bookmaker_key:
+      found.item?.bookmaker_key ||
+      null,
+    bookmaker_title:
+      found.item?.bookmaker_title ||
+      null,
     raw:
       oddsData.raw
-
   };
-
 }
 
 /*
@@ -5780,8 +5745,8 @@ async function startServer() {
         );
 
         console.log(
-          "⚽ The Odds API:",
-          process.env.ODDS_API_KEY
+          "⚽ BSD Football API:",
+          BSD_API_KEY
             ? "configured"
             : "NOT configured"
         );
