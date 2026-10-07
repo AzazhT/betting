@@ -1,617 +1,6010 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ethiopia Betting — Football</title>
-  <script src="https://telegram.org/js/telegram-web-app.js?63"></script>
-  <style>
-    :root{
-      --bg:#07111f;
-      --panel:#0d1a2b;
-      --panel2:#12233a;
-      --border:#213754;
-      --text:#f5f7fb;
-      --muted:#96a7bc;
-      --green:#1fd17b;
-      --green2:#17b968;
-      --yellow:#ffc857;
-      --danger:#ff6374;
-      --shadow:0 14px 40px rgba(0,0,0,.24);
-      --radius:18px;
+const express = require("express");
+const cors = require("cors");
+const http = require("http");
+const { Server } = require("socket.io");
+const { Pool } = require("pg");
+const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
+require("dotenv").config();
+
+/*
+|--------------------------------------------------------------------------
+| BSD — Bzzoiro Sports Data
+|--------------------------------------------------------------------------
+*/
+
+const BSD_API_KEY =
+  process.env.BSD_API_KEY;
+
+const BSD_API_URL =
+  "https://sports.bzzoiro.com/api/v2";
+
+const FOOTBALL_TIMEZONE =
+  "Africa/Addis_Ababa";
+
+const BSD_CACHE_TTL_MS =
+  60 * 1000;
+
+const bsdCache =
+  new Map();
+
+
+const ODDS_API_KEY = BSD_API_KEY;
+const ODDS_API_REGION = "";
+const ODDS_API_MARKETS = "";
+const ODDS_API_SPORTS = ["bsd"];
+const ODDS_API_BOOKMAKER_KEY = "";
+const ODDS_API_ADDITIONAL_MARKETS = "";
+
+async function oddsApiRequest(pathname, params = {}) {
+  return bsdRequest(pathname, params);
+}
+
+function fetchAdditionalSoccerMarkets() {
+  return Promise.resolve({ ok: true, data: null, headers: {} });
+}
+
+/*
+|--------------------------------------------------------------------------
+| App
+|--------------------------------------------------------------------------
+*/
+
+const app = express();
+
+const server =
+  http.createServer(app);
+
+/*
+|--------------------------------------------------------------------------
+| Socket.IO
+|--------------------------------------------------------------------------
+*/
+
+const io =
+  new Server(server, {
+    cors: {
+      origin: "*",
+      methods: ["GET", "POST"]
     }
-    *{box-sizing:border-box}
-    body{margin:0;background:linear-gradient(180deg,#06101d 0%,#091524 100%);color:var(--text);font-family:Inter,Arial,sans-serif}
-    button,input{font:inherit}
-    .wrap{max-width:1180px;margin:0 auto;padding:18px}
-    .top{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap}
-    .brand{font-size:22px;font-weight:800}.sub{color:var(--muted);font-size:13px;margin-top:3px}
-    .wallet{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:10px 14px;display:flex;gap:18px;align-items:center}
-    .wallet b{font-size:17px}.wallet small{display:block;color:var(--muted);font-size:11px;margin-bottom:2px}
-    .hero{background:linear-gradient(135deg,#10253a,#0a1727 58%,#113325);border:1px solid var(--border);border-radius:24px;padding:22px;margin-bottom:18px;box-shadow:var(--shadow)}
-    .hero h1{margin:0 0 7px;font-size:28px}.hero p{margin:0;color:var(--muted)}
-    .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 12px;flex-wrap:wrap}
-    .status{font-size:13px;color:var(--muted)}.status.ok{color:#8be4b7}.status.bad{color:#ff9ba5}
-    .btn{border:0;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:700}.refresh{background:var(--green);color:#03150d}.refresh:disabled{opacity:.55;cursor:not-allowed}
-    .layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
-    .matches{display:grid;gap:14px}
-    .match{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
-    .matchhead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:14px}
-    .league{font-size:11px;color:var(--yellow);font-weight:800;text-transform:uppercase;letter-spacing:.05em}.time{font-size:12px;color:var(--muted);text-align:right}
-    .teams{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-bottom:14px}.team{font-size:16px;font-weight:800}.team.away{text-align:right}.vs{font-size:11px;color:var(--muted);font-weight:800}
-    .market-group{margin-top:12px}.market-title{font-size:12px;color:var(--yellow);font-weight:800;margin:0 0 7px}.markets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-    .odd{background:var(--panel2);border:1px solid #29415f;color:var(--text);border-radius:11px;padding:10px;cursor:pointer;text-align:left;transition:.15s}.odd:hover{border-color:#3a6a8e;transform:translateY(-1px)}.odd.active{border-color:var(--green);background:#113526}.odd .name{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}.odd .price{font-size:16px;font-weight:800}
+  });
 
-    .filters{display:flex;gap:8px;overflow:auto;padding:2px 0 14px;margin-bottom:2px;scrollbar-width:none}.filters::-webkit-scrollbar{display:none}.filter{border:1px solid var(--border);background:#0b1929;color:var(--muted);border-radius:999px;padding:9px 14px;white-space:nowrap;cursor:pointer;font-weight:700;font-size:12px}.filter.active{background:#123d2d;color:#a5f2c7;border-color:var(--green)}
-    .market-group.hidden{display:none}
-    .market-group[data-filter="1x2"]{display:block}
-    .match{padding:14px}
-    .matchhead{margin-bottom:10px}
-    .teams{margin-bottom:10px}
-    .market-group{margin-top:9px}
-    .markets{gap:6px}
-    .odd{padding:9px}
-    .more-hint{font-size:11px;color:var(--muted);margin-top:8px}
-    .slip-tabs{display:flex;gap:6px;margin-bottom:10px}
-    .slip-tab{flex:1;border:1px solid var(--border);background:var(--panel2);color:var(--muted);border-radius:10px;padding:8px;font-size:12px;font-weight:800}
-    .slip-tab.active{color:#a5f2c7;border-color:var(--green);background:#123d2d}
-    @media(max-width:900px){.layout{grid-template-columns:1fr}.slip{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:50;border-radius:18px 18px 0 0;padding:10px 12px;box-shadow:0 -12px 35px rgba(0,0,0,.35);max-height:46vh;overflow:auto}.matches{padding-bottom:190px}.slip h2{font-size:16px;margin-bottom:9px}.choice{margin-bottom:9px;padding:10px}.place{padding:12px}.wrap{padding-bottom:20px}.slip:before{content:"";display:block;width:42px;height:4px;background:#38506d;border-radius:99px;margin:0 auto 8px}}
-    .sportsbook-list{display:grid;gap:8px}
-    .match{padding:0;overflow:hidden;border-radius:12px}
-    .matchhead{padding:9px 11px;margin:0;background:#0b1828;border-bottom:1px solid var(--border);align-items:center}
-    .league{font-size:10px}.time{font-size:11px}
-    .teams{grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr);gap:6px;margin:0;padding:10px 11px 7px}
-    .team{font-size:13px;line-height:1.25}.vs{font-size:9px;text-align:center}
-    .market-group{margin:0;padding:0 8px 8px}
-    .market-title{margin:0;padding:5px 3px;font-size:10px}
-    .markets{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
-    .odd{border-radius:7px;padding:7px 8px;min-height:45px}
-    .odd .name{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
-    .odd .price{font-size:13px}
-    .match-actions{display:flex;gap:5px;padding:0 8px 8px}
-    .more-btn{flex:1;border:1px solid var(--border);background:#101f31;color:#b9c8d8;border-radius:7px;padding:7px;font-size:11px;font-weight:800;cursor:pointer}
-    .more-btn.active{background:#123d2d;color:#a5f2c7;border-color:var(--green)}
-    .match .market-group:not(.main-market){display:none}
-    .match.expanded .market-group:not(.main-market){display:block}
-    .mobile-slip-bar{display:none}
-    @media(max-width:900px){
-      .layout{display:block}
-      .slip{position:fixed;left:0;right:0;bottom:48px;top:auto;z-index:60;border-radius:16px 16px 0 0;padding:10px 12px;box-shadow:0 -12px 35px rgba(0,0,0,.4);max-height:58vh;overflow:auto;display:none}
-      .slip.open{display:block}
-      .matches{padding-bottom:68px}
-      .mobile-slip-bar{position:fixed;display:flex;left:10px;right:10px;bottom:10px;z-index:70;background:#102235;border:1px solid var(--border);border-radius:13px;padding:7px;box-shadow:0 8px 28px rgba(0,0,0,.35)}
-      .mobile-slip-toggle{width:100%;border:0;border-radius:9px;background:var(--green);color:#04130c;padding:10px;font-weight:900;cursor:pointer}
-      .mobile-slip-toggle span{margin-left:5px}
-    }
-    @media(min-width:901px){.slip{display:block!important}}
-    .empty{padding:30px;text-align:center;background:var(--panel);border:1px dashed var(--border);border-radius:18px;color:var(--muted)}
-    .slip{position:sticky;top:14px;background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:16px;box-shadow:var(--shadow)}
-    .slip h2{font-size:18px;margin:0 0 14px}.choice{background:var(--panel2);border-radius:14px;padding:13px;margin-bottom:14px;border:1px solid #29415f}.choice .row{display:flex;justify-content:space-between;gap:12px}.choice .small{font-size:12px;color:var(--muted);margin-top:5px}.slip-leg{border-top:1px solid #29415f;padding:10px 0;display:grid;gap:4px}.remove-leg{border:0;background:transparent;color:var(--danger);padding:0;text-align:left;cursor:pointer;font-size:11px}.x{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:18px}
-    label{display:block;font-size:12px;color:var(--muted);margin:0 0 7px}.stake{width:100%;background:#091321;border:1px solid var(--border);border-radius:12px;padding:12px;color:var(--text);outline:none}.stake:focus{border-color:var(--green)}
-    .calc{display:grid;gap:8px;margin:12px 0 16px}.calc div{display:flex;justify-content:space-between;font-size:13px}.calc span{color:var(--muted)}
-    .place{width:100%;background:var(--green);color:#04130c;border:0;border-radius:13px;padding:13px;font-weight:900;cursor:pointer}.place:disabled{opacity:.5;cursor:not-allowed}
-    .message{margin-top:10px;border-radius:11px;padding:10px;font-size:12px;display:none}.message.show{display:block}.message.ok{background:#103a29;color:#9bf2c2}.message.bad{background:#3a1820;color:#ffb4bc}
-    .note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:12px}
-    @media(max-width:900px){.markets{grid-template-columns:repeat(3,1fr)}}
-    @media(max-width:580px){.wrap{padding:12px}.hero h1{font-size:23px}.teams{grid-template-columns:1fr}.team,.team.away{text-align:left}.vs{display:none}.markets{grid-template-columns:repeat(2,1fr)}.odd{padding:9px}.odd .price{font-size:15px}.wallet{width:100%;justify-content:space-between}}
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="top">
-      <div>
-        <div class="brand">Ethiopia Betting</div>
-        <div class="sub">Football betting · Live API data</div>
-      </div>
-      <div class="wallet">
-        <div><small>Cash</small><b id="cashBalance">0.00 ETB</b></div>
-        <div><small>Bonus</small><b id="bonusBalance">0.00 ETB</b></div>
-      </div>
-    </div>
+/*
+|--------------------------------------------------------------------------
+| Port
+|--------------------------------------------------------------------------
+*/
 
-    <section class="hero">
-      <h1>Football Betting</h1>
-      <p>Choose a match, select your odds and place your bet.</p>
-    </section>
+const PORT =
+  process.env.PORT || 10000;
 
-    <div class="bar">
-      <div id="status" class="status">Loading matches…</div>
-      <button id="refreshBtn" class="btn refresh">Refresh</button>
-    </div>
+/*
+|--------------------------------------------------------------------------
+| PostgreSQL
+|--------------------------------------------------------------------------
+*/
 
-    <div class="filters" aria-label="Betting filters">
-      <button class="filter active" data-filter="all" type="button">All</button>
-      <button class="filter" data-filter="1x2" type="button">1X2</button>
-      <button class="filter" data-filter="goals" type="button">Goals</button>
-      <button class="filter" data-filter="special" type="button">More</button>
-    </div>
-    <div class="more-hint">Tap <b>1X2</b> for the main odds, <b>Goals</b> for goal markets, or <b>More</b> for the other available markets.</div>
+const pool =
+  new Pool({
+    connectionString:
+      process.env.DATABASE_URL,
 
-    <div class="layout">
-      <main>
-        <div id="matches" class="matches sportsbook-list"></div>
-        <div class="mobile-slip-bar"><button id="mobileSlipToggle" class="mobile-slip-toggle" type="button">Bet Slip <span id="mobileSlipCount">0</span></button></div>
-      </main>
+    ssl:
+      process.env.NODE_ENV === "production"
+        ? {
+            rejectUnauthorized: false
+          }
+        : false
+  });
 
-      <aside class="slip">
-        <h2>Bet Slip</h2>
-        <div id="choiceBox" class="empty">Select one or more outcomes from the matches.</div>
-        <div id="betForm" style="display:none">
-          <label for="stake">Stake (ETB)</label>
-          <input id="stake" class="stake" type="number" min="1" max="100000" step="0.01" value="10" />
-          <div class="calc">
-            <div><span>Combined odds</span><strong id="slipOdds">—</strong></div>
-            <div><span>Potential win</span><strong id="potentialWin">0.00 ETB</strong></div>
-          </div>
-          <button id="placeBtn" class="place">Place Bet</button>
-          <div id="message" class="message"></div>
-          <div class="note">Your cash balance is used first, then eligible bonus balance. Server-side odds are checked again before the bet is accepted.</div>
-        </div>
-      </aside>
-    </div>
-  </div>
-
-<script>
-  const telegramWebApp =
-    window.Telegram?.WebApp || null;
-
-  if (telegramWebApp) {
-    telegramWebApp.ready();
-    telegramWebApp.expand();
+pool.on(
+  "error",
+  (err) => {
+    console.error(
+      "PostgreSQL pool error:",
+      err.message
+    );
   }
+);
 
-  const state = {
-    user: null,
-    matches: [],
-    selected: [],
-    loading: false,
-    telegramInitData:
-      telegramWebApp?.initData || ""
-  };
+/*
+|--------------------------------------------------------------------------
+| Middleware
+|--------------------------------------------------------------------------
+*/
 
-  const $ = (id) => document.getElementById(id);
+app.use(cors());
 
-  function money(value) {
-    const n = Number(value) || 0;
-    return n.toFixed(2) + " ETB";
-  }
+app.use(
+  express.json()
+);
 
-  function showMessage(text, type) {
-    const el = $("message");
-    el.textContent = text;
-    el.className = "message show " + (type || "bad");
-  }
+app.use(
+  express.urlencoded({
+    extended: true
+  })
+);
 
-  function clearMessage() {
-    const el = $("message");
-    el.textContent = "";
-    el.className = "message";
-  }
+app.use(
+  express.static(
+    path.join(
+      __dirname,
+      "public"
+    )
+  )
+);
 
-  function escapeHtml(value) {
-    return String(value ?? "").replace(/[&<>'"]/g, ch => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"
-    })[ch]);
-  }
+/*
+|--------------------------------------------------------------------------
+| Database Initialization
+|--------------------------------------------------------------------------
+*/
 
-  function formatDate(iso) {
-    if (!iso) return "";
-    try {
-      return new Intl.DateTimeFormat("en-ET", {
-        timeZone: "Africa/Addis_Ababa",
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit"
-      }).format(new Date(iso));
-    } catch {
-      return new Date(iso).toLocaleString();
-    }
-  }
+async function initializeDatabase() {
 
-  async function ensureUser() {
-    if (!state.telegramInitData) {
-      throw new Error(
-        "Please open the betting app from Telegram."
+  try {
+
+    const schemaPath =
+      path.join(
+        __dirname,
+        "schema.sql"
       );
+
+    if (
+      !fs.existsSync(
+        schemaPath
+      )
+    ) {
+
+      console.log(
+        "⚠️ schema.sql not found."
+      );
+
+      return;
     }
 
-    const res = await fetch(
-      "/api/telegram/auth",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type":
-            "application/json"
-        },
-        body: JSON.stringify({
-          initData:
-            state.telegramInitData
-        })
-      }
+    const schema =
+      fs.readFileSync(
+        schemaPath,
+        "utf8"
+      );
+
+    await pool.query(
+      schema
     );
 
-    const data =
-      await res.json();
+    console.log(
+      "✅ Database tables initialized successfully."
+    );
 
-    if (!res.ok || !data.success) {
-      throw new Error(
-        data.message ||
-          "Telegram authentication failed."
+  } catch (error) {
+
+    console.error(
+      "❌ Database initialization failed:",
+      error.message
+    );
+
+    throw error;
+  }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Home
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  "/",
+  (req, res) => {
+
+    res.json({
+      success: true,
+      name: "Ethiopia Betting",
+      status: "online"
+    });
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| Health Check
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  "/api/health",
+  async (req, res) => {
+
+    try {
+
+      const result =
+        await pool.query(
+          "SELECT NOW() AS time"
+        );
+
+      res.json({
+        success: true,
+        server: "healthy",
+        database: "healthy",
+        time:
+          result.rows[0].time
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Health check error:",
+        error.message
       );
+
+      res.status(500).json({
+        success: false,
+        server: "healthy",
+        database: "error"
+      });
+
     }
 
-    state.user = data.user;
-    updateWallet();
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| Database Test
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  "/api/database-test",
+  async (req, res) => {
+
+    try {
+
+      const result =
+        await pool.query(`
+          SELECT
+            current_database() AS database,
+            current_user AS user
+        `);
+
+      res.json({
+        success: true,
+        message:
+          "PostgreSQL connection successful.",
+        database:
+          result.rows[0].database,
+        user:
+          result.rows[0].user
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Database connection error:",
+        error.message
+      );
+
+      res.status(500).json({
+        success: false,
+        message:
+          "Database connection failed."
+      });
+
+    }
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| Tables Test
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  "/api/tables-test",
+  async (req, res) => {
+
+    try {
+
+      const result =
+        await pool.query(`
+          SELECT table_name
+          FROM information_schema.tables
+          WHERE table_schema = 'public'
+          ORDER BY table_name
+        `);
+
+      res.json({
+        success: true,
+        tables:
+          result.rows.map(
+            row =>
+              row.table_name
+          )
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Tables test error:",
+        error.message
+      );
+
+      res.status(500).json({
+        success: false,
+        message:
+          "Could not read database tables."
+      });
+
+    }
+
+  }
+);
+/*
+|--------------------------------------------------------------------------
+| USER ACCOUNT
+|--------------------------------------------------------------------------
+*/
+
+app.post(
+  "/api/user",
+  async (req, res) => {
+
+    try {
+
+      const {
+        telegram_id,
+        name,
+        username,
+        phone
+      } = req.body;
+
+      if (!telegram_id) {
+
+        return res.status(400).json({
+          success: false,
+          message:
+            "telegram_id is required."
+        });
+
+      }
+
+      const existingUser =
+        await pool.query(
+          `
+          SELECT *
+          FROM users
+          WHERE telegram_id = $1
+          `,
+          [telegram_id]
+        );
+
+      if (
+        existingUser.rows.length > 0
+      ) {
+
+        return res.json({
+          success: true,
+          new_user: false,
+          user:
+            existingUser.rows[0]
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Signup Bonus
+      |--------------------------------------------------------------------------
+      |
+      | 50 ETB bonus is stored separately.
+      | It is NOT withdrawable directly.
+      |
+      */
+
+      const signupBonus = 50.00;
+
+      const result =
+        await pool.query(
+          `
+          INSERT INTO users
+            (
+              telegram_id,
+              name,
+              username,
+              phone,
+              balance,
+              bonus_balance
+            )
+          VALUES
+            ($1, $2, $3, $4, $5, $6)
+          RETURNING *
+          `,
+          [
+            telegram_id,
+            name || "Player",
+            username || "",
+            phone || "",
+            0,
+            signupBonus
+          ]
+        );
+
+      const user =
+        result.rows[0];
+
+      await pool.query(
+        `
+        INSERT INTO transactions
+          (
+            user_id,
+            type,
+            amount,
+            status,
+            reference,
+            description
+          )
+        VALUES
+          ($1, $2, $3, $4, $5, $6)
+        `,
+        [
+          user.id,
+          "signup_bonus",
+          signupBonus,
+          "completed",
+          `SIGNUP-${user.id}`,
+          "50 ETB signup bonus"
+        ]
+      );
+
+      res.json({
+        success: true,
+        new_user: true,
+        message:
+          "Account created successfully.",
+        user
+      });
+
+    } catch (error) {
+
+      console.error(
+        "User account error:",
+        error.message
+      );
+
+      res.status(500).json({
+        success: false,
+        message:
+          "Could not create user account."
+      });
+
+    }
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| USER TEST
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  "/api/user-test",
+  async (req, res) => {
+
+    try {
+
+      const telegramId =
+        "TEST_USER_001";
+
+      let result =
+        await pool.query(
+          `
+          SELECT *
+          FROM users
+          WHERE telegram_id = $1
+          `,
+          [telegramId]
+        );
+
+      if (
+        result.rows.length === 0
+      ) {
+
+        const signupBonus = 50.00;
+
+        result =
+          await pool.query(
+            `
+            INSERT INTO users
+              (
+                telegram_id,
+                name,
+                username,
+                balance,
+                bonus_balance
+              )
+            VALUES
+              ($1, $2, $3, $4, $5)
+            RETURNING *
+            `,
+            [
+              telegramId,
+              "Test Player",
+              "test_player",
+              0,
+              signupBonus
+            ]
+          );
+
+        const user =
+          result.rows[0];
+
+        await pool.query(
+          `
+          INSERT INTO transactions
+            (
+              user_id,
+              type,
+              amount,
+              status,
+              reference,
+              description
+            )
+          VALUES
+            ($1, $2, $3, $4, $5, $6)
+          `,
+          [
+            user.id,
+            "signup_bonus",
+            signupBonus,
+            "completed",
+            `TEST-SIGNUP-${user.id}`,
+            "Test 50 ETB signup bonus"
+          ]
+        );
+
+        return res.json({
+          success: true,
+          new_user: true,
+          user
+        });
+
+      }
+
+      res.json({
+        success: true,
+        new_user: false,
+        user:
+          result.rows[0]
+      });
+
+    } catch (error) {
+
+      console.error(
+        "User test error:",
+        error.message
+      );
+
+      res.status(500).json({
+        success: false,
+        message:
+          "User test failed."
+      });
+
+    }
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| BSD REQUEST HELPER
+|--------------------------------------------------------------------------
+*/
+
+async function bsdRequest(pathname, params = {}) {
+  if (!BSD_API_KEY) {
+    throw new Error("BSD_API_KEY is not configured.");
   }
 
-  function telegramHeaders() {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, String(value));
+    }
+  }
+
+  const url = `${BSD_API_URL}${pathname}${query.toString() ? `?${query}` : ""}`;
+
+  console.log("⚽ BSD request:", pathname, params);
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Token ${BSD_API_KEY}`,
+      Accept: "application/json"
+    }
+  });
+
+  let data = null;
+  try {
+    data = await response.json();
+  } catch (_) {
+    data = { error: "BSD returned invalid JSON." };
+  }
+
+  return {
+    http_status: response.status,
+    ok: response.ok,
+    data
+  };
+}
+
+function addDays(dateString, days) {
+  const d = new Date(`${dateString}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function getAddisDate(offsetDays = 0) {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: FOOTBALL_TIMEZONE,
+    year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(now);
+  const y = Number(parts.find(p => p.type === "year").value);
+  const m = Number(parts.find(p => p.type === "month").value);
+  const d = Number(parts.find(p => p.type === "day").value);
+  const base = new Date(Date.UTC(y, m - 1, d));
+  base.setUTCDate(base.getUTCDate() + offsetDays);
+  return base.toISOString().slice(0, 10);
+}
+
+async function fetchBsdEvents(options = {}) {
+  const dateFrom = options.dateFrom || getAddisDate(0);
+  const dateTo = options.dateTo || getAddisDate(3);
+  const limit = Math.max(1, Math.min(200, Number(options.limit) || 100));
+  const cacheKey = `events|${dateFrom}|${dateTo}|${limit}`;
+  const cached = bsdCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < BSD_CACHE_TTL_MS) return cached.value;
+
+  // Do not send a status filter here. BSD documentation exposes
+  // different status names in different football views; the safest
+  // approach is to fetch the date window and filter upcoming events
+  // in our own betting route.
+  const result = await bsdRequest("/events/", {
+    date_from: dateFrom,
+    date_to: dateTo,
+    limit,
+    offset: 0
+  });
+
+  const value = {
+    ...result,
+    events: Array.isArray(result.data?.results) ? result.data.results : []
+  };
+  bsdCache.set(cacheKey, { timestamp: Date.now(), value });
+  return value;
+}
+
+function buildBsdExternalId(eventId) {
+  return `bsd:${eventId}`;
+}
+
+function parseBsdExternalId(externalId) {
+  const value = String(externalId || "").trim();
+  if (!value.startsWith("bsd:")) return null;
+  const id = value.slice(4);
+  return id ? id : null;
+}
+
+function normalizeBsdOdds(event) {
+  const markets = {
+    "1x2": [],
+    double: [],
+    overunder: [],
+    btts: [],
+    handicap: [],
+    draw_no_bet: [],
+    correct_score: [],
+    halftime_fulltime: []
+  };
+
+  const push = (market, name, value, odd, extra = {}) => {
+    const n = Number(odd);
+    if (!Number.isFinite(n) || n <= 1) return;
+    markets[market].push({ name, value: value ?? name, odd: n, ...extra });
+  };
+
+  push("1x2", event.home_team?.name || event.home_team, event.home_team?.name || event.home_team, event.odds_home);
+  push("1x2", "Draw", "Draw", event.odds_draw);
+  push("1x2", event.away_team?.name || event.away_team, event.away_team?.name || event.away_team, event.odds_away);
+
+  return markets;
+}
+
+async function fetchBsdEventOdds(eventId) {
+  const cacheKey = `event-odds|${eventId}`;
+  const cached = bsdCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < BSD_CACHE_TTL_MS) return cached.value;
+  const result = await bsdRequest(`/events/${encodeURIComponent(eventId)}/odds/`);
+  bsdCache.set(cacheKey, { timestamp: Date.now(), value: result });
+  return result;
+}
+
+function normalizeBsdDetailedOdds(data, event) {
+  const markets = normalizeBsdOdds(event || {});
+
+  // BSD odds endpoint returns a compact direct odds object.
+  const direct = data?.odds || {};
+  const home = event?.home_team?.name || event?.home_team || "Home";
+  const away = event?.away_team?.name || event?.away_team || "Away";
+  const pushDirect = (market, name, odd, extra = {}) => {
+    const n = Number(odd);
+    if (!Number.isFinite(n) || n <= 1) return;
+    pushMarket(markets, market, name, name, n, extra);
+  };
+
+  pushDirect("1x2", home, direct.home_win);
+  pushDirect("1x2", "Draw", direct.draw);
+  pushDirect("1x2", away, direct.away_win);
+
+  for (const line of [1.5, 2.5, 3.5]) {
+    const key = String(line).replace(".", "_");
+    pushDirect("overunder", `Over ${line}`, direct[`over_${key}_goals`], { line });
+    pushDirect("overunder", `Under ${line}`, direct[`under_${key}_goals`], { line });
+  }
+
+  pushDirect("btts", "Yes", direct.btts_yes);
+  pushDirect("btts", "No", direct.btts_no);
+
+  const list = Array.isArray(data?.markets) ? data.markets : [];
+
+  for (const market of list) {
+    const kind = String(market?.market_kind || market?.market_family || "").toUpperCase();
+    const family = String(market?.market_family || "").toUpperCase();
+    const line = market?.market_line;
+    const period = market?.market_period || "FT";
+    const books = Array.isArray(market?.bookmakers) ? market.bookmakers : [];
+    const prices = books[0]?.prices || {};
+    for (const [selection, obj] of Object.entries(prices)) {
+      const price = Number(obj?.price);
+      if (!Number.isFinite(price) || price <= 1) continue;
+      const suffix = line !== null && line !== undefined ? ` ${line}` : "";
+      const name = `${selection}${suffix}`;
+      if (kind === "WINNER" || family === "1X2") pushMarket(markets, "1x2", name, name, price, { period });
+      else if (kind === "OU" || family.startsWith("OU")) pushMarket(markets, "overunder", name, name, price, { line, period });
+      else if (kind === "AH" || family.includes("HANDICAP")) pushMarket(markets, "handicap", name, name, price, { line, period });
+      else if (family === "BTTS") pushMarket(markets, "btts", name, name, price, { period });
+      else if (family === "DNB") pushMarket(markets, "draw_no_bet", name, name, price, { period });
+      else if (family === "CS" || kind === "CORRECT_SCORE") pushMarket(markets, "correct_score", name, name, price, { period });
+      else if (family === "HTFT") pushMarket(markets, "halftime_fulltime", name, name, price, { period });
+    }
+  }
+  return markets;
+}
+
+function pushMarket(markets, market, name, value, odd, extra = {}) {
+  if (!markets[market]) markets[market] = [];
+  markets[market].push({ name, value, odd: Number(odd), ...extra });
+}
+
+/*
+|--------------------------------------------------------------------------
+| BSD DIAGNOSTIC / TEST
+|--------------------------------------------------------------------------
+*/
+app.get("/api/football/diagnostic", async (req, res) => {
+  try {
+    const result = await fetchBsdEvents({ limit: 5 });
+    res.json({ success: result.ok, http_status: result.http_status, provider: "BSD", count: result.events.length, errors: result.ok ? {} : result.data, events: result.events });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.get("/api/football/test", async (req, res) => {
+  try {
+    const result = await fetchBsdEvents({ limit: Number(req.query.limit) || 5 });
+    res.json({ success: result.ok, provider: "BSD", http_status: result.http_status, count: result.events.length, errors: result.ok ? {} : result.data, events: result.events });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+function normalizeOdds(
+  oddsResponse
+) {
+
+  const markets = {
+    "1x2": [],
+    double: [],
+    overunder: [],
+    btts: [],
+    handicap: [],
+    draw_no_bet: [],
+    correct_score: [],
+    halftime_fulltime: [],
+    correct_score_h1: [],
+    btts_h1: [],
+    alternate_totals: [],
+    alternate_spreads: [],
+    alternate_totals_corners: [],
+    alternate_spreads_corners: [],
+    corners_1x2: []
+  };
+
+  const events =
+    Array.isArray(oddsResponse)
+      ? oddsResponse
+      : oddsResponse
+        ? [oddsResponse]
+        : [];
+
+  for (
+    const event
+    of events
+  ) {
+
+    const bookmaker =
+      chooseOddsBookmaker(
+        event
+      );
+
+    if (!bookmaker) {
+      continue;
+    }
+
+    const bookmakerKey =
+      bookmaker.key ||
+      "";
+
+    const bookmakerTitle =
+      bookmaker.title ||
+      bookmakerKey ||
+      "Bookmaker";
+
+    const eventMarkets =
+      Array.isArray(
+        bookmaker.markets
+      )
+        ? bookmaker.markets
+        : [];
+
+    for (
+      const market
+      of eventMarkets
+    ) {
+
+      const marketKey =
+        String(
+          market?.key ||
+          ""
+        )
+          .trim()
+          .toLowerCase();
+
+      const outcomes =
+        Array.isArray(
+          market?.outcomes
+        )
+          ? market.outcomes
+          : [];
+
+      for (
+        const outcome
+        of outcomes
+      ) {
+
+        const odd =
+          Number(
+            outcome?.price
+          );
+
+        if (
+          !Number.isFinite(odd) ||
+          odd <= 1
+        ) {
+          continue;
+        }
+
+        const rawName =
+          String(
+            outcome?.name ||
+            ""
+          );
+
+        const point =
+          outcome?.point ??
+          null;
+
+        let displayName =
+          rawName;
+
+        if (
+          (marketKey === "totals" ||
+            marketKey === "spreads") &&
+          point !== null &&
+          point !== undefined &&
+          point !== ""
+        ) {
+
+          displayName =
+            `${rawName} ${Number(point) > 0 ? "+" : ""}${point}`;
+
+        }
+
+        const base = {
+          name:
+            displayName,
+          value:
+            displayName,
+          odd,
+          bookmaker_key:
+            bookmakerKey,
+          bookmaker_title:
+            bookmakerTitle,
+          point
+        };
+
+        if (
+          marketKey ===
+          "h2h"
+        ) {
+
+          markets["1x2"].push(
+            base
+          );
+
+        } else if (
+          marketKey ===
+          "spreads"
+        ) {
+
+          markets.handicap.push({
+            ...base,
+            line:
+              outcome?.point ??
+              null
+          });
+
+        } else if (
+          marketKey ===
+          "totals"
+        ) {
+
+          markets.overunder.push({
+            ...base,
+            line:
+              outcome?.point ??
+              null
+          });
+
+        } else if (
+          marketKey ===
+          "btts"
+        ) {
+
+          markets.btts.push(
+            base
+          );
+
+        } else if (
+          marketKey ===
+          "double_chance"
+        ) {
+
+          markets.double.push(
+            base
+          );
+
+        } else if (
+          marketKey ===
+          "draw_no_bet"
+        ) {
+
+          markets.draw_no_bet.push(
+            base
+          );
+
+        } else if (
+          marketKey ===
+          "correct_score"
+        ) {
+
+          markets.correct_score.push(
+            base
+          );
+
+        } else if (
+          marketKey ===
+          "halftime_fulltime"
+        ) {
+
+          markets.halftime_fulltime.push(
+            base
+          );
+
+        } else if (marketKey === "correct_score_h1") {
+          markets.correct_score_h1.push(base);
+        } else if (marketKey === "btts_h1") {
+          markets.btts_h1.push(base);
+        } else if (marketKey === "alternate_totals") {
+          markets.alternate_totals.push({...base, line: outcome?.point ?? null});
+        } else if (marketKey === "alternate_spreads") {
+          markets.alternate_spreads.push({...base, line: outcome?.point ?? null});
+        } else if (marketKey === "alternate_totals_corners") {
+          markets.alternate_totals_corners.push({...base, line: outcome?.point ?? null});
+        } else if (marketKey === "alternate_spreads_corners") {
+          markets.alternate_spreads_corners.push({...base, line: outcome?.point ?? null});
+        } else if (marketKey === "corners_1x2") {
+          markets.corners_1x2.push(base);
+        }
+
+      }
+
+    }
+
+  }
+
+  for (
+    const key
+    of Object.keys(markets)
+  ) {
+
+    const seen =
+      new Set();
+
+    markets[key] =
+      markets[key].filter(
+        item => {
+
+          const identifier =
+            JSON.stringify([
+              item.name,
+              item.point ??
+                item.line ??
+                null,
+              item.odd,
+              item.bookmaker_key
+            ]);
+
+          if (
+            seen.has(identifier)
+          ) {
+            return false;
+          }
+
+          seen.add(identifier);
+          return true;
+        }
+      );
+  }
+
+  return markets;
+}
+
+/*
+|--------------------------------------------------------------------------
+| BSD EXTERNAL MATCH ID
+|--------------------------------------------------------------------------
+*/
+
+function buildOddsExternalId(eventId) {
+  return buildBsdExternalId(eventId);
+}
+
+function parseOddsExternalId(externalId) {
+  const id = parseBsdExternalId(externalId);
+  return id ? { eventId: id, sportKey: "bsd" } : null;
+}
+
+/*
+|--------------------------------------------------------------------------
+| SAVE / UPDATE MATCH FROM THE ODDS API
+|--------------------------------------------------------------------------
+*/
+
+async function saveOddsEventToDatabase(
+  event
+) {
+
+  if (
+    !event?.id ||
+    !event?.sport_key
+  ) {
+    return null;
+  }
+
+  const externalId =
+    buildOddsExternalId(
+      event.sport_key,
+      event.id
+    );
+
+  const homeTeam =
+    event.home_team ||
+    "Home";
+
+  const awayTeam =
+    event.away_team ||
+    "Away";
+
+  const startedAt =
+    event.commence_time
+      ? new Date(
+          event.commence_time
+        )
+      : null;
+
+  const validStartedAt =
+    startedAt &&
+    !Number.isNaN(
+      startedAt.getTime()
+    )
+      ? startedAt
+      : null;
+
+  const matchStatus =
+    validStartedAt &&
+    validStartedAt.getTime() <=
+      Date.now()
+      ? "live"
+      : "scheduled";
+
+  const query = `
+    INSERT INTO matches
+    (
+      external_id,
+      home_team,
+      away_team,
+      status,
+      home_score,
+      away_score,
+      result,
+      started_at,
+      finished_at
+    )
+    VALUES
+    (
+      $1,$2,$3,$4,$5,$6,$7,$8,$9
+    )
+    ON CONFLICT (external_id)
+    DO UPDATE SET
+      home_team = EXCLUDED.home_team,
+      away_team = EXCLUDED.away_team,
+      status = EXCLUDED.status,
+      started_at = EXCLUDED.started_at,
+      updated_at = NOW()
+    RETURNING *
+  `;
+
+  const dbResult =
+    await pool.query(
+      query,
+      [
+        externalId,
+        homeTeam,
+        awayTeam,
+        matchStatus,
+        null,
+        null,
+        null,
+        validStartedAt,
+        null
+      ]
+    );
+
+  return dbResult.rows[0];
+}
+
+/*
+|--------------------------------------------------------------------------
+| ADDITIONAL SOCCER MARKETS
+|--------------------------------------------------------------------------
+*/
+async function fetchAdditionalSoccerMarkets(sportKey, eventId) {
+  const markets = ODDS_API_ADDITIONAL_MARKETS;
+  if (!markets) return { ok: true, data: null, headers: {} };
+  const cacheKey = `event|${sportKey}|${eventId}|${markets}`;
+  const cached = oddsCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < ODDS_CACHE_TTL_MS) return cached.value;
+  const result = await oddsApiRequest(
+    `/sports/${encodeURIComponent(sportKey)}/events/${encodeURIComponent(eventId)}/odds/`,
+    { regions: ODDS_API_REGION, markets, oddsFormat: "decimal", dateFormat: "iso" }
+  );
+  oddsCache.set(cacheKey, { timestamp: Date.now(), value: result });
+  return result;
+}
+
+function mergeBookmakerMarkets(baseEvent, additionalEvent) {
+  const merged = { ...(baseEvent || {}) };
+  const map = new Map();
+  for (const b of Array.isArray(baseEvent?.bookmakers) ? baseEvent.bookmakers : []) {
+    if (b?.key) map.set(String(b.key), { ...b, markets: Array.isArray(b.markets) ? [...b.markets] : [] });
+  }
+  for (const b of Array.isArray(additionalEvent?.bookmakers) ? additionalEvent.bookmakers : []) {
+    if (!b?.key) continue;
+    const k = String(b.key);
+    if (!map.has(k)) { map.set(k, { ...b, markets: Array.isArray(b.markets) ? [...b.markets] : [] }); continue; }
+    const cur = map.get(k);
+    const idx = new Map((cur.markets || []).map((m,i)=>[String(m?.key || ""),i]));
+    for (const m of Array.isArray(b.markets) ? b.markets : []) {
+      const mk = String(m?.key || "");
+      if (idx.has(mk)) cur.markets[idx.get(mk)] = m; else { idx.set(mk, cur.markets.length); cur.markets.push(m); }
+    }
+    map.set(k, cur);
+  }
+  merged.bookmakers = Array.from(map.values());
+  return merged;
+}
+
+/*
+|--------------------------------------------------------------------------
+| FOOTBALL BETTING DATA — BSD
+|--------------------------------------------------------------------------
+*/
+
+function getEventTeamName(value, fallback) {
+  if (value && typeof value === "object") {
+    return String(value.name || value.team_name || fallback);
+  }
+  return String(value || fallback);
+}
+
+function getEventScore(event, side) {
+  const direct = side === "home" ? event?.home_score : event?.away_score;
+  if (direct !== undefined && direct !== null && direct !== "") return Number(direct);
+
+  const scores = event?.scores || event?.score || {};
+  const candidates = side === "home"
+    ? [scores.home, scores.home_score, scores["1"], scores["homeTeam"]]
+    : [scores.away, scores.away_score, scores["2"], scores["awayTeam"]];
+
+  for (const value of candidates) {
+    if (value !== undefined && value !== null && value !== "" && Number.isFinite(Number(value))) {
+      return Number(value);
+    }
+  }
+  return null;
+}
+
+function getEventStatus(event) {
+  return String(
+    event?.status ||
+    event?.event_status ||
+    event?.state ||
+    event?.match_status ||
+    ""
+  ).trim().toLowerCase();
+}
+
+function classifyBsdEvent(event) {
+  const status = getEventStatus(event);
+  const date = new Date(event?.event_date || event?.commence_time || event?.start_time || "");
+  const now = Date.now();
+
+  const finishedStatuses = new Set([
+    "finished", "completed", "final", "ended", "cancelled", "canceled",
+    "abandoned", "closed", "postponed", "suspended", "void"
+  ]);
+  if (finishedStatuses.has(status)) return { display: false, live: false, date, section: "finished" };
+
+  const live = ["live", "inplay", "in_play", "playing", "started", "1h", "2h", "ht", "extra_time", "penalties"].includes(status)
+    || event?.live === true
+    || event?.is_live === true
+    || event?.in_play === true
+    || event?.inplay === true;
+
+  if (live) return { display: true, live: true, date, section: "live" };
+  if (Number.isNaN(date.getTime())) return { display: false, live: false, date, section: "unknown" };
+
+  // A future event is scheduled. If BSD does not provide a status and the
+  // event time has passed, do NOT guess that it is live; keep it visible as
+  // scheduled so a provider status problem cannot create false live bets.
+  if (date.getTime() > now) {
+    const today = getAddisDate(0);
+    const tomorrow = getAddisDate(1);
+    const eventDate = new Intl.DateTimeFormat("en-CA", {
+      timeZone: FOOTBALL_TIMEZONE,
+      year: "numeric", month: "2-digit", day: "2-digit"
+    }).format(date);
+    const section = eventDate === today ? "today" : eventDate === tomorrow ? "tomorrow" : "upcoming";
+    return { display: true, live: false, date, section };
+  }
+
+  // Past events without a live/finished status are hidden rather than
+  // incorrectly offered for betting.
+  return { display: false, live: false, date, section: "past" };
+}
+
+function hasAnyBsdMarket(markets) {
+  return Object.values(markets || {}).some(items => Array.isArray(items) && items.length > 0);
+}
+
+async function buildBsdBettingMatch(event) {
+  if (!event?.id) return null;
+
+  const classification = classifyBsdEvent(event);
+  if (!classification.display) return null;
+
+  const home = getEventTeamName(event.home_team, "Home");
+  const away = getEventTeamName(event.away_team, "Away");
+  const league = String(
+    event?.league?.name ||
+    event?.competition?.name ||
+    event?.tournament?.name ||
+    event?.league_name ||
+    "Football"
+  );
+  const country = String(
+    event?.league?.country ||
+    event?.competition?.country ||
+    event?.country ||
+    ""
+  );
+
+  let markets = normalizeBsdOdds(event);
+
+  try {
+    const oddsResult = await fetchBsdEventOdds(event.id);
+    if (oddsResult.ok) {
+      const detailed = normalizeBsdDetailedOdds(oddsResult.data, event);
+      if (hasAnyBsdMarket(detailed)) markets = detailed;
+    }
+  } catch (error) {
+    console.error("BSD odds detail error:", error.message);
+  }
+
+  if (!hasAnyBsdMarket(markets)) return null;
+
+  let savedMatch = null;
+  try {
+    savedMatch = await saveOddsEventToDatabase({
+      id: String(event.id),
+      sport_key: "bsd",
+      home_team: home,
+      away_team: away,
+      commence_time: event.event_date
+    });
+  } catch (dbError) {
+    // Betting feed must still work when PostgreSQL is temporarily unavailable.
+    console.error("Match database save error:", dbError.message);
+  }
+
+  return {
+    id: savedMatch?.id || null,
+    external_id: buildBsdExternalId(event.id),
+    event_id: String(event.id),
+    sport_key: "bsd",
+    provider: "BSD",
+    home_team: home,
+    away_team: away,
+    league,
+    country,
+    date: event.event_date,
+    timezone: FOOTBALL_TIMEZONE,
+    status: classification.live ? "LIVE" : "NS",
+    live: classification.live,
+    section: classification.section,
+    home_score: getEventScore(event, "home"),
+    away_score: getEventScore(event, "away"),
+    markets,
+    raw_event: event
+  };
+}
+
+async function getBsdBettingFeed(limit, days) {
+  const dateFrom = getAddisDate(0);
+  const dateTo = getAddisDate(days);
+  const result = await fetchBsdEvents({
+    dateFrom,
+    dateTo,
+    limit: Math.min(200, Math.max(50, limit * 5))
+  });
+
+  if (!result.ok) {
     return {
-      "Content-Type":
-        "application/json",
-      "X-Telegram-Init-Data":
-        state.telegramInitData
+      ok: false,
+      status: result.http_status || 502,
+      message: result.data?.detail || result.data?.error || "BSD football API request failed.",
+      matches: []
     };
   }
 
-  function updateWallet() {
-    if (!state.user) return;
-    $("cashBalance").textContent = money(state.user.balance);
-    $("bonusBalance").textContent = money(state.user.bonus_balance);
-  }
-
-  function labelForSelection(match, item, marketKey) {
-    const name = String(item?.name || item?.value || "").trim();
-    if (marketKey === "1x2") {
-      if (name.toLowerCase() === "draw") return "Draw";
-      if (name === String(match.home_team || "")) return "Home Win";
-      if (name === String(match.away_team || "")) return "Away Win";
-    }
-    if (marketKey === "double") {
-      return name === "1X" ? "Home / Draw" : name === "X2" ? "Draw / Away" : name === "12" ? "Home / Away" : name;
-    }
-    return name;
-  }
-
-  function marketGroups(match) {
-    return [
-      ["1x2", "1X2 · Match Result"],
-      ["double", "Double Chance"],
-      ["overunder", "Over / Under"],
-      ["handicap", "Handicap"],
-      ["btts", "Both Teams To Score"],
-      ["draw_no_bet", "Draw No Bet"],
-      ["correct_score", "Correct Score"],
-      ["halftime_fulltime", "Half Time / Full Time"]
-    ].map(([key, label]) => ({
-      key,
-      label,
-      items: Array.isArray(match.markets?.[key]) ? match.markets[key] : []
-    })).filter(group => group.items.length);
-  }
-
-  function renderMatches() {
-    const root = $("matches");
-    root.innerHTML = "";
-
-    if (!state.matches.length) {
-      root.innerHTML = '<div class="empty">No football matches are available right now.</div>';
-      return;
-    }
-
-    for (const match of state.matches) {
-      const groups = marketGroups(match);
-      const card = document.createElement("section");
-      card.className = "match";
-
-      const groupsHtml = groups.length
-        ? groups.map(group => {
-            const buttons = group.items.map(item => {
-              const key = `${match.id}|${group.key}|${item.name}|${item.odd}|${item.point ?? ""}|${item.bookmaker_key || ""}`;
-              const active = state.selected.some(selected => selected.key === key) ? " active" : "";
-              const label = labelForSelection(match, item, group.key);
-              return `
-                <button class="odd${active}" data-key="${escapeHtml(key)}" data-market="${escapeHtml(group.key)}" data-market-label="${escapeHtml(group.label)}" data-selection-label="${escapeHtml(label)}" data-match="${escapeHtml(match.id)}" data-name="${escapeHtml(item.name)}" data-odds="${Number(item.odd)}" data-bookmaker="${escapeHtml(item.bookmaker_key || "")}" data-bookmaker-title="${escapeHtml(item.bookmaker_title || "")}">
-                  <span class="name">${escapeHtml(label)}${item.point !== null && item.point !== undefined && group.key !== "1x2" ? ` · ${escapeHtml(String(item.point))}` : ""}</span>
-                  <span class="price">${Number(item.odd).toFixed(2)}</span>
-                </button>`;
-            }).join("");
-            const filter = ["1x2"].includes(group.key) ? "1x2" : ["overunder","handicap"].includes(group.key) ? "goals" : "special";
-            const mainClass = group.key === "1x2" ? " main-market" : "";
-            return `<div class="market-group${mainClass}" data-filter="${filter}"><div class="market-title">${escapeHtml(group.label)}</div><div class="markets">${buttons}</div></div>`;
-          }).join("")
-        : '<div class="empty">No odds</div>';
-
-      card.innerHTML = `
-        <div class="matchhead">
-          <div><div class="league">${escapeHtml(match.league || match.sport_key || "Football")}</div></div>
-          <div class="time">${escapeHtml(formatDate(match.date))}</div>
-        </div>
-        <div class="teams">
-          <div class="team">${escapeHtml(match.home_team)}</div>
-          <div class="vs">VS</div>
-          <div class="team away">${escapeHtml(match.away_team)}</div>
-        </div>
-        ${groupsHtml}
-        ${groups.length > 1 ? '<div class="match-actions"><button class="more-btn" type="button">More markets</button></div>' : ''}`;
-
-      root.appendChild(card);
-    }
-
-    applyMarketFilter();
-
-    root.querySelectorAll(".odd").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const match = state.matches.find(m => String(m.id) === String(btn.dataset.match));
-        const selection = {
-          key: btn.dataset.key,
-          matchId: Number(btn.dataset.match),
-          externalId: match?.external_id || "",
-          homeTeam: match?.home_team || "",
-          awayTeam: match?.away_team || "",
-          market: btn.dataset.market || "",
-          marketLabel: btn.dataset.marketLabel || "",
-          selectionLabel: btn.dataset.selectionLabel || btn.dataset.name,
-          selection: btn.dataset.name,
-          odds: Number(btn.dataset.odds),
-          bookmakerKey: btn.dataset.bookmaker,
-          bookmakerTitle: btn.dataset.bookmakerTitle
-        };
-
-        const existingIndex = state.selected.findIndex(item => item.key === selection.key);
-        const sameMatchIndex = state.selected.findIndex(item => item.matchId === selection.matchId);
-
-        if (existingIndex >= 0) {
-          state.selected.splice(existingIndex, 1);
-        } else if (sameMatchIndex >= 0) {
-          state.selected[sameMatchIndex] = selection;
-        } else if (state.selected.length >= 20) {
-          showMessage("Maximum 20 selections per accumulator.", "bad");
-          return;
-        } else {
-          state.selected.push(selection);
-        }
-
-        clearMessage();
-        renderMatches();
-        renderSlip();
-      });
-    });
-
-    root.querySelectorAll(".more-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const card = btn.closest(".match");
-        const expanded = card.classList.toggle("expanded");
-        btn.classList.toggle("active", expanded);
-        btn.textContent = expanded ? "Less markets" : "More markets";
-      });
-    });
-  }
-
-  /* legacy duplicate handler removed */
-  if (false) root.querySelectorAll(".more-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const card = btn.closest(".match");
-        const expanded = card.classList.toggle("expanded");
-        btn.classList.toggle("active", expanded);
-        btn.textContent = expanded ? "Less markets" : "More markets";
-      });
-    });
-
-  function applyMarketFilter() {
-    document.querySelectorAll(".market-group").forEach(group => {
-      const wanted = state.filter;
-      group.classList.toggle("hidden", wanted !== "all" && group.dataset.filter !== wanted);
-    });
-    document.querySelectorAll(".filter").forEach(btn => btn.classList.toggle("active", btn.dataset.filter === state.filter));
-  }
-
-  function getCombinedOdds() {
-    if (!state.selected.length) return 0;
-    return state.selected.reduce((total, item) => total * Number(item.odds || 0), 1);
-  }
-
-  function updateMobileSlipBar() {
-    const count = $("mobileSlipCount");
-    if (count) count.textContent = state.selected.length;
-  }
-
-  function renderSlip() {
-    const box = $("choiceBox");
-    const form = $("betForm");
-    updateMobileSlipBar();
-
-    if (!state.selected.length) {
-      box.className = "empty";
-      box.textContent = "Select one or more outcomes from the matches.";
-      form.style.display = "none";
-      return;
-    }
-
-    box.className = "choice";
-    box.innerHTML = `
-      <div class="row">
-        <strong>${state.selected.length} selection${state.selected.length > 1 ? "s" : ""}</strong>
-        <button class="x" id="clearChoice" aria-label="Clear selections">×</button>
-      </div>
-      ${state.selected.map((item, index) => `
-        <div class="slip-leg">
-          <div><strong>${escapeHtml(item.homeTeam)} vs ${escapeHtml(item.awayTeam)}</strong></div>
-          <div class="small">${escapeHtml(item.marketLabel)} · ${escapeHtml(item.selectionLabel || item.selection)} · <b>${item.odds.toFixed(2)}</b></div>
-          <button class="remove-leg" type="button" data-leg="${index}">Remove</button>
-        </div>
-      `).join("")}
-    `;
-
-    form.style.display = "block";
-    $("slipOdds").textContent = getCombinedOdds().toFixed(4);
-    updatePotential();
-
-    $("clearChoice").addEventListener("click", () => {
-      state.selected = [];
-      clearMessage();
-      renderMatches();
-      renderSlip();
-    });
-
-    box.querySelectorAll(".remove-leg").forEach(btn => {
-      btn.addEventListener("click", () => {
-        state.selected.splice(Number(btn.dataset.leg), 1);
-        clearMessage();
-        renderMatches();
-        renderSlip();
-      });
-    });
-  }
-
-  function updatePotential() {
-    if (!state.selected.length) return;
-    const stake = Number($("stake").value) || 0;
-    const potential = stake * getCombinedOdds();
-    $("potentialWin").textContent = money(potential);
-  }
-
-  async function loadMatches() {
-    if (state.loading) return;
-    state.loading = true;
-    $("refreshBtn").disabled = true;
-    $("status").textContent = "Loading matches…";
-    $("status").className = "status";
+  const matches = [];
+  // Keep provider/API load reasonable: only process enough events to fill the requested page.
+  for (const event of result.events) {
+    if (matches.length >= limit) break;
     try {
-      const res = await fetch("/api/football/betting?limit=30&days=3", {cache:"no-store"});
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Could not load matches");
-      state.matches = Array.isArray(data.matches) ? data.matches : [];
-      $("status").textContent = state.matches.length
-        ? `${state.matches.length} football matches loaded`
-        : "No football matches available";
-      $("status").className = state.matches.length ? "status ok" : "status bad";
-      renderMatches();
-      renderSlip();
+      const match = await buildBsdBettingMatch(event);
+      if (match) matches.push(match);
     } catch (error) {
-      state.matches = [];
-      renderMatches();
-      $("status").textContent = error.message || "Could not load matches";
-      $("status").className = "status bad";
-    } finally {
-      state.loading = false;
-      $("refreshBtn").disabled = false;
+      console.error("BSD event normalization error:", error.message);
     }
   }
 
-  async function placeBet() {
-    clearMessage();
-    if (!state.user) return showMessage("User is not ready.", "bad");
-    if (!state.selected.length) return showMessage("Select at least one outcome first.", "bad");
+  matches.sort((a, b) => {
+    if (a.live !== b.live) return a.live ? -1 : 1;
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  });
 
-    const stake = Number($("stake").value);
-    if (!Number.isFinite(stake) || stake <= 0) return showMessage("Enter a valid stake.", "bad");
-    if (stake > 100000) return showMessage("Maximum stake is 100,000 ETB.", "bad");
+  const leagues = [...new Map(
+    matches.map(match => [
+      `${match.country}|${match.league}`,
+      { name: match.league, country: match.country }
+    ])
+  ).values()];
 
-    $("placeBtn").disabled = true;
-    $("placeBtn").textContent = state.selected.length > 1 ? "Placing Accumulator…" : "Placing…";
+  return { ok: true, status: 200, matches, leagues };
+}
+
+app.get("/api/football/betting", async (req, res) => {
+  try {
+    let limit = Number(req.query.limit);
+    if (!Number.isFinite(limit)) limit = 30;
+    limit = Math.max(1, Math.min(100, Math.floor(limit)));
+
+    let days = Number(req.query.days);
+    if (!Number.isFinite(days)) days = 3;
+    days = Math.max(1, Math.min(7, Math.floor(days)));
+
+    const feed = await getBsdBettingFeed(limit, days);
+    if (!feed.ok) {
+      return res.status(feed.status).json({
+        success: false,
+        provider: "BSD",
+        message: feed.message,
+        matches: [],
+        leagues: []
+      });
+    }
+
+    res.json({
+      success: true,
+      provider: "BSD",
+      count: feed.matches.length,
+      matches: feed.matches,
+      leagues: feed.leagues
+    });
+  } catch (error) {
+    console.error("BSD football betting error:", error);
+    res.status(500).json({
+      success: false,
+      provider: "BSD",
+      message: error.message || "Could not load BSD football matches.",
+      matches: [],
+      leagues: []
+    });
+  }
+});
+
+// Compatibility aliases for older betting.html versions.
+app.get("/api/football/betting/", (req, res) => {
+  req.url = "/api/football/betting" + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
+  return res.redirect(307, req.url);
+});
+
+app.get("/api/football/matches", async (req, res) => {
+  req.url = "/api/football/betting" + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
+  return res.redirect(307, req.url);
+});
+
+/*
+|--------------------------------------------------------------------------
+| PLACE ACCUMULATOR BET
+|--------------------------------------------------------------------------
+*/
+
+app.post(
+  "/api/bets/place-accumulator",
+  async (req, res) => {
+
+    const client =
+      await pool.connect();
 
     try {
-      let data;
-      let res;
 
-      if (state.selected.length > 1) {
-        const payload = {
-          user_id: state.user.id,
-          stake,
-          bets: state.selected.map(item => ({
-            match_id: item.matchId,
-            external_id: item.externalId,
-            selection: item.selection,
-            odds: item.odds
-          }))
-        };
+      const userId =
+        Number(
+          req.body.user_id
+        );
 
-        res = await fetch("/api/bets/place-accumulator", {
-          method: "POST",
-          headers: telegramHeaders(),
-          body: JSON.stringify(payload)
-        });
-      } else {
-        const selected = state.selected[0];
-        const payload = {
-          user_id: state.user.id,
-          match_id: selected.matchId,
-          external_id: selected.externalId,
-          game: "football",
-          selection: selected.selection,
-          stake,
-          odds: selected.odds
-        };
+      const stakeAmount =
+        Number(
+          req.body.stake
+        );
 
-        res = await fetch("/api/bets/place", {
-          method: "POST",
-          headers: telegramHeaders(),
-          body: JSON.stringify(payload)
+      const requestedBets =
+        Array.isArray(
+          req.body.bets
+        )
+          ? req.body.bets
+          : [];
+
+      if (
+        !Number.isInteger(userId) ||
+        userId <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid user."
         });
       }
 
-      data = await res.json();
+      if (
+        !Number.isFinite(stakeAmount) ||
+        stakeAmount <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid stake."
+        });
+      }
 
-      if (!res.ok || !data.success) {
-        if (res.status === 409) {
-          await loadMatches();
-          showMessage(data.message || "One of the odds changed. Please select again.", "bad");
-        } else {
-          showMessage(data.message || "Could not place bet.", "bad");
+      if (
+        stakeAmount > 100000
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Maximum stake exceeded."
+        });
+      }
+
+      if (
+        requestedBets.length < 2
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Select at least two outcomes for an accumulator."
+        });
+      }
+
+      if (
+        requestedBets.length > 10
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "A maximum of 10 selections is allowed."
+        });
+      }
+
+      const uniqueMatchIds =
+        new Set();
+
+      for (
+        const item of requestedBets
+      ) {
+        const matchId =
+          Number(item?.match_id);
+
+        if (
+          !Number.isInteger(matchId) ||
+          matchId <= 0
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "One or more match IDs are invalid."
+          });
         }
-        return;
+
+        if (
+          uniqueMatchIds.has(matchId)
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Only one selection per match is allowed."
+          });
+        }
+
+        uniqueMatchIds.add(matchId);
       }
 
-      if (data.wallet) {
-        state.user.balance = Number(data.wallet.balance) || 0;
-        state.user.bonus_balance = Number(data.wallet.bonus_balance) || 0;
-        updateWallet();
+      /*
+      |--------------------------------------------------------------------------
+      | Validate every selection against current server-side odds.
+      |--------------------------------------------------------------------------
+      */
+
+      const validatedLegs = [];
+
+      for (
+        const item of requestedBets
+      ) {
+
+        const matchId =
+          Number(item.match_id);
+
+        const clientOdds =
+          Number(item.odds);
+
+        const selection =
+          String(
+            item.selection ||
+            ""
+          ).trim();
+
+        if (
+          !Number.isFinite(clientOdds) ||
+          clientOdds <= 1 ||
+          !selection
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "One or more betting selections are invalid."
+          });
+        }
+
+        const matchResult =
+          await pool.query(
+            `
+            SELECT *
+            FROM matches
+            WHERE id = $1
+            LIMIT 1
+            `,
+            [matchId]
+          );
+
+        if (
+          matchResult.rows.length === 0
+        ) {
+          return res.status(404).json({
+            success: false,
+            message:
+              `Match ${matchId} was not found.`
+          });
+        }
+
+        const match =
+          matchResult.rows[0];
+
+        if (
+          item.external_id &&
+          String(item.external_id) !==
+          String(match.external_id)
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Match information is invalid."
+          });
+        }
+
+        const validation =
+          await validateFootballBet(
+            match,
+            selection,
+            clientOdds
+          );
+
+        if (
+          !validation.valid
+        ) {
+          return res.status(409).json({
+            success: false,
+            message:
+              validation.message,
+            odds_changed:
+              validation.odds_changed || false,
+            old_odds:
+              validation.old_odds ?? null,
+            current_odds:
+              validation.current_odds ?? null,
+            failed_match_id:
+              match.id
+          });
+        }
+
+        validatedLegs.push({
+          match_id:
+            match.id,
+          external_id:
+            match.external_id,
+          home_team:
+            match.home_team,
+          away_team:
+            match.away_team,
+          selection:
+            validation.selection,
+          odds:
+            Number(validation.odds),
+          market:
+            validation.market,
+          bookmaker_key:
+            validation.bookmaker_key,
+          bookmaker_title:
+            validation.bookmaker_title
+        });
       }
 
-      showMessage(
-        state.selected.length > 1
-          ? `Accumulator placed successfully · ${Number(data.combined_odds || getCombinedOdds()).toFixed(4)} odds`
-          : "Bet placed successfully.",
-        "ok"
+      const combinedOdds =
+        validatedLegs.reduce(
+          (total, leg) =>
+            total * Number(leg.odds),
+          1
+        );
+
+      const potentialWin =
+        Number(
+          (
+            stakeAmount *
+            combinedOdds
+          ).toFixed(2)
+        );
+
+      await client.query(
+        "BEGIN"
       );
 
-      state.selected = [];
-      $("stake").value = "10";
-      renderMatches();
-      renderSlip();
+      const userResult =
+        await client.query(
+          `
+          SELECT
+            id,
+            balance,
+            bonus_balance,
+            is_active
+          FROM users
+          WHERE id = $1
+          FOR UPDATE
+          `,
+          [userId]
+        );
+
+      if (
+        userResult.rows.length === 0
+      ) {
+        await client.query(
+          "ROLLBACK"
+        );
+        return res.status(404).json({
+          success: false,
+          message:
+            "User not found."
+        });
+      }
+
+      const user =
+        userResult.rows[0];
+
+      if (!user.is_active) {
+        await client.query(
+          "ROLLBACK"
+        );
+        return res.status(403).json({
+          success: false,
+          message:
+            "User account is inactive."
+        });
+      }
+
+      const cashBalance =
+        Number(user.balance) || 0;
+
+      const bonusBalance =
+        Number(user.bonus_balance) || 0;
+
+      const cashUsed =
+        Math.min(
+          cashBalance,
+          stakeAmount
+        );
+
+      const bonusUsed =
+        stakeAmount -
+        cashUsed;
+
+      if (
+        bonusUsed > bonusBalance
+      ) {
+        await client.query(
+          "ROLLBACK"
+        );
+        return res.status(400).json({
+          success: false,
+          message:
+            "Insufficient balance."
+        });
+      }
+
+      const updatedUser =
+        await client.query(
+          `
+          UPDATE users
+          SET
+            balance = balance - $1,
+            bonus_balance = bonus_balance - $2,
+            updated_at = NOW()
+          WHERE id = $3
+          RETURNING
+            id,
+            balance,
+            bonus_balance
+          `,
+          [
+            cashUsed,
+            bonusUsed,
+            userId
+          ]
+        );
+
+      const betResult =
+        await client.query(
+          `
+          INSERT INTO bets
+          (
+            user_id,
+            game,
+            stake,
+            potential_win,
+            actual_win,
+            status,
+            result
+          )
+          VALUES
+          (
+            $1,
+            $2,
+            $3,
+            $4,
+            $5,
+            $6,
+            $7
+          )
+          RETURNING *
+          `,
+          [
+            userId,
+            "football_accumulator",
+            stakeAmount,
+            potentialWin,
+            0,
+            "pending",
+            JSON.stringify({
+              type:
+                "accumulator",
+              combined_odds:
+                Number(
+                  combinedOdds.toFixed(4)
+                ),
+              legs:
+                validatedLegs,
+              cash_used:
+                Number(
+                  cashUsed.toFixed(2)
+                ),
+              bonus_used:
+                Number(
+                  bonusUsed.toFixed(2)
+                )
+            })
+          ]
+        );
+
+      const bet =
+        betResult.rows[0];
+
+      await client.query(
+        `
+        INSERT INTO transactions
+        (
+          user_id,
+          type,
+          amount,
+          status,
+          reference,
+          description
+        )
+        VALUES
+        (
+          $1,
+          $2,
+          $3,
+          $4,
+          $5,
+          $6
+        )
+        `,
+        [
+          userId,
+          "bet",
+          stakeAmount,
+          "completed",
+          `BET-${bet.id}`,
+          `Football accumulator (${validatedLegs.length} selections)`
+        ]
+      );
+
+      await client.query(
+        "COMMIT"
+      );
+
+      io.emit(
+        "balance:update",
+        {
+          user_id:
+            userId,
+          balance:
+            Number(
+              updatedUser.rows[0].balance
+            ),
+          bonus_balance:
+            Number(
+              updatedUser.rows[0].bonus_balance
+            )
+        }
+      );
+
+      res.json({
+        success: true,
+        message:
+          "Accumulator bet placed successfully.",
+        bet,
+        selections:
+          validatedLegs.length,
+        combined_odds:
+          Number(
+            combinedOdds.toFixed(4)
+          ),
+        potential_win:
+          potentialWin,
+        wallet: {
+          balance:
+            Number(
+              updatedUser.rows[0].balance
+            ),
+          bonus_balance:
+            Number(
+              updatedUser.rows[0].bonus_balance
+            )
+        }
+      });
+
     } catch (error) {
-      showMessage(error.message || "Network error.", "bad");
+
+      try {
+        await client.query(
+          "ROLLBACK"
+        );
+      } catch (_) {}
+
+      console.error(
+        "Accumulator bet error:",
+        error.message
+      );
+
+      res.status(500).json({
+        success: false,
+        message:
+          "Could not place accumulator bet."
+      });
+
     } finally {
-      $("placeBtn").disabled = false;
-      $("placeBtn").textContent = "Place Bet";
+      client.release();
     }
   }
+);
 
-  document.querySelectorAll(".filter").forEach(btn => {
-    btn.addEventListener("click", () => {
-      state.filter = btn.dataset.filter;
-      applyMarketFilter();
-    });
-  });
+/*
+|--------------------------------------------------------------------------
+| LOCAL MATCHES
+|--------------------------------------------------------------------------
+*/
 
-  $("stake").addEventListener("input", updatePotential);
-  $("refreshBtn").addEventListener("click", loadMatches);
-  $("placeBtn").addEventListener("click", placeBet);
-  $("mobileSlipToggle")?.addEventListener("click", () => {
-    $("betForm").closest(".slip").classList.toggle("open");
-  });
+app.get(
+  "/api/matches",
+  async (req, res) => {
 
-  (async function init(){
     try {
-      await ensureUser();
-      await loadMatches();
+
+      const limit =
+        Math.max(
+          1,
+          Math.min(
+            100,
+            Number(
+              req.query.limit
+            ) || 50
+          )
+        );
+
+      const result =
+        await pool.query(
+          `
+          SELECT *
+          FROM matches
+          WHERE status IN
+            ('scheduled','live')
+          ORDER BY
+            started_at ASC NULLS LAST
+          LIMIT $1
+          `,
+          [limit]
+        );
+
+      res.json({
+
+        success: true,
+
+        count:
+          result.rows.length,
+
+        matches:
+          result.rows
+
+      });
+
     } catch (error) {
-      $("status").textContent = error.message || "Could not initialize betting page";
-      $("status").className = "status bad";
+
+      console.error(
+        "Local matches error:",
+        error.message
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Could not load matches."
+
+      });
+
     }
-  })();
-</script>
-</body>
-</html>
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| SINGLE MATCH
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  "/api/matches/:id",
+  async (req, res) => {
+
+    try {
+
+      const id =
+        Number(
+          req.params.id
+        );
+
+      if (
+        !Number.isInteger(id) ||
+        id <= 0
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Invalid match ID."
+
+        });
+
+      }
+
+      const result =
+        await pool.query(
+          `
+          SELECT *
+          FROM matches
+          WHERE id = $1
+          LIMIT 1
+          `,
+          [id]
+        );
+
+      if (
+        result.rows.length === 0
+      ) {
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "Match not found."
+
+        });
+
+      }
+
+      res.json({
+
+        success: true,
+
+        match:
+          result.rows[0]
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Single match error:",
+        error.message
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Could not load match."
+
+      });
+
+    }
+
+  }
+);
+/*
+|--------------------------------------------------------------------------
+| PLACE BET
+|--------------------------------------------------------------------------
+|
+| IMPORTANT:
+| Football bets must use server-side validated
+| match/odds data in production.
+|
+|--------------------------------------------------------------------------
+*/
+
+app.post(
+  "/api/bets/place",
+  async (req, res) => {
+
+    const client =
+      await pool.connect();
+
+    try {
+
+      const {
+        user_id,
+        match_id,
+        external_id,
+        game,
+        selection,
+        stake,
+        odds
+      } = req.body;
+
+      /*
+      |--------------------------------------------------------------------------
+      | Basic validation
+      |--------------------------------------------------------------------------
+      */
+
+      const userId =
+        Number(user_id);
+
+      const matchId =
+        Number(match_id);
+
+      const stakeAmount =
+        Number(stake);
+
+      const clientOdds =
+        Number(odds);
+
+      if (
+        !Number.isInteger(userId) ||
+        userId <= 0
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Invalid user."
+
+        });
+
+      }
+
+      if (
+        !Number.isInteger(matchId) ||
+        matchId <= 0
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Invalid match."
+
+        });
+
+      }
+
+      if (
+        !Number.isFinite(stakeAmount) ||
+        stakeAmount <= 0
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Invalid stake."
+
+        });
+
+      }
+
+      if (
+        !Number.isFinite(clientOdds) ||
+        clientOdds <= 1
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Invalid odds."
+
+        });
+
+      }
+
+      if (
+        !selection ||
+        typeof selection !== "string"
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Selection is required."
+
+        });
+
+      }
+
+      if (
+        game &&
+        game !== "football"
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Unsupported game."
+
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Maximum safe values
+      |--------------------------------------------------------------------------
+      */
+
+      if (
+        stakeAmount > 100000
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Maximum stake exceeded."
+
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Load match before wallet transaction
+      |--------------------------------------------------------------------------
+      */
+
+      const matchLookup =
+        await pool.query(
+          `
+          SELECT *
+          FROM matches
+          WHERE id = $1
+          LIMIT 1
+          `,
+          [matchId]
+        );
+
+      if (
+        matchLookup.rows.length === 0
+      ) {
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "Match not found."
+
+        });
+
+      }
+
+      const matchForValidation =
+        matchLookup.rows[0];
+
+      if (
+        external_id &&
+        String(external_id) !==
+        String(matchForValidation.external_id)
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Match information is invalid."
+
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Server-side odds validation
+      |--------------------------------------------------------------------------
+      |
+      | The frontend supplied odds are never trusted for settlement.
+      | We load the current odds from The Odds API and require the
+      | requested selection and price to still match.
+      |--------------------------------------------------------------------------
+      */
+
+      const validation =
+        await validateFootballBet(
+          matchForValidation,
+          selection,
+          clientOdds
+        );
+
+      if (!validation.valid) {
+
+        return res.status(409).json({
+
+          success: false,
+
+          message:
+            validation.message,
+
+          odds_changed:
+            validation.odds_changed || false,
+
+          old_odds:
+            validation.old_odds ?? null,
+
+          current_odds:
+            validation.current_odds ?? null
+
+        });
+
+      }
+
+      const serverOdds =
+        Number(validation.odds);
+
+      const canonicalSelection =
+        validation.selection;
+
+      const market =
+        validation.market;
+
+      if (
+        !Number.isFinite(serverOdds) ||
+        serverOdds <= 1
+      ) {
+
+        return res.status(409).json({
+
+          success: false,
+
+          message:
+            "Current odds are invalid. Please select again."
+
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Wallet transaction
+      |--------------------------------------------------------------------------
+      */
+
+      await client.query(
+        "BEGIN"
+      );
+
+      /*
+      |--------------------------------------------------------------------------
+      | Lock user row
+      |--------------------------------------------------------------------------
+      */
+
+      const userResult =
+        await client.query(
+          `
+          SELECT
+            id,
+            balance,
+            bonus_balance,
+            is_active
+          FROM users
+          WHERE id = $1
+          FOR UPDATE
+          `,
+          [userId]
+        );
+
+      if (
+        userResult.rows.length === 0
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "User not found."
+
+        });
+
+      }
+
+      const user =
+        userResult.rows[0];
+
+      if (
+        !user.is_active
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(403).json({
+
+          success: false,
+
+          message:
+            "User account is inactive."
+
+        });
+
+      }
+
+      const cashBalance =
+        Number(
+          user.balance
+        ) || 0;
+
+      const bonusBalance =
+        Number(
+          user.bonus_balance
+        ) || 0;
+
+      /*
+      |--------------------------------------------------------------------------
+      | Balance rules
+      |--------------------------------------------------------------------------
+      |
+      | Real cash is used first.
+      | Bonus can cover the remaining stake.
+      |--------------------------------------------------------------------------
+      */
+
+      const cashUsed =
+        Math.min(
+          cashBalance,
+          stakeAmount
+        );
+
+      const bonusUsed =
+        stakeAmount -
+        cashUsed;
+
+      if (
+        bonusUsed >
+        bonusBalance
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Insufficient balance."
+
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Re-load and lock match row before final wallet/bet commit
+      |--------------------------------------------------------------------------
+      */
+
+      const lockedMatchResult =
+        await client.query(
+          `
+          SELECT *
+          FROM matches
+          WHERE id = $1
+          LIMIT 1
+          FOR UPDATE
+          `,
+          [matchId]
+        );
+
+      if (
+        lockedMatchResult.rows.length === 0
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "Match not found."
+
+        });
+
+      }
+
+      const lockedMatch =
+        lockedMatchResult.rows[0];
+
+      if (
+        lockedMatch.status !==
+        "scheduled"
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(409).json({
+
+          success: false,
+
+          message:
+            "Betting is closed for this match."
+
+        });
+
+      }
+
+      if (
+        lockedMatch.external_id &&
+        String(lockedMatch.external_id) !==
+        String(matchForValidation.external_id)
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(409).json({
+
+          success: false,
+
+          message:
+            "Match information changed. Please select again."
+
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Potential win uses server-side odds
+      |--------------------------------------------------------------------------
+      */
+
+      const potentialWin =
+        Number(
+          (
+            stakeAmount *
+            serverOdds
+          ).toFixed(2)
+        );
+
+      /*
+      |--------------------------------------------------------------------------
+      | Deduct wallet
+      |--------------------------------------------------------------------------
+      */
+
+      const updatedUser =
+        await client.query(
+          `
+          UPDATE users
+          SET
+            balance =
+              balance - $1,
+            bonus_balance =
+              bonus_balance - $2,
+            updated_at =
+              NOW()
+          WHERE id = $3
+          RETURNING
+            id,
+            balance,
+            bonus_balance
+          `,
+          [
+            cashUsed,
+            bonusUsed,
+            userId
+          ]
+        );
+
+      if (
+        updatedUser.rows.length === 0
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(500).json({
+
+          success: false,
+
+          message:
+            "Could not update wallet."
+
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Create bet
+      |--------------------------------------------------------------------------
+      */
+
+      const betResult =
+        await client.query(
+          `
+          INSERT INTO bets
+          (
+            user_id,
+            game,
+            stake,
+            potential_win,
+            actual_win,
+            status,
+            result
+          )
+          VALUES
+          (
+            $1,
+            $2,
+            $3,
+            $4,
+            $5,
+            $6,
+            $7
+          )
+          RETURNING *
+          `,
+          [
+            userId,
+            game ||
+              "football",
+            stakeAmount,
+            potentialWin,
+            0,
+            "pending",
+            JSON.stringify({
+
+              match_id:
+                lockedMatch.id,
+
+              external_id:
+                lockedMatch.external_id,
+
+              home_team:
+                lockedMatch.home_team,
+
+              away_team:
+                lockedMatch.away_team,
+
+              market,
+
+              selection:
+                canonicalSelection,
+
+              client_selection:
+                selection,
+
+              odds:
+                serverOdds,
+
+              bookmaker_key:
+                validation.bookmaker_key ||
+                null,
+
+              bookmaker_title:
+                validation.bookmaker_title ||
+                null,
+
+              client_odds:
+                clientOdds,
+
+              cash_used:
+                Number(
+                  cashUsed.toFixed(2)
+                ),
+
+              bonus_used:
+                Number(
+                  bonusUsed.toFixed(2)
+                )
+
+            })
+          ]
+        );
+
+      const bet =
+        betResult.rows[0];
+
+      /*
+      |--------------------------------------------------------------------------
+      | Transaction record
+      |--------------------------------------------------------------------------
+      */
+
+      await client.query(
+        `
+        INSERT INTO transactions
+        (
+          user_id,
+          type,
+          amount,
+          status,
+          reference,
+          description
+        )
+        VALUES
+        (
+          $1,
+          $2,
+          $3,
+          $4,
+          $5,
+          $6
+        )
+        `,
+        [
+          userId,
+          "bet",
+          stakeAmount,
+          "completed",
+          `BET-${bet.id}`,
+          `Football bet: ${canonicalSelection}`
+        ]
+      );
+
+      await client.query(
+        "COMMIT"
+      );
+
+      /*
+      |--------------------------------------------------------------------------
+      | Socket update
+      |--------------------------------------------------------------------------
+      */
+
+      io.emit(
+        "balance:update",
+        {
+          user_id:
+            userId,
+
+          balance:
+            Number(
+              updatedUser.rows[0]
+                .balance
+            ),
+
+          bonus_balance:
+            Number(
+              updatedUser.rows[0]
+                .bonus_balance
+            )
+        }
+      );
+
+      res.json({
+
+        success: true,
+
+        message:
+          "Bet placed successfully.",
+
+        bet,
+
+        wallet: {
+
+          balance:
+            Number(
+              updatedUser.rows[0]
+                .balance
+            ),
+
+          bonus_balance:
+            Number(
+              updatedUser.rows[0]
+                .bonus_balance
+            )
+
+        }
+
+      });
+
+    } catch (error) {
+
+      try {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+      } catch (_) {}
+
+      console.error(
+        "Place bet error:",
+        error.message
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Could not place bet."
+
+      });
+
+    } finally {
+
+      client.release();
+
+    }
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| BET HISTORY
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  "/api/bets/history",
+  async (req, res) => {
+
+    try {
+
+      const userId =
+        Number(
+          req.query.user_id
+        );
+
+      let limit =
+        Number(
+          req.query.limit
+        );
+
+      if (
+        !Number.isInteger(userId) ||
+        userId <= 0
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Invalid user."
+
+        });
+
+      }
+
+      if (
+        !Number.isFinite(limit)
+      ) {
+        limit = 50;
+      }
+
+      limit =
+        Math.max(
+          1,
+          Math.min(
+            100,
+            Math.floor(limit)
+          )
+        );
+
+      const result =
+        await pool.query(
+          `
+          SELECT
+            id,
+            user_id,
+            game,
+            stake,
+            potential_win,
+            actual_win,
+            status,
+            result,
+            created_at,
+            settled_at
+          FROM bets
+          WHERE user_id = $1
+          ORDER BY
+            created_at DESC
+          LIMIT $2
+          `,
+          [
+            userId,
+            limit
+          ]
+        );
+
+      res.json({
+
+        success: true,
+
+        count:
+          result.rows.length,
+
+        bets:
+          result.rows
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Bet history error:",
+        error.message
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Could not load bet history."
+
+      });
+
+    }
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| SINGLE BET
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  "/api/bets/:id",
+  async (req, res) => {
+
+    try {
+
+      const betId =
+        Number(
+          req.params.id
+        );
+
+      const userId =
+        Number(
+          req.query.user_id
+        );
+
+      if (
+        !Number.isInteger(
+          betId
+        ) ||
+        betId <= 0
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Invalid bet ID."
+
+        });
+
+      }
+
+      if (
+        !Number.isInteger(
+          userId
+        ) ||
+        userId <= 0
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Invalid user."
+
+        });
+
+      }
+
+      const result =
+        await pool.query(
+          `
+          SELECT *
+          FROM bets
+          WHERE
+            id = $1
+            AND user_id = $2
+          LIMIT 1
+          `,
+          [
+            betId,
+            userId
+          ]
+        );
+
+      if (
+        result.rows.length === 0
+      ) {
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "Bet not found."
+
+        });
+
+      }
+
+      res.json({
+
+        success: true,
+
+        bet:
+          result.rows[0]
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Single bet error:",
+        error.message
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Could not load bet."
+
+      });
+
+    }
+
+  }
+);
+/*
+|--------------------------------------------------------------------------
+| DEPOSIT REQUEST
+|--------------------------------------------------------------------------
+*/
+
+app.post(
+  "/api/deposit/request",
+  async (req, res) => {
+
+    try {
+
+      const {
+        user_id,
+        amount,
+        method,
+        reference
+      } = req.body;
+
+      const userId =
+        Number(user_id);
+
+      const depositAmount =
+        Number(amount);
+
+      if (
+        !Number.isInteger(userId) ||
+        userId <= 0
+      ) {
+
+        return res.status(400).json({
+          success: false,
+          message: "Invalid user."
+        });
+
+      }
+
+      if (
+        !Number.isFinite(depositAmount) ||
+        depositAmount <= 0
+      ) {
+
+        return res.status(400).json({
+          success: false,
+          message: "Invalid deposit amount."
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Minimum deposit
+      |--------------------------------------------------------------------------
+      */
+
+      const settingResult =
+        await pool.query(
+          `
+          SELECT value
+          FROM settings
+          WHERE key = 'minimum_deposit'
+          LIMIT 1
+          `
+        );
+
+      const minimumDeposit =
+        Number(
+          settingResult.rows[0]?.value
+        ) || 51;
+
+      if (
+        depositAmount <
+        minimumDeposit
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            `Minimum deposit is ${minimumDeposit} ETB.`
+
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Verify user exists
+      |--------------------------------------------------------------------------
+      */
+
+      const userResult =
+        await pool.query(
+          `
+          SELECT
+            id,
+            is_active
+          FROM users
+          WHERE id = $1
+          LIMIT 1
+          `,
+          [userId]
+        );
+
+      if (
+        userResult.rows.length === 0
+      ) {
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "User not found."
+
+        });
+
+      }
+
+      if (
+        !userResult.rows[0].is_active
+      ) {
+
+        return res.status(403).json({
+
+          success: false,
+
+          message:
+            "User account is inactive."
+
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Reference
+      |--------------------------------------------------------------------------
+      */
+
+      const depositReference =
+        reference &&
+        String(reference).trim()
+          ? String(reference).trim().slice(0, 100)
+          : `DEP-${Date.now()}-${userId}`;
+
+      /*
+      |--------------------------------------------------------------------------
+      | Create pending deposit
+      |--------------------------------------------------------------------------
+      */
+
+      const result =
+        await pool.query(
+          `
+          INSERT INTO transactions
+          (
+            user_id,
+            type,
+            amount,
+            status,
+            reference,
+            description
+          )
+          VALUES
+          (
+            $1,
+            'deposit',
+            $2,
+            'pending',
+            $3,
+            $4
+          )
+          RETURNING *
+          `,
+          [
+            userId,
+            depositAmount,
+            depositReference,
+            method
+              ? `Deposit via ${String(method).slice(0, 50)}`
+              : "Deposit request"
+          ]
+        );
+
+      res.json({
+
+        success: true,
+
+        message:
+          "Deposit request submitted successfully.",
+
+        transaction:
+          result.rows[0]
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Deposit request error:",
+        error.message
+      );
+
+      /*
+      |--------------------------------------------------------------------------
+      | Duplicate reference
+      |--------------------------------------------------------------------------
+      */
+
+      if (
+        error.code === "23505"
+      ) {
+
+        return res.status(409).json({
+
+          success: false,
+
+          message:
+            "This deposit reference already exists."
+
+        });
+
+      }
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Could not create deposit request."
+
+      });
+
+    }
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| WITHDRAW REQUEST
+|--------------------------------------------------------------------------
+|
+| Withdrawal reserves the user's cash balance
+| immediately.
+|
+| Bonus balance is NOT withdrawable directly.
+|--------------------------------------------------------------------------
+*/
+
+app.post(
+  "/api/withdraw/request",
+  async (req, res) => {
+
+    const client =
+      await pool.connect();
+
+    try {
+
+      const {
+        user_id,
+        amount,
+        method,
+        account
+      } = req.body;
+
+      const userId =
+        Number(user_id);
+
+      const withdrawAmount =
+        Number(amount);
+
+      if (
+        !Number.isInteger(userId) ||
+        userId <= 0
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Invalid user."
+
+        });
+
+      }
+
+      if (
+        !Number.isFinite(withdrawAmount) ||
+        withdrawAmount <= 0
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Invalid withdrawal amount."
+
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Minimum withdrawal
+      |--------------------------------------------------------------------------
+      */
+
+      const settingResult =
+        await client.query(
+          `
+          SELECT value
+          FROM settings
+          WHERE key = 'minimum_withdraw'
+          LIMIT 1
+          `
+        );
+
+      const minimumWithdraw =
+        Number(
+          settingResult.rows[0]?.value
+        ) || 51;
+
+      if (
+        withdrawAmount <
+        minimumWithdraw
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            `Minimum withdrawal is ${minimumWithdraw} ETB.`
+
+        });
+
+      }
+
+      await client.query(
+        "BEGIN"
+      );
+
+      /*
+      |--------------------------------------------------------------------------
+      | Lock user
+      |--------------------------------------------------------------------------
+      */
+
+      const userResult =
+        await client.query(
+          `
+          SELECT
+            id,
+            balance,
+            bonus_balance,
+            is_active
+          FROM users
+          WHERE id = $1
+          FOR UPDATE
+          `,
+          [userId]
+        );
+
+      if (
+        userResult.rows.length === 0
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "User not found."
+
+        });
+
+      }
+
+      const user =
+        userResult.rows[0];
+
+      if (
+        !user.is_active
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(403).json({
+
+          success: false,
+
+          message:
+            "User account is inactive."
+
+        });
+
+      }
+
+      const cashBalance =
+        Number(
+          user.balance
+        ) || 0;
+
+      /*
+      |--------------------------------------------------------------------------
+      | Bonus cannot be withdrawn
+      |--------------------------------------------------------------------------
+      */
+
+      if (
+        withdrawAmount >
+        cashBalance
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Insufficient withdrawable balance."
+
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Prevent multiple pending withdrawals
+      |--------------------------------------------------------------------------
+      */
+
+      const pendingResult =
+        await client.query(
+          `
+          SELECT
+            COALESCE(
+              SUM(amount),
+              0
+            ) AS pending_amount
+          FROM transactions
+          WHERE
+            user_id = $1
+            AND type = 'withdraw'
+            AND status = 'pending'
+          `,
+          [userId]
+        );
+
+      const pendingWithdraw =
+        Number(
+          pendingResult.rows[0]
+            ?.pending_amount
+        ) || 0;
+
+      if (
+        pendingWithdraw +
+        withdrawAmount >
+        cashBalance
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "You already have a pending withdrawal."
+
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Deduct / reserve cash
+      |--------------------------------------------------------------------------
+      */
+
+      const updatedUser =
+        await client.query(
+          `
+          UPDATE users
+          SET
+            balance =
+              balance - $1,
+            updated_at =
+              NOW()
+          WHERE id = $2
+          RETURNING
+            id,
+            balance,
+            bonus_balance
+          `,
+          [
+            withdrawAmount,
+            userId
+          ]
+        );
+
+      /*
+      |--------------------------------------------------------------------------
+      | Create withdrawal transaction
+      |--------------------------------------------------------------------------
+      */
+
+      const withdrawalReference =
+        `WDR-${Date.now()}-${userId}`;
+
+      const result =
+        await client.query(
+          `
+          INSERT INTO transactions
+          (
+            user_id,
+            type,
+            amount,
+            status,
+            reference,
+            description
+          )
+          VALUES
+          (
+            $1,
+            'withdraw',
+            $2,
+            'pending',
+            $3,
+            $4
+          )
+          RETURNING *
+          `,
+          [
+            userId,
+            withdrawAmount,
+            withdrawalReference,
+            [
+              method
+                ? `Method: ${String(method).slice(0, 50)}`
+                : "Withdrawal",
+              account
+                ? `Account: ${String(account).slice(0, 100)}`
+                : ""
+            ]
+              .filter(Boolean)
+              .join(" | ")
+          ]
+        );
+
+      await client.query(
+        "COMMIT"
+      );
+
+      /*
+      |--------------------------------------------------------------------------
+      | Notify frontend
+      |--------------------------------------------------------------------------
+      */
+
+      io.emit(
+        "balance:update",
+        {
+          user_id:
+            userId,
+
+          balance:
+            Number(
+              updatedUser.rows[0]
+                .balance
+            ),
+
+          bonus_balance:
+            Number(
+              updatedUser.rows[0]
+                .bonus_balance
+            )
+        }
+      );
+
+      res.json({
+
+        success: true,
+
+        message:
+          "Withdrawal request submitted successfully.",
+
+        transaction:
+          result.rows[0],
+
+        wallet: {
+
+          balance:
+            Number(
+              updatedUser.rows[0]
+                .balance
+            ),
+
+          bonus_balance:
+            Number(
+              updatedUser.rows[0]
+                .bonus_balance
+            )
+
+        }
+
+      });
+
+    } catch (error) {
+
+      try {
+        await client.query(
+          "ROLLBACK"
+        );
+      } catch (_) {}
+
+      console.error(
+        "Withdrawal request error:",
+        error.message
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Could not create withdrawal request."
+
+      });
+
+    } finally {
+
+      client.release();
+
+    }
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| WALLET TRANSACTIONS
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  "/api/wallet/transactions",
+  async (req, res) => {
+
+    try {
+
+      const userId =
+        Number(
+          req.query.user_id
+        );
+
+      let limit =
+        Number(
+          req.query.limit
+        );
+
+      if (
+        !Number.isInteger(userId) ||
+        userId <= 0
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Invalid user."
+
+        });
+
+      }
+
+      if (
+        !Number.isFinite(limit)
+      ) {
+        limit = 50;
+      }
+
+      limit =
+        Math.max(
+          1,
+          Math.min(
+            100,
+            Math.floor(limit)
+          )
+        );
+
+      const result =
+        await pool.query(
+          `
+          SELECT
+            id,
+            user_id,
+            type,
+            amount,
+            status,
+            reference,
+            description,
+            created_at,
+            updated_at
+          FROM transactions
+          WHERE user_id = $1
+          ORDER BY
+            created_at DESC
+          LIMIT $2
+          `,
+          [
+            userId,
+            limit
+          ]
+        );
+
+      res.json({
+
+        success: true,
+
+        count:
+          result.rows.length,
+
+        transactions:
+          result.rows
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Wallet transactions error:",
+        error.message
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Could not load wallet transactions."
+
+      });
+
+    }
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| WALLET BALANCE
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  "/api/wallet/:userId",
+  async (req, res) => {
+
+    try {
+
+      const userId =
+        Number(
+          req.params.userId
+        );
+
+      if (
+        !Number.isInteger(userId) ||
+        userId <= 0
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Invalid user."
+
+        });
+
+      }
+
+      const result =
+        await pool.query(
+          `
+          SELECT
+            id,
+            name,
+            username,
+            balance,
+            bonus_balance,
+            is_active,
+            created_at
+          FROM users
+          WHERE id = $1
+          LIMIT 1
+          `,
+          [userId]
+        );
+
+      if (
+        result.rows.length === 0
+      ) {
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "User not found."
+
+        });
+
+      }
+
+      const user =
+        result.rows[0];
+
+      res.json({
+
+        success: true,
+
+        wallet: {
+
+          user_id:
+            user.id,
+
+          balance:
+            Number(
+              user.balance
+            ) || 0,
+
+          bonus_balance:
+            Number(
+              user.bonus_balance
+            ) || 0,
+
+          total_display_balance:
+            Number(
+              user.balance
+            ) +
+            Number(
+              user.bonus_balance
+            )
+
+        }
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Wallet balance error:",
+        error.message
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Could not load wallet."
+
+      });
+
+    }
+
+  }
+);
+/*
+|--------------------------------------------------------------------------
+| ADMIN — PENDING TRANSACTIONS
+|--------------------------------------------------------------------------
+|
+| TEMPORARY ADMIN API
+|
+| IMPORTANT:
+| Real production admin authentication will be
+| added before the platform goes live.
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  "/api/admin/transactions/pending",
+  async (req, res) => {
+
+    try {
+
+      const result =
+        await pool.query(
+          `
+          SELECT
+            t.*,
+            u.name,
+            u.username,
+            u.telegram_id,
+            u.phone
+          FROM transactions t
+          JOIN users u
+            ON u.id = t.user_id
+          WHERE t.status = 'pending'
+          ORDER BY
+            t.created_at ASC
+          `
+        );
+
+      res.json({
+
+        success: true,
+
+        count:
+          result.rows.length,
+
+        transactions:
+          result.rows
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Pending transactions error:",
+        error.message
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Could not load pending transactions."
+
+      });
+
+    }
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| ADMIN — APPROVE DEPOSIT
+|--------------------------------------------------------------------------
+*/
+
+app.post(
+  "/api/admin/deposit/approve",
+  async (req, res) => {
+
+    const client =
+      await pool.connect();
+
+    try {
+
+      const transactionId =
+        Number(
+          req.body.transaction_id
+        );
+
+      if (
+        !Number.isInteger(
+          transactionId
+        ) ||
+        transactionId <= 0
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Invalid transaction ID."
+
+        });
+
+      }
+
+      await client.query(
+        "BEGIN"
+      );
+
+      /*
+      |--------------------------------------------------------------------------
+      | Lock transaction
+      |--------------------------------------------------------------------------
+      */
+
+      const transactionResult =
+        await client.query(
+          `
+          SELECT *
+          FROM transactions
+          WHERE
+            id = $1
+            AND type = 'deposit'
+          FOR UPDATE
+          `,
+          [transactionId]
+        );
+
+      if (
+        transactionResult.rows.length === 0
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "Deposit transaction not found."
+
+        });
+
+      }
+
+      const transaction =
+        transactionResult.rows[0];
+
+      /*
+      |--------------------------------------------------------------------------
+      | Prevent double approval
+      |--------------------------------------------------------------------------
+      */
+
+      if (
+        transaction.status !==
+        "pending"
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            `Transaction is already ${transaction.status}.`
+
+        });
+
+      }
+
+      const amount =
+        Number(
+          transaction.amount
+        );
+
+      /*
+      |--------------------------------------------------------------------------
+      | Credit user cash balance
+      |--------------------------------------------------------------------------
+      */
+
+      const userResult =
+        await client.query(
+          `
+          UPDATE users
+          SET
+            balance =
+              balance + $1,
+            updated_at =
+              NOW()
+          WHERE id = $2
+          RETURNING
+            id,
+            balance,
+            bonus_balance
+          `,
+          [
+            amount,
+            transaction.user_id
+          ]
+        );
+
+      if (
+        userResult.rows.length === 0
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "User not found."
+
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Mark deposit completed
+      |--------------------------------------------------------------------------
+      */
+
+      const updatedTransaction =
+        await client.query(
+          `
+          UPDATE transactions
+          SET
+            status = 'completed',
+            updated_at = NOW()
+          WHERE id = $1
+          RETURNING *
+          `,
+          [transactionId]
+        );
+
+      await client.query(
+        "COMMIT"
+      );
+
+      const wallet =
+        userResult.rows[0];
+
+      /*
+      |--------------------------------------------------------------------------
+      | Notify frontend
+      |--------------------------------------------------------------------------
+      */
+
+      io.emit(
+        "balance:update",
+        {
+          user_id:
+            wallet.id,
+
+          balance:
+            Number(
+              wallet.balance
+            ),
+
+          bonus_balance:
+            Number(
+              wallet.bonus_balance
+            )
+        }
+      );
+
+      res.json({
+
+        success: true,
+
+        message:
+          "Deposit approved successfully.",
+
+        transaction:
+          updatedTransaction.rows[0],
+
+        wallet: {
+
+          balance:
+            Number(
+              wallet.balance
+            ),
+
+          bonus_balance:
+            Number(
+              wallet.bonus_balance
+            )
+
+        }
+
+      });
+
+    } catch (error) {
+
+      try {
+        await client.query(
+          "ROLLBACK"
+        );
+      } catch (_) {}
+
+      console.error(
+        "Approve deposit error:",
+        error.message
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Could not approve deposit."
+
+      });
+
+    } finally {
+
+      client.release();
+
+    }
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| ADMIN — APPROVE WITHDRAW
+|--------------------------------------------------------------------------
+*/
+
+app.post(
+  "/api/admin/withdraw/approve",
+  async (req, res) => {
+
+    const client =
+      await pool.connect();
+
+    try {
+
+      const transactionId =
+        Number(
+          req.body.transaction_id
+        );
+
+      if (
+        !Number.isInteger(
+          transactionId
+        ) ||
+        transactionId <= 0
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Invalid transaction ID."
+
+        });
+
+      }
+
+      await client.query(
+        "BEGIN"
+      );
+
+      /*
+      |--------------------------------------------------------------------------
+      | Lock transaction
+      |--------------------------------------------------------------------------
+      */
+
+      const transactionResult =
+        await client.query(
+          `
+          SELECT *
+          FROM transactions
+          WHERE
+            id = $1
+            AND type = 'withdraw'
+          FOR UPDATE
+          `,
+          [transactionId]
+        );
+
+      if (
+        transactionResult.rows.length === 0
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "Withdrawal transaction not found."
+
+        });
+
+      }
+
+      const transaction =
+        transactionResult.rows[0];
+
+      if (
+        transaction.status !==
+        "pending"
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            `Transaction is already ${transaction.status}.`
+
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Withdrawal was already reserved
+      |
+      | Nothing is deducted here.
+      |--------------------------------------------------------------------------
+      */
+
+      const updatedTransaction =
+        await client.query(
+          `
+          UPDATE transactions
+          SET
+            status = 'completed',
+            updated_at = NOW()
+          WHERE id = $1
+          RETURNING *
+          `,
+          [transactionId]
+        );
+
+      await client.query(
+        "COMMIT"
+      );
+
+      res.json({
+
+        success: true,
+
+        message:
+          "Withdrawal approved successfully.",
+
+        transaction:
+          updatedTransaction.rows[0]
+
+      });
+
+    } catch (error) {
+
+      try {
+        await client.query(
+          "ROLLBACK"
+        );
+      } catch (_) {}
+
+      console.error(
+        "Approve withdrawal error:",
+        error.message
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Could not approve withdrawal."
+
+      });
+
+    } finally {
+
+      client.release();
+
+    }
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| ADMIN — REJECT DEPOSIT
+|--------------------------------------------------------------------------
+*/
+
+app.post(
+  "/api/admin/deposit/reject",
+  async (req, res) => {
+
+    try {
+
+      const transactionId =
+        Number(
+          req.body.transaction_id
+        );
+
+      if (
+        !Number.isInteger(
+          transactionId
+        ) ||
+        transactionId <= 0
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Invalid transaction ID."
+
+        });
+
+      }
+
+      const result =
+        await pool.query(
+          `
+          UPDATE transactions
+          SET
+            status = 'rejected',
+            updated_at = NOW()
+          WHERE
+            id = $1
+            AND type = 'deposit'
+            AND status = 'pending'
+          RETURNING *
+          `,
+          [transactionId]
+        );
+
+      if (
+        result.rows.length === 0
+      ) {
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "Pending deposit not found."
+
+        });
+
+      }
+
+      res.json({
+
+        success: true,
+
+        message:
+          "Deposit rejected.",
+
+        transaction:
+          result.rows[0]
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Reject deposit error:",
+        error.message
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Could not reject deposit."
+
+      });
+
+    }
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| ADMIN — REJECT WITHDRAW + REFUND
+|--------------------------------------------------------------------------
+|
+| Because withdrawal money was reserved from
+| balance when requested, rejection returns
+| the exact amount to the user's cash balance.
+|--------------------------------------------------------------------------
+*/
+
+app.post(
+  "/api/admin/withdraw/reject",
+  async (req, res) => {
+
+    const client =
+      await pool.connect();
+
+    try {
+
+      const transactionId =
+        Number(
+          req.body.transaction_id
+        );
+
+      if (
+        !Number.isInteger(
+          transactionId
+        ) ||
+        transactionId <= 0
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Invalid transaction ID."
+
+        });
+
+      }
+
+      await client.query(
+        "BEGIN"
+      );
+
+      /*
+      |--------------------------------------------------------------------------
+      | Lock withdrawal
+      |--------------------------------------------------------------------------
+      */
+
+      const transactionResult =
+        await client.query(
+          `
+          SELECT *
+          FROM transactions
+          WHERE
+            id = $1
+            AND type = 'withdraw'
+          FOR UPDATE
+          `,
+          [transactionId]
+        );
+
+      if (
+        transactionResult.rows.length === 0
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "Withdrawal transaction not found."
+
+        });
+
+      }
+
+      const transaction =
+        transactionResult.rows[0];
+
+      if (
+        transaction.status !==
+        "pending"
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            `Transaction is already ${transaction.status}.`
+
+        });
+
+      }
+
+      const amount =
+        Number(
+          transaction.amount
+        );
+
+      /*
+      |--------------------------------------------------------------------------
+      | Refund reserved cash
+      |--------------------------------------------------------------------------
+      */
+
+      const userResult =
+        await client.query(
+          `
+          UPDATE users
+          SET
+            balance =
+              balance + $1,
+            updated_at =
+              NOW()
+          WHERE id = $2
+          RETURNING
+            id,
+            balance,
+            bonus_balance
+          `,
+          [
+            amount,
+            transaction.user_id
+          ]
+        );
+
+      if (
+        userResult.rows.length === 0
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "User not found."
+
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Mark rejected
+      |--------------------------------------------------------------------------
+      */
+
+      const updatedTransaction =
+        await client.query(
+          `
+          UPDATE transactions
+          SET
+            status = 'rejected',
+            updated_at = NOW()
+          WHERE id = $1
+          RETURNING *
+          `,
+          [transactionId]
+        );
+
+      await client.query(
+        "COMMIT"
+      );
+
+      const wallet =
+        userResult.rows[0];
+
+      /*
+      |--------------------------------------------------------------------------
+      | Notify frontend
+      |--------------------------------------------------------------------------
+      */
+
+      io.emit(
+        "balance:update",
+        {
+          user_id:
+            wallet.id,
+
+          balance:
+            Number(
+              wallet.balance
+            ),
+
+          bonus_balance:
+            Number(
+              wallet.bonus_balance
+            )
+        }
+      );
+
+      res.json({
+
+        success: true,
+
+        message:
+          "Withdrawal rejected and funds refunded.",
+
+        transaction:
+          updatedTransaction.rows[0],
+
+        wallet: {
+
+          balance:
+            Number(
+              wallet.balance
+            ),
+
+          bonus_balance:
+            Number(
+              wallet.bonus_balance
+            )
+
+        }
+
+      });
+
+    } catch (error) {
+
+      try {
+        await client.query(
+          "ROLLBACK"
+        );
+      } catch (_) {}
+
+      console.error(
+        "Reject withdrawal error:",
+        error.message
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Could not reject withdrawal."
+
+      });
+
+    } finally {
+
+      client.release();
+
+
+    }
+
+  }
+);
+/*
+|--------------------------------------------------------------------------
+| SERVER-SIDE ODDS VALIDATION
+|--------------------------------------------------------------------------
+*/
+
+/*
+|--------------------------------------------------------------------------
+| Find a specific selection inside normalized markets
+|--------------------------------------------------------------------------
+*/
+
+function findSelectionInMarkets(
+  markets,
+  selection
+) {
+
+  if (
+    !markets ||
+    typeof markets !== "object"
+  ) {
+
+    return null;
+
+  }
+
+  const requested =
+    String(
+      selection || ""
+    )
+      .trim()
+      .toLowerCase();
+
+  if (!requested) {
+    return null;
+  }
+
+  for (
+    const [
+      marketName,
+      marketItems
+    ]
+    of Object.entries(markets)
+  ) {
+
+    if (
+      !Array.isArray(
+        marketItems
+      )
+    ) {
+
+      continue;
+
+    }
+
+    for (
+      const item
+      of marketItems
+    ) {
+
+      const candidates = [
+
+        item.name,
+
+        item.value,
+
+        item.label,
+
+        item.selection,
+
+        `${marketName}:${item.name}`,
+
+        `${marketName}:${item.value}`
+
+      ]
+        .filter(
+          value =>
+            value !== undefined &&
+            value !== null
+        )
+        .map(
+          value =>
+            String(value)
+              .trim()
+              .toLowerCase()
+        );
+
+      if (
+        candidates.includes(
+          requested
+        )
+      ) {
+
+        return {
+
+          market:
+            marketName,
+
+          selection:
+            item.name ||
+            item.value,
+
+          odds:
+            Number(
+              item.odd
+            ),
+
+          item
+
+        };
+
+      }
+
+    }
+
+  }
+
+  return null;
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| LOAD CURRENT SERVER-SIDE ODDS
+|--------------------------------------------------------------------------
+*/
+
+async function getServerOddsForMatch(externalId) {
+  const parsed = parseBsdExternalId(externalId);
+  if (!parsed) return null;
+
+  const oddsResult = await fetchBsdEventOdds(parsed);
+  if (!oddsResult.ok) return null;
+
+  const eventResult = await bsdRequest(`/events/${encodeURIComponent(parsed)}/`);
+  const event = eventResult.ok ? eventResult.data : {};
+
+  return {
+    markets: normalizeBsdDetailedOdds(oddsResult.data, event),
+    raw: oddsResult.data,
+    headers: {}
+  };
+}
+
+/*
+|--------------------------------------------------------------------------
+| VALIDATE FOOTBALL BET
+|--------------------------------------------------------------------------
+*/
+
+async function validateFootballBet(
+  match,
+  selection,
+  clientOdds
+) {
+
+  if (!match) {
+
+    return {
+      valid: false,
+      message:
+        "Match not found."
+    };
+  }
+
+  if (
+    match.status !==
+    "scheduled"
+  ) {
+
+    return {
+      valid: false,
+      message:
+        "Betting is closed for this match."
+    };
+  }
+
+  if (
+    !match.external_id
+  ) {
+
+    return {
+      valid: false,
+      message:
+        "Match data is incomplete."
+    };
+  }
+
+  const oddsData =
+    await getServerOddsForMatch(
+      match.external_id
+    );
+
+  if (!oddsData) {
+
+    return {
+      valid: false,
+      message:
+        "Current odds are unavailable for this match."
+    };
+  }
+
+  const found =
+    findSelectionInMarkets(
+      oddsData.markets,
+      selection
+    );
+
+  if (!found) {
+
+    return {
+      valid: false,
+      message:
+        "Selected betting option is no longer available."
+    };
+  }
+
+  const currentOdds =
+    Number(
+      found.odds
+    );
+
+  const submittedOdds =
+    Number(
+      clientOdds
+    );
+
+  if (
+    !Number.isFinite(
+      currentOdds
+    ) ||
+    currentOdds <= 1
+  ) {
+
+    return {
+      valid: false,
+      message:
+        "Current odds are invalid."
+    };
+  }
+
+  if (
+    !Number.isFinite(
+      submittedOdds
+    ) ||
+    submittedOdds <= 1
+  ) {
+
+    return {
+      valid: false,
+      message:
+        "Submitted odds are invalid."
+    };
+  }
+
+  if (
+    Math.abs(
+      currentOdds -
+      submittedOdds
+    ) > 0.0001
+  ) {
+
+    return {
+      valid: false,
+      message:
+        "The odds have changed. Please select the bet again.",
+      odds_changed:
+        true,
+      old_odds:
+        submittedOdds,
+      current_odds:
+        currentOdds
+    };
+  }
+
+  return {
+    valid: true,
+    odds:
+      currentOdds,
+    selection:
+      found.selection,
+    market:
+      found.market,
+    bookmaker_key:
+      found.item?.bookmaker_key ||
+      null,
+    bookmaker_title:
+      found.item?.bookmaker_title ||
+      null,
+    raw:
+      oddsData.raw
+  };
+}
+
+/*
+|--------------------------------------------------------------------------
+| REAL BET SETTLEMENT
+|--------------------------------------------------------------------------
+|
+| This endpoint is intentionally admin-controlled.
+|
+| It settles ONLY from a supplied verified result.
+| It does NOT randomly generate a winner.
+|--------------------------------------------------------------------------
+*/
+
+app.post(
+  "/api/admin/bets/settle",
+  async (req, res) => {
+
+    const client =
+      await pool.connect();
+
+    try {
+
+      const {
+        bet_id,
+        result,
+        actual_win
+      } = req.body;
+
+      const betId =
+        Number(
+          bet_id
+        );
+
+      if (
+        !Number.isInteger(
+          betId
+        ) ||
+        betId <= 0
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Invalid bet ID."
+
+        });
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Allowed settlement results
+      |--------------------------------------------------------------------------
+      */
+
+      const settlementResult =
+        String(
+          result || ""
+        )
+          .trim()
+          .toLowerCase();
+
+      if (
+        ![
+          "won",
+          "lost",
+          "void"
+        ].includes(
+          settlementResult
+        )
+      ) {
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            "Result must be won, lost, or void."
+
+        });
+
+      }
+
+      await client.query(
+        "BEGIN"
+      );
+
+      /*
+      |--------------------------------------------------------------------------
+      | Lock bet
+      |--------------------------------------------------------------------------
+      */
+
+      const betResult =
+        await client.query(
+          `
+          SELECT *
+          FROM bets
+          WHERE id = $1
+          FOR UPDATE
+          `,
+          [betId]
+        );
+
+      if (
+        betResult.rows.length === 0
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "Bet not found."
+
+        });
+
+      }
+
+      const bet =
+        betResult.rows[0];
+
+      /*
+      |--------------------------------------------------------------------------
+      | Prevent double settlement
+      |--------------------------------------------------------------------------
+      */
+
+      if (
+        bet.status !==
+        "pending"
+      ) {
+
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res.status(400).json({
+
+          success: false,
+
+          message:
+            `Bet is already ${bet.status}.`
+
+        });
+
+      }
+
+      const stake =
+        Number(
+          bet.stake
+        ) || 0;
+
+      let winAmount = 0;
+
+      /*
+      |--------------------------------------------------------------------------
+      | WON
+      |--------------------------------------------------------------------------
+      */
+
+      if (
+        settlementResult ===
+        "won"
+      ) {
+
+        winAmount =
+          Number(
+            actual_win
+          );
+
+        /*
+        |--------------------------------------------------------------------------
+        | If actual_win wasn't supplied,
+        | use potential_win saved with the bet.
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+          !Number.isFinite(
+            winAmount
+          ) ||
+          winAmount < 0
+        ) {
+
+          winAmount =
+            Number(
+              bet.potential_win
+            ) || 0;
+
+        }
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | VOID
+      |--------------------------------------------------------------------------
+      |
+      | Return the original stake.
+      |--------------------------------------------------------------------------
+      */
+
+      if (
+        settlementResult ===
+        "void"
+      ) {
+
+        winAmount =
+          stake;
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Credit winnings
+      |--------------------------------------------------------------------------
+      */
+
+      if (
+        winAmount > 0
+      ) {
+
+        await client.query(
+          `
+          UPDATE users
+          SET
+            balance =
+              balance + $1,
+            updated_at =
+              NOW()
+          WHERE id = $2
+          `,
+          [
+            winAmount,
+            bet.user_id
+          ]
+        );
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Update bet
+      |--------------------------------------------------------------------------
+      */
+
+      const updatedBet =
+        await client.query(
+          `
+          UPDATE bets
+          SET
+            actual_win = $1,
+            status = $2,
+            settled_at = NOW()
+          WHERE id = $3
+          RETURNING *
+          `,
+          [
+            winAmount,
+            settlementResult,
+            betId
+          ]
+        );
+
+      /*
+      |--------------------------------------------------------------------------
+      | Create settlement transaction
+      |--------------------------------------------------------------------------
+      */
+
+      if (
+        winAmount > 0
+      ) {
+
+        await client.query(
+          `
+          INSERT INTO transactions
+          (
+            user_id,
+            type,
+            amount,
+            status,
+            reference,
+            description
+          )
+          VALUES
+          (
+            $1,
+            $2,
+            $3,
+            'completed',
+            $4,
+            $5
+          )
+          `,
+          [
+            bet.user_id,
+            "win",
+            winAmount,
+            `WIN-${betId}`,
+            settlementResult ===
+              "void"
+              ? `Void bet refund #${betId}`
+              : `Bet winnings #${betId}`
+          ]
+        );
+
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Lost bets still get a settlement record
+      |--------------------------------------------------------------------------
+      */
+
+      if (
+        settlementResult ===
+        "lost"
+      ) {
+
+        await client.query(
+          `
+          INSERT INTO transactions
+          (
+            user_id,
+            type,
+            amount,
+            status,
+            reference,
+            description
+          )
+          VALUES
+          (
+            $1,
+            $2,
+            $3,
+            'completed',
+            $4,
+            $5
+          )
+          `,
+          [
+            bet.user_id,
+            "loss",
+            0,
+            `LOSS-${betId}`,
+            `Bet lost #${betId}`
+          ]
+        );
+
+      }
+
+      await client.query(
+        "COMMIT"
+      );
+
+      /*
+      |--------------------------------------------------------------------------
+      | Get updated wallet
+      |--------------------------------------------------------------------------
+      */
+
+      const walletResult =
+        await pool.query(
+          `
+          SELECT
+            id,
+            balance,
+            bonus_balance
+          FROM users
+          WHERE id = $1
+          LIMIT 1
+          `,
+          [bet.user_id]
+        );
+
+      const wallet =
+        walletResult.rows[0];
+
+      if (
+        wallet
+      ) {
+
+        io.emit(
+          "balance:update",
+          {
+            user_id:
+              wallet.id,
+
+            balance:
+              Number(
+                wallet.balance
+              ),
+
+            bonus_balance:
+              Number(
+                wallet.bonus_balance
+              )
+          }
+        );
+
+      }
+
+      res.json({
+
+        success: true,
+
+        message:
+          "Bet settled successfully.",
+
+        bet:
+          updatedBet.rows[0],
+
+        wallet:
+          wallet
+            ? {
+                balance:
+                  Number(
+                    wallet.balance
+                  ),
+
+                bonus_balance:
+                  Number(
+                    wallet.bonus_balance
+                  )
+              }
+            : null
+
+      });
+
+    } catch (error) {
+
+      try {
+        await client.query(
+          "ROLLBACK"
+        );
+      } catch (_) {}
+
+      console.error(
+        "Bet settlement error:",
+        error.message
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Could not settle bet."
+
+      });
+
+    } finally {
+
+      client.release();
+
+    }
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| DISABLE OLD RANDOM TEST SETTLEMENT
+|--------------------------------------------------------------------------
+|
+| IMPORTANT:
+| Do not use random settlement for real betting.
+|--------------------------------------------------------------------------
+*/
+
+app.post(
+  "/api/test/settle-bet",
+  async (req, res) => {
+
+    return res.status(403).json({
+
+      success: false,
+
+      message:
+        "Random test settlement is disabled. Use verified settlement."
+
+    });
+
+  }
+);
+/*
+|--------------------------------------------------------------------------
+| SOCKET.IO
+|--------------------------------------------------------------------------
+*/
+
+io.on(
+  "connection",
+  socket => {
+
+    console.log(
+      "🔌 Client connected:",
+      socket.id
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Join user room
+    |--------------------------------------------------------------------------
+    */
+
+    socket.on(
+      "join:user",
+      userId => {
+
+        const id =
+          Number(userId);
+
+        if (
+          Number.isInteger(id) &&
+          id > 0
+        ) {
+
+          socket.join(
+            `user:${id}`
+          );
+
+          console.log(
+            `👤 User ${id} joined socket room.`
+          );
+
+        }
+
+      }
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Leave user room
+    |--------------------------------------------------------------------------
+    */
+
+    socket.on(
+      "leave:user",
+      userId => {
+
+        const id =
+          Number(userId);
+
+        if (
+          Number.isInteger(id) &&
+          id > 0
+        ) {
+
+          socket.leave(
+            `user:${id}`
+          );
+
+        }
+
+      }
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Disconnect
+    |--------------------------------------------------------------------------
+    */
+
+    socket.on(
+      "disconnect",
+      reason => {
+
+        console.log(
+          "🔌 Client disconnected:",
+          socket.id,
+          reason
+        );
+
+      }
+    );
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| 404 HANDLER
+|--------------------------------------------------------------------------
+*/
+
+app.use(
+  (req, res) => {
+
+    if (
+      req.path.startsWith(
+        "/api/"
+      )
+    ) {
+
+      return res.status(404).json({
+
+        success: false,
+
+        message:
+          "API endpoint not found."
+
+      });
+
+    }
+
+    res.status(404).send(
+      "Page not found."
+    );
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| GLOBAL ERROR HANDLER
+|--------------------------------------------------------------------------
+*/
+
+app.use(
+  (
+    error,
+    req,
+    res,
+    next
+  ) => {
+
+    console.error(
+      "Unhandled server error:",
+      error
+    );
+
+    if (
+      res.headersSent
+    ) {
+
+      return next(
+        error
+      );
+
+    }
+
+    res.status(500).json({
+
+      success: false,
+
+      message:
+        "Internal server error."
+
+    });
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| START SERVER
+|--------------------------------------------------------------------------
+*/
+
+async function startServer() {
+
+  try {
+
+    /*
+    |--------------------------------------------------------------------------
+    | Database initialization
+    |--------------------------------------------------------------------------
+    */
+
+    await initializeDatabase();
+
+    /*
+    |--------------------------------------------------------------------------
+    | Start HTTP server
+    |--------------------------------------------------------------------------
+    */
+
+    server.listen(
+      PORT,
+      "0.0.0.0",
+      () => {
+
+        console.log(
+          "=================================================="
+        );
+
+        console.log(
+          "🎯 Ethiopia Betting"
+        );
+
+        console.log(
+          "=================================================="
+        );
+
+        console.log(
+          `🚀 Server running on port ${PORT}`
+        );
+
+        console.log(
+          `🌐 Environment: ${
+            process.env.NODE_ENV ||
+            "development"
+          }`
+        );
+
+        console.log(
+          "⚽ BSD Football API:",
+          BSD_API_KEY
+            ? "configured"
+            : "NOT configured"
+        );
+
+        console.log(
+          "🗄️ PostgreSQL: configured"
+        );
+
+        console.log(
+          "🔌 Socket.IO: enabled"
+        );
+
+        console.log(
+          "=================================================="
+        );
+
+      }
+    );
+
+  } catch (error) {
+
+    console.error(
+      "❌ Server startup failed:",
+      error.message
+    );
+
+    process.exit(
+      1
+    );
+
+  }
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| PROCESS ERROR HANDLERS
+|--------------------------------------------------------------------------
+*/
+
+process.on(
+  "unhandledRejection",
+  error => {
+
+    console.error(
+      "❌ Unhandled Promise Rejection:",
+      error
+    );
+
+  }
+);
+
+process.on(
+  "uncaughtException",
+  error => {
+
+    console.error(
+      "❌ Uncaught Exception:",
+      error
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Give the process a chance to exit cleanly.
+    |--------------------------------------------------------------------------
+    */
+
+    setTimeout(
+      () => {
+        process.exit(1);
+      },
+      1000
+    );
+
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| START
+|--------------------------------------------------------------------------
+*/
+
+startServer();
