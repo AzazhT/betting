@@ -38,11 +38,11 @@
     .matchhead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:14px}
     .league{font-size:11px;color:var(--yellow);font-weight:800;text-transform:uppercase;letter-spacing:.05em}.time{font-size:12px;color:var(--muted);text-align:right}
     .teams{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-bottom:14px}.team{font-size:16px;font-weight:800}.team.away{text-align:right}.vs{font-size:11px;color:var(--muted);font-weight:800}
-    .markets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    .market-group{margin-top:12px}.market-title{font-size:12px;color:var(--yellow);font-weight:800;margin:0 0 7px}.markets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
     .odd{background:var(--panel2);border:1px solid #29415f;color:var(--text);border-radius:11px;padding:10px;cursor:pointer;text-align:left;transition:.15s}.odd:hover{border-color:#3a6a8e;transform:translateY(-1px)}.odd.active{border-color:var(--green);background:#113526}.odd .name{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}.odd .price{font-size:16px;font-weight:800}
     .empty{padding:30px;text-align:center;background:var(--panel);border:1px dashed var(--border);border-radius:18px;color:var(--muted)}
     .slip{position:sticky;top:14px;background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:16px;box-shadow:var(--shadow)}
-    .slip h2{font-size:18px;margin:0 0 14px}.choice{background:var(--panel2);border-radius:14px;padding:13px;margin-bottom:14px;border:1px solid #29415f}.choice .row{display:flex;justify-content:space-between;gap:12px}.choice .small{font-size:12px;color:var(--muted);margin-top:5px}.x{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:18px}
+    .slip h2{font-size:18px;margin:0 0 14px}.choice{background:var(--panel2);border-radius:14px;padding:13px;margin-bottom:14px;border:1px solid #29415f}.choice .row{display:flex;justify-content:space-between;gap:12px}.choice .small{font-size:12px;color:var(--muted);margin-top:5px}.slip-leg{border-top:1px solid #29415f;padding:10px 0;display:grid;gap:4px}.remove-leg{border:0;background:transparent;color:var(--danger);padding:0;text-align:left;cursor:pointer;font-size:11px}.x{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:18px}
     label{display:block;font-size:12px;color:var(--muted);margin:0 0 7px}.stake{width:100%;background:#091321;border:1px solid var(--border);border-radius:12px;padding:12px;color:var(--text);outline:none}.stake:focus{border-color:var(--green)}
     .calc{display:grid;gap:8px;margin:12px 0 16px}.calc div{display:flex;justify-content:space-between;font-size:13px}.calc span{color:var(--muted)}
     .place{width:100%;background:var(--green);color:#04130c;border:0;border-radius:13px;padding:13px;font-weight:900;cursor:pointer}.place:disabled{opacity:.5;cursor:not-allowed}
@@ -82,12 +82,12 @@
 
       <aside class="slip">
         <h2>Bet Slip</h2>
-        <div id="choiceBox" class="empty">Select an outcome from a match.</div>
+        <div id="choiceBox" class="empty">Select one or more outcomes from the matches.</div>
         <div id="betForm" style="display:none">
           <label for="stake">Stake (ETB)</label>
           <input id="stake" class="stake" type="number" min="1" max="100000" step="0.01" value="10" />
           <div class="calc">
-            <div><span>Odds</span><strong id="slipOdds">—</strong></div>
+            <div><span>Combined odds</span><strong id="slipOdds">—</strong></div>
             <div><span>Potential win</span><strong id="potentialWin">0.00 ETB</strong></div>
           </div>
           <button id="placeBtn" class="place">Place Bet</button>
@@ -171,9 +171,34 @@
     $("bonusBalance").textContent = money(state.user.bonus_balance);
   }
 
-  function marketSelections(match) {
-    const oneXTwo = Array.isArray(match.markets?.["1x2"]) ? match.markets["1x2"] : [];
-    return oneXTwo;
+  function labelForSelection(match, item, marketKey) {
+    const name = String(item?.name || item?.value || "").trim();
+    if (marketKey === "1x2") {
+      if (name.toLowerCase() === "draw") return "Draw";
+      if (name === String(match.home_team || "")) return "Home Win";
+      if (name === String(match.away_team || "")) return "Away Win";
+    }
+    if (marketKey === "double") {
+      return name === "1X" ? "Home / Draw" : name === "X2" ? "Draw / Away" : name === "12" ? "Home / Away" : name;
+    }
+    return name;
+  }
+
+  function marketGroups(match) {
+    return [
+      ["1x2", "1X2 · Match Result"],
+      ["double", "Double Chance"],
+      ["overunder", "Over / Under"],
+      ["handicap", "Handicap"],
+      ["btts", "Both Teams To Score"],
+      ["draw_no_bet", "Draw No Bet"],
+      ["correct_score", "Correct Score"],
+      ["halftime_fulltime", "Half Time / Full Time"]
+    ].map(([key, label]) => ({
+      key,
+      label,
+      items: Array.isArray(match.markets?.[key]) ? match.markets[key] : []
+    })).filter(group => group.items.length);
   }
 
   function renderMatches() {
@@ -186,19 +211,23 @@
     }
 
     for (const match of state.matches) {
-      const selections = marketSelections(match);
+      const groups = marketGroups(match);
       const card = document.createElement("section");
       card.className = "match";
 
-      const marketHtml = selections.length
-        ? selections.slice(0, 3).map((item, index) => {
-            const key = `${match.id}|${item.name}|${item.odd}|${item.bookmaker_key || ""}`;
-            const active = state.selected?.key === key ? " active" : "";
-            return `
-              <button class="odd${active}" data-key="${escapeHtml(key)}" data-match="${escapeHtml(match.id)}" data-name="${escapeHtml(item.name)}" data-odds="${Number(item.odd)}" data-bookmaker="${escapeHtml(item.bookmaker_key || "")}" data-bookmaker-title="${escapeHtml(item.bookmaker_title || "")}">
-                <span class="name">${escapeHtml(item.name)}</span>
-                <span class="price">${Number(item.odd).toFixed(2)}</span>
-              </button>`;
+      const groupsHtml = groups.length
+        ? groups.map(group => {
+            const buttons = group.items.map(item => {
+              const key = `${match.id}|${group.key}|${item.name}|${item.odd}|${item.point ?? ""}|${item.bookmaker_key || ""}`;
+              const active = state.selected.some(selected => selected.key === key) ? " active" : "";
+              const label = labelForSelection(match, item, group.key);
+              return `
+                <button class="odd${active}" data-key="${escapeHtml(key)}" data-market="${escapeHtml(group.key)}" data-market-label="${escapeHtml(group.label)}" data-selection-label="${escapeHtml(label)}" data-match="${escapeHtml(match.id)}" data-name="${escapeHtml(item.name)}" data-odds="${Number(item.odd)}" data-bookmaker="${escapeHtml(item.bookmaker_key || "")}" data-bookmaker-title="${escapeHtml(item.bookmaker_title || "")}">
+                  <span class="name">${escapeHtml(label)}${item.point !== null && item.point !== undefined && group.key !== "1x2" ? ` · ${escapeHtml(String(item.point))}` : ""}</span>
+                  <span class="price">${Number(item.odd).toFixed(2)}</span>
+                </button>`;
+            }).join("");
+            return `<div class="market-group"><div class="market-title">${escapeHtml(group.label)}</div><div class="markets">${buttons}</div></div>`;
           }).join("")
         : '<div class="empty">No odds</div>';
 
@@ -212,7 +241,7 @@
           <div class="vs">VS</div>
           <div class="team away">${escapeHtml(match.away_team)}</div>
         </div>
-        <div class="markets">${marketHtml}</div>`;
+        ${groupsHtml}`;
 
       root.appendChild(card);
     }
@@ -220,17 +249,35 @@
     root.querySelectorAll(".odd").forEach(btn => {
       btn.addEventListener("click", () => {
         const match = state.matches.find(m => String(m.id) === String(btn.dataset.match));
-        state.selected = {
+        const selection = {
           key: btn.dataset.key,
           matchId: Number(btn.dataset.match),
           externalId: match?.external_id || "",
           homeTeam: match?.home_team || "",
           awayTeam: match?.away_team || "",
+          market: btn.dataset.market || "",
+          marketLabel: btn.dataset.marketLabel || "",
+          selectionLabel: btn.dataset.selectionLabel || btn.dataset.name,
           selection: btn.dataset.name,
           odds: Number(btn.dataset.odds),
           bookmakerKey: btn.dataset.bookmaker,
           bookmakerTitle: btn.dataset.bookmakerTitle
         };
+
+        const existingIndex = state.selected.findIndex(item => item.key === selection.key);
+        const sameMatchIndex = state.selected.findIndex(item => item.matchId === selection.matchId);
+
+        if (existingIndex >= 0) {
+          state.selected.splice(existingIndex, 1);
+        } else if (sameMatchIndex >= 0) {
+          state.selected[sameMatchIndex] = selection;
+        } else if (state.selected.length >= 10) {
+          showMessage("Maximum 10 selections per accumulator.", "bad");
+          return;
+        } else {
+          state.selected.push(selection);
+        }
+
         clearMessage();
         renderMatches();
         renderSlip();
@@ -238,12 +285,18 @@
     });
   }
 
+  function getCombinedOdds() {
+    if (!state.selected.length) return 0;
+    return state.selected.reduce((total, item) => total * Number(item.odds || 0), 1);
+  }
+
   function renderSlip() {
     const box = $("choiceBox");
     const form = $("betForm");
-    if (!state.selected) {
+
+    if (!state.selected.length) {
       box.className = "empty";
-      box.textContent = "Select an outcome from a match.";
+      box.textContent = "Select one or more outcomes from the matches.";
       form.style.display = "none";
       return;
     }
@@ -251,26 +304,43 @@
     box.className = "choice";
     box.innerHTML = `
       <div class="row">
-        <strong>${escapeHtml(state.selected.homeTeam)} vs ${escapeHtml(state.selected.awayTeam)}</strong>
-        <button class="x" id="clearChoice" aria-label="Clear selection">×</button>
+        <strong>${state.selected.length} selection${state.selected.length > 1 ? "s" : ""}</strong>
+        <button class="x" id="clearChoice" aria-label="Clear selections">×</button>
       </div>
-      <div class="small">${escapeHtml(state.selected.selection)} · ${state.selected.odds.toFixed(2)}</div>`;
+      ${state.selected.map((item, index) => `
+        <div class="slip-leg">
+          <div><strong>${escapeHtml(item.homeTeam)} vs ${escapeHtml(item.awayTeam)}</strong></div>
+          <div class="small">${escapeHtml(item.marketLabel)} · ${escapeHtml(item.selectionLabel || item.selection)} · <b>${item.odds.toFixed(2)}</b></div>
+          <button class="remove-leg" type="button" data-leg="${index}">Remove</button>
+        </div>
+      `).join("")}
+    `;
+
     form.style.display = "block";
-    $("slipOdds").textContent = state.selected.odds.toFixed(2);
+    $("slipOdds").textContent = getCombinedOdds().toFixed(4);
     updatePotential();
 
     $("clearChoice").addEventListener("click", () => {
-      state.selected = null;
+      state.selected = [];
       clearMessage();
       renderMatches();
       renderSlip();
     });
+
+    box.querySelectorAll(".remove-leg").forEach(btn => {
+      btn.addEventListener("click", () => {
+        state.selected.splice(Number(btn.dataset.leg), 1);
+        clearMessage();
+        renderMatches();
+        renderSlip();
+      });
+    });
   }
 
   function updatePotential() {
-    if (!state.selected) return;
+    if (!state.selected.length) return;
     const stake = Number($("stake").value) || 0;
-    const potential = stake * state.selected.odds;
+    const potential = stake * getCombinedOdds();
     $("potentialWin").textContent = money(potential);
   }
 
@@ -305,37 +375,61 @@
   async function placeBet() {
     clearMessage();
     if (!state.user) return showMessage("User is not ready.", "bad");
-    if (!state.selected) return showMessage("Select an outcome first.", "bad");
+    if (!state.selected.length) return showMessage("Select at least one outcome first.", "bad");
 
     const stake = Number($("stake").value);
     if (!Number.isFinite(stake) || stake <= 0) return showMessage("Enter a valid stake.", "bad");
     if (stake > 100000) return showMessage("Maximum stake is 100,000 ETB.", "bad");
 
     $("placeBtn").disabled = true;
-    $("placeBtn").textContent = "Placing…";
+    $("placeBtn").textContent = state.selected.length > 1 ? "Placing Accumulator…" : "Placing…";
 
     try {
-      const payload = {
-        user_id: state.user.id,
-        match_id: state.selected.matchId,
-        external_id: state.selected.externalId,
-        game: "football",
-        selection: state.selected.selection,
-        stake,
-        odds: state.selected.odds
-      };
+      let data;
+      let res;
 
-      const res = await fetch("/api/bets/place", {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
+      if (state.selected.length > 1) {
+        const payload = {
+          user_id: state.user.id,
+          stake,
+          bets: state.selected.map(item => ({
+            match_id: item.matchId,
+            external_id: item.externalId,
+            selection: item.selection,
+            odds: item.odds
+          }))
+        };
+
+        res = await fetch("/api/bets/place-accumulator", {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify(payload)
+        });
+      } else {
+        const selected = state.selected[0];
+        const payload = {
+          user_id: state.user.id,
+          match_id: selected.matchId,
+          external_id: selected.externalId,
+          game: "football",
+          selection: selected.selection,
+          stake,
+          odds: selected.odds
+        };
+
+        res = await fetch("/api/bets/place", {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify(payload)
+        });
+      }
+
+      data = await res.json();
 
       if (!res.ok || !data.success) {
         if (res.status === 409) {
           await loadMatches();
-          showMessage(data.message || "The odds changed. Please select the outcome again.", "bad");
+          showMessage(data.message || "One of the odds changed. Please select again.", "bad");
         } else {
           showMessage(data.message || "Could not place bet.", "bad");
         }
@@ -348,12 +442,17 @@
         updateWallet();
       }
 
-      showMessage("Bet placed successfully.", "ok");
-      state.selected = null;
+      showMessage(
+        state.selected.length > 1
+          ? `Accumulator placed successfully · ${Number(data.combined_odds || getCombinedOdds()).toFixed(4)} odds`
+          : "Bet placed successfully.",
+        "ok"
+      );
+
+      state.selected = [];
       $("stake").value = "10";
       renderMatches();
       renderSlip();
-      showMessage("Bet placed successfully.", "ok");
     } catch (error) {
       showMessage(error.message || "Network error.", "bad");
     } finally {
