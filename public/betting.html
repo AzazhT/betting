@@ -44,6 +44,18 @@
 
     .filters{display:flex;gap:8px;overflow:auto;padding:2px 0 14px;margin-bottom:2px;scrollbar-width:none}.filters::-webkit-scrollbar{display:none}.filter{border:1px solid var(--border);background:#0b1929;color:var(--muted);border-radius:999px;padding:9px 14px;white-space:nowrap;cursor:pointer;font-weight:700;font-size:12px}.filter.active{background:#123d2d;color:#a5f2c7;border-color:var(--green)}
     .market-group.hidden{display:none}
+    .market-group[data-filter="1x2"]{display:block}
+    .match{padding:14px}
+    .matchhead{margin-bottom:10px}
+    .teams{margin-bottom:10px}
+    .market-group{margin-top:9px}
+    .markets{gap:6px}
+    .odd{padding:9px}
+    .more-hint{font-size:11px;color:var(--muted);margin-top:8px}
+    .slip-tabs{display:flex;gap:6px;margin-bottom:10px}
+    .slip-tab{flex:1;border:1px solid var(--border);background:var(--panel2);color:var(--muted);border-radius:10px;padding:8px;font-size:12px;font-weight:800}
+    .slip-tab.active{color:#a5f2c7;border-color:var(--green);background:#123d2d}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}.slip{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:50;border-radius:18px 18px 0 0;padding:10px 12px;box-shadow:0 -12px 35px rgba(0,0,0,.35);max-height:46vh;overflow:auto}.matches{padding-bottom:190px}.slip h2{font-size:16px;margin-bottom:9px}.choice{margin-bottom:9px;padding:10px}.place{padding:12px}.wrap{padding-bottom:20px}.slip:before{content:"";display:block;width:42px;height:4px;background:#38506d;border-radius:99px;margin:0 auto 8px}}
     .empty{padding:30px;text-align:center;background:var(--panel);border:1px dashed var(--border);border-radius:18px;color:var(--muted)}
     .slip{position:sticky;top:14px;background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:16px;box-shadow:var(--shadow)}
     .slip h2{font-size:18px;margin:0 0 14px}.choice{background:var(--panel2);border-radius:14px;padding:13px;margin-bottom:14px;border:1px solid #29415f}.choice .row{display:flex;justify-content:space-between;gap:12px}.choice .small{font-size:12px;color:var(--muted);margin-top:5px}.slip-leg{border-top:1px solid #29415f;padding:10px 0;display:grid;gap:4px}.remove-leg{border:0;background:transparent;color:var(--danger);padding:0;text-align:left;cursor:pointer;font-size:11px}.x{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:18px}
@@ -52,7 +64,7 @@
     .place{width:100%;background:var(--green);color:#04130c;border:0;border-radius:13px;padding:13px;font-weight:900;cursor:pointer}.place:disabled{opacity:.5;cursor:not-allowed}
     .message{margin-top:10px;border-radius:11px;padding:10px;font-size:12px;display:none}.message.show{display:block}.message.ok{background:#103a29;color:#9bf2c2}.message.bad{background:#3a1820;color:#ffb4bc}
     .note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:12px}
-    @media(max-width:900px){.layout{grid-template-columns:1fr}.slip{position:static}.markets{grid-template-columns:repeat(3,1fr)}}
+    @media(max-width:900px){.markets{grid-template-columns:repeat(3,1fr)}}
     @media(max-width:580px){.wrap{padding:12px}.hero h1{font-size:23px}.teams{grid-template-columns:1fr}.team,.team.away{text-align:left}.vs{display:none}.markets{grid-template-columns:repeat(2,1fr)}.odd{padding:9px}.odd .price{font-size:15px}.wallet{width:100%;justify-content:space-between}}
   </style>
 </head>
@@ -83,8 +95,9 @@
       <button class="filter active" data-filter="all" type="button">All</button>
       <button class="filter" data-filter="1x2" type="button">1X2</button>
       <button class="filter" data-filter="goals" type="button">Goals</button>
-      <button class="filter" data-filter="special" type="button">More Markets</button>
+      <button class="filter" data-filter="special" type="button">More</button>
     </div>
+    <div class="more-hint">Tap <b>1X2</b> for the main odds, <b>Goals</b> for goal markets, or <b>More</b> for the other available markets.</div>
 
     <div class="layout">
       <main>
