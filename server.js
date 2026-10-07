@@ -1821,145 +1821,74 @@ async function fetchFootballOddsByDate(
 app.get(
   "/api/football/betting",
   async (req, res) => {
+    const started = Date.now();
     try {
       const limit = Math.max(1, Math.min(30, Number(req.query.limit) || 30));
-      const days = Math.max(1, Math.min(3, Number(req.query.days) || 3));
       const key = process.env.ODDS_API_KEY;
+      if (!key) return res.status(500).json({ success:false, message:"ODDS_API_KEY is not configured on the server." });
 
-      if (!key) {
-        return res.status(500).json({
-          success: false,
-          message: "ODDS_API_KEY is not configured on the server."
-        });
-      }
-
-      // One fast request for the main football line.  Do not call an odds
-      // endpoint once per fixture; that was the cause of the long loading time.
       const sport = String(req.query.sport || "soccer_epl");
       const url = new URL(`https://api.the-odds-api.com/v4/sports/${encodeURIComponent(sport)}/odds`);
       url.searchParams.set("apiKey", key);
       url.searchParams.set("regions", "eu");
-      url.searchParams.set("markets", "h2h,totals,btts,double_chance,draw_no_bet");
+      url.searchParams.set("markets", "h2h");
       url.searchParams.set("oddsFormat", "decimal");
       url.searchParams.set("dateFormat", "iso");
 
-      const response = await fetch(url, {
-        headers: { Accept: "application/json" },
-        signal: AbortSignal.timeout(12000)
-      });
-
-      const raw = await response.json().catch(() => []);
+      console.log("⚽ The Odds API betting request:", sport);
+      const response = await fetch(url, { headers:{Accept:"application/json"}, signal:AbortSignal.timeout(8000) });
+      const raw = await response.json().catch(() => ({}));
       if (!response.ok) {
-        return res.status(response.status).json({
-          success: false,
-          message: raw?.message || "The football odds service returned an error.",
-          error: raw
-        });
+        console.error("❌ The Odds API:", response.status, raw?.message || raw);
+        return res.status(response.status).json({ success:false, message:raw?.message || `Odds API error (${response.status})` });
       }
 
       const events = Array.isArray(raw) ? raw : [];
-      const now = Date.now();
-      const maxDate = now + days * 24 * 60 * 60 * 1000;
       const matches = [];
-
-      const pickBest = (marketRows) => {
-        if (!Array.isArray(marketRows) || !marketRows.length) return [];
-        // Use the best available price among returned bookmakers for each outcome.
+      for (const event of events) {
+        const t = new Date(event.commence_time).getTime();
+        if (!Number.isFinite(t) || t < Date.now() - 120000) continue;
         const best = new Map();
-        for (const bookmaker of marketRows) {
+        for (const bookmaker of (event.bookmakers || [])) {
           for (const market of (bookmaker.markets || [])) {
+            if (market.key !== "h2h") continue;
             for (const outcome of (market.outcomes || [])) {
-              const key = String(outcome.name || outcome.description || "");
-              const price = Number(outcome.price);
-              if (!key || !Number.isFinite(price) || price <= 1) continue;
-              const old = best.get(key);
-              if (!old || price > old.odd) {
-                best.set(key, { name: key, value: key, odd: price });
-              }
+              const name = String(outcome.name || "");
+              const odd = Number(outcome.price);
+              if (!name || !Number.isFinite(odd) || odd <= 1) continue;
+              const old = best.get(name);
+              if (!old || odd > old.odd) best.set(name, {
+                name, value:name, odd,
+                bookmaker_key:bookmaker.key || "",
+                bookmaker_title:bookmaker.title || ""
+              });
             }
           }
         }
-        return [...best.values()];
-      };
-
-      for (const event of events) {
-        const eventTime = new Date(event.commence_time).getTime();
-        if (!Number.isFinite(eventTime) || eventTime < now - 2 * 60 * 1000 || eventTime > maxDate) continue;
-
-        const bookmakers = Array.isArray(event.bookmakers) ? event.bookmakers : [];
-        const byMarket = (key) => bookmakers.map(b => ({
-          ...b,
-          markets: (b.markets || []).filter(m => m.key === key)
-        })).filter(b => b.markets.length);
-
-        const markets = {
-          "1x2": pickBest(byMarket("h2h")),
-          double: pickBest(byMarket("double_chance")),
-          overunder: pickBest(byMarket("totals")),
-          btts: pickBest(byMarket("btts")),
-          handicap: pickBest(byMarket("spreads"))
-        };
-
-        if (!markets["1x2"].length) continue;
-
-        let saved = null;
+        const oneXtwo = [...best.values()];
+        if (!oneXtwo.length) continue;
+        let id = null;
         try {
           const db = await pool.query(`
-            INSERT INTO matches (external_id, home_team, away_team, status, started_at, updated_at)
+            INSERT INTO matches (external_id,home_team,away_team,status,started_at,updated_at)
             VALUES ($1,$2,$3,'scheduled',$4,NOW())
-            ON CONFLICT (external_id) DO UPDATE SET
-              home_team=EXCLUDED.home_team,
-              away_team=EXCLUDED.away_team,
-              started_at=EXCLUDED.started_at,
-              updated_at=NOW()
-            RETURNING id
-          `, [String(event.id), event.home_team, event.away_team, new Date(event.commence_time)]);
-          saved = db.rows[0] || null;
-        } catch (dbError) {
-          console.error("Match save warning:", dbError.message);
-        }
-
+            ON CONFLICT (external_id) DO UPDATE SET home_team=EXCLUDED.home_team,away_team=EXCLUDED.away_team,started_at=EXCLUDED.started_at,updated_at=NOW()
+            RETURNING id`, [String(event.id),event.home_team,event.away_team,new Date(event.commence_time)]);
+          id = db.rows[0]?.id || null;
+        } catch (e) { console.error("Match save warning:", e.message); }
         matches.push({
-          id: saved?.id || null,
-          external_id: String(event.id),
-          home_team: event.home_team,
-          away_team: event.away_team,
-          home_logo: null,
-          away_logo: null,
-          league: event.sport_title || sport,
-          country: "",
-          league_logo: null,
-          date: event.commence_time,
-          timezone: "Africa/Addis_Ababa",
-          status: "NS",
-          markets,
-          raw_fixture: event,
-          raw_odds: event.bookmakers || []
+          id, external_id:String(event.id), home_team:event.home_team, away_team:event.away_team,
+          league:event.sport_title || sport, date:event.commence_time, timezone:FOOTBALL_TIMEZONE,
+          status:"NS", markets:{"1x2":oneXtwo,double:[],overunder:[],btts:[],handicap:[],draw_no_bet:[],correct_score:[],halftime_fulltime:[]}
         });
-
         if (matches.length >= limit) break;
       }
-
-      matches.sort((a, b) => new Date(a.date) - new Date(b.date));
-      return res.json({
-        success: true,
-        count: matches.length,
-        matches,
-        diagnostics: {
-          provider: "The Odds API",
-          sport,
-          events_received: events.length,
-          requests_made: 1
-        },
-        message: matches.length ? "Betting matches loaded successfully." : "No football matches with available betting data are currently available."
-      });
+      matches.sort((a,b)=>new Date(a.date)-new Date(b.date));
+      console.log(`✅ Betting matches: ${matches.length} (${Date.now()-started}ms)`);
+      return res.json({success:true,count:matches.length,matches,diagnostics:{provider:"The Odds API",sport,events_received:events.length,requests_made:1,duration_ms:Date.now()-started}});
     } catch (error) {
-      console.error("Football betting API error:", error.message);
-      return res.status(500).json({
-        success: false,
-        message: "Could not load football betting data.",
-        error: error.message
-      });
+      console.error("❌ Football betting API error:", error.message);
+      return res.status(error.name === "TimeoutError" ? 504 : 500).json({success:false,message:error.name === "TimeoutError" ? "Football odds service timed out. Please refresh." : "Could not load football betting data."});
     }
   }
 );
@@ -4866,64 +4795,47 @@ function findSelectionInMarkets(
 |--------------------------------------------------------------------------
 */
 
-async function getServerOddsForMatch(
-  externalId
-) {
-
-  if (
-    !externalId
-  ) {
-
-    return null;
-
-  }
-
-  const result =
-    await footballRequest(
-      "odds",
-      {
-        fixture:
-          externalId
+async function getServerOddsForMatch(externalId) {
+  if (!externalId) return null;
+  const key = process.env.ODDS_API_KEY;
+  if (!key) return null;
+  try {
+    const url = new URL("https://api.the-odds-api.com/v4/sports/soccer_epl/events/" + encodeURIComponent(externalId) + "/odds");
+    url.searchParams.set("apiKey", key);
+    url.searchParams.set("regions", "eu");
+    url.searchParams.set("markets", "h2h,totals,btts,double_chance,draw_no_bet,spreads");
+    url.searchParams.set("oddsFormat", "decimal");
+    url.searchParams.set("dateFormat", "iso");
+    const response = await fetch(url,{headers:{Accept:"application/json"},signal:AbortSignal.timeout(8000)});
+    if (!response.ok) return null;
+    const event = await response.json();
+    const bestByMarket = {};
+    for (const bookmaker of (event.bookmakers || [])) {
+      for (const market of (bookmaker.markets || [])) {
+        const keyName = market.key;
+        if (!bestByMarket[keyName]) bestByMarket[keyName] = new Map();
+        for (const outcome of (market.outcomes || [])) {
+          const name = String(outcome.name || "");
+          const odd = Number(outcome.price);
+          if (!name || !Number.isFinite(odd) || odd <= 1) continue;
+          const old = bestByMarket[keyName].get(name);
+          if (!old || odd > old.odd) bestByMarket[keyName].set(name,{name,value:name,odd,point:outcome.point,bookmaker_key:bookmaker.key || "",bookmaker_title:bookmaker.title || ""});
+        }
       }
-    );
-
-  if (
-    !result.ok
-  ) {
-
+    }
+    const markets = {
+      "1x2":[...(bestByMarket.h2h || new Map()).values()],
+      double:[...(bestByMarket.double_chance || new Map()).values()],
+      overunder:[...(bestByMarket.totals || new Map()).values()],
+      btts:[...(bestByMarket.btts || new Map()).values()],
+      handicap:[...(bestByMarket.spreads || new Map()).values()],
+      draw_no_bet:[...(bestByMarket.draw_no_bet || new Map()).values()]
+    };
+    return {markets,raw:event};
+  } catch (error) {
+    console.error("Server odds lookup error:",error.message);
     return null;
-
   }
-
-  const response =
-    Array.isArray(
-      result.data?.response
-    )
-      ? result.data.response
-      : [];
-
-  if (
-    response.length === 0
-  ) {
-
-    return null;
-
-  }
-
-  const markets =
-    normalizeOdds(
-      response
-    );
-
-  return {
-
-    markets,
-
-    raw:
-      response
-
-  };
-
 }
 
 /*
@@ -5868,8 +5780,8 @@ async function startServer() {
         );
 
         console.log(
-          "⚽ API-Football:",
-          API_FOOTBALL_KEY
+          "⚽ The Odds API:",
+          process.env.ODDS_API_KEY
             ? "configured"
             : "NOT configured"
         );
