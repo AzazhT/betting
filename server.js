@@ -1847,9 +1847,17 @@ async function oddsApiRequest(pathname, params = {}) {
     }
   }
 
-  const response = await fetch(url, {
-    headers: { Accept: "application/json" }
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  let response;
+  try {
+    response = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   let data = null;
   try {
@@ -1943,7 +1951,7 @@ app.get("/api/football/betting", async (req, res, next) => {
     const results = await Promise.allSettled(
       ODDS_SPORTS.map(sport => oddsApiRequest(`/sports/${sport}/odds`, {
         regions: "eu",
-        markets: "h2h,totals,btts,double_chance,draw_no_bet,spreads",
+        markets: "h2h",
         oddsFormat: "decimal",
         dateFormat: "iso"
       }).then(events => ({ sport, events: Array.isArray(events) ? events : [] })))
@@ -5321,7 +5329,7 @@ async function getServerOddsForMatch(
       try {
         const events = await oddsApiRequest(`/sports/${sport}/events/${encodeURIComponent(externalId)}/odds`, {
           regions: "eu",
-          markets: "h2h,totals,btts,double_chance,draw_no_bet,spreads",
+          markets: "h2h",
           oddsFormat: "decimal",
           dateFormat: "iso"
         });
