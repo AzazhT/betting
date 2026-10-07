@@ -673,10 +673,13 @@ async function fetchBsdEvents(options = {}) {
   const cached = bsdCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < BSD_CACHE_TTL_MS) return cached.value;
 
+  // Do not send a status filter here. BSD documentation exposes
+  // different status names in different football views; the safest
+  // approach is to fetch the date window and filter upcoming events
+  // in our own betting route.
   const result = await bsdRequest("/events/", {
     date_from: dateFrom,
     date_to: dateTo,
-    status: "notstarted",
     limit,
     offset: 0
   });
