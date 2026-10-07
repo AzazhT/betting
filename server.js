@@ -50,7 +50,7 @@ const ODDS_API_REGION =
 
 const ODDS_API_MARKETS =
   process.env.ODDS_API_MARKETS ||
-  "h2h,spreads,totals";
+  "h2h,spreads,totals,btts,double_chance,draw_no_bet";
 
 const ODDS_API_BOOKMAKER_KEY =
   process.env.ODDS_API_BOOKMAKER_KEY ||
@@ -2310,263 +2310,126 @@ function mergeBookmakerMarkets(baseEvent, additionalEvent) {
 app.get(
   "/api/football/betting",
   async (req, res) => {
-
+    const startedAt = Date.now();
     try {
-
-      let limit =
-        Number(
-          req.query.limit
-        );
-
-      if (
-        !Number.isFinite(limit)
-      ) {
-        limit = 10;
-      }
-
-      limit =
-        Math.max(
-          1,
-          Math.min(
-            30,
-            Math.floor(limit)
-          )
-        );
-
-      const matches = [];
+      let limit = Number(req.query.limit);
+      if (!Number.isFinite(limit)) limit = 10;
+      limit = Math.max(1, Math.min(30, Math.floor(limit)));
 
       const diagnostics = {
-        provider:
-          "The Odds API",
-        sports_checked: [],
+        provider: "The Odds API",
+        sports_checked: [...ODDS_API_SPORTS],
         odds_requests: 0,
         events_found: 0,
         matches_with_odds: 0,
         additional_market_requests: 0,
         errors: [],
-        quota: []
+        quota: [],
+        duration_ms: 0
       };
 
-      for (
-        const sportKey
-        of ODDS_API_SPORTS
-      ) {
-
-        diagnostics.sports_checked.push(
-          sportKey
-        );
-
-        const oddsData =
-          await fetchOddsForSport(
-            sportKey
-          );
-
-        diagnostics.odds_requests++;
-
-        diagnostics.quota.push({
-          sport:
-            sportKey,
-          ...oddsData.headers
-        });
-
-        if (
-          !oddsData.ok
-        ) {
-
-          diagnostics.errors.push({
-            sport:
+      // Request the configured leagues in parallel instead of waiting for
+      // one league to finish before requesting the next one.
+      const results = await Promise.all(
+        ODDS_API_SPORTS.map(async (sportKey) => {
+          try {
+            const data = await fetchOddsForSport(sportKey);
+            return { sportKey, data };
+          } catch (error) {
+            return {
               sportKey,
-            http_status:
-              oddsData.http_status,
-            error:
-              oddsData.data
-          });
+              data: {
+                ok: false,
+                http_status: 0,
+                data: { message: error.message },
+                events: [],
+                headers: {}
+              }
+            };
+          }
+        })
+      );
 
+      diagnostics.odds_requests = results.length;
+      const matches = [];
+
+      for (const { sportKey, data } of results) {
+        diagnostics.quota.push({ sport: sportKey, ...(data.headers || {}) });
+
+        if (!data.ok) {
+          diagnostics.errors.push({
+            sport: sportKey,
+            http_status: data.http_status,
+            error: data.data
+          });
           continue;
         }
 
-        diagnostics.events_found +=
-          oddsData.events.length;
+        const events = Array.isArray(data.events) ? data.events : [];
+        diagnostics.events_found += events.length;
 
-        for (
-          const event
-          of oddsData.events
-        ) {
+        for (const event of events) {
+          if (!event || !event.id || !event.commence_time) continue;
+          const kickoff = new Date(event.commence_time).getTime();
+          if (!Number.isFinite(kickoff) || kickoff <= Date.now()) continue;
 
-          let enrichedEvent = event;
-
-          try {
-            const additional = await fetchAdditionalSoccerMarkets(event.sport_key, event.id);
-            diagnostics.additional_market_requests++;
-            if (additional.ok && additional.data) {
-              enrichedEvent = mergeBookmakerMarkets(event, additional.data);
-            }
-          } catch (additionalError) {
-            diagnostics.errors.push({ type: "additional_markets", sport: event.sport_key, event_id: event.id, error: additionalError.message });
-          }
-
-          const markets =
-            normalizeOdds(
-              enrichedEvent
-            );
-
-          const hasOdds =
-            Object.values(
-              markets
-            ).some(
-              market =>
-                Array.isArray(
-                  market
-                ) &&
-                market.length > 0
-            );
-
-          if (!hasOdds) {
-            continue;
-          }
-
-          const startedAt =
-            event.commence_time
-              ? new Date(
-                  event.commence_time
-                )
-              : null;
-
-          if (
-            !startedAt ||
-            Number.isNaN(
-              startedAt.getTime()
-            ) ||
-            startedAt.getTime() <=
-              Date.now()
-          ) {
-            continue;
-          }
+          // Base request already asks for the main + common markets.
+          // Avoid an extra API request for every single event here.
+          const markets = normalizeOdds(event);
+          const hasOdds = Object.values(markets).some(
+            market => Array.isArray(market) && market.length > 0
+          );
+          if (!hasOdds) continue;
 
           diagnostics.matches_with_odds++;
 
-          let savedMatch =
-            null;
-
+          let savedMatch = null;
           try {
-
-            savedMatch =
-              await saveOddsEventToDatabase(
-                event
-              );
-
+            savedMatch = await saveOddsEventToDatabase(event);
           } catch (dbError) {
-
-            console.error(
-              "Match database save error:",
-              dbError.message
-            );
-
+            console.error("Match database save error:", dbError.message);
           }
 
           matches.push({
-
-            id:
-              savedMatch?.id ||
-              null,
-
-            external_id:
-              buildOddsExternalId(
-                event.sport_key,
-                event.id
-              ),
-
-            event_id:
-              event.id,
-
-            sport_key:
-              event.sport_key,
-
-            home_team:
-              event.home_team ||
-              "Home",
-
-            away_team:
-              event.away_team ||
-              "Away",
-
-            league:
-              event.sport_title ||
-              sportKey,
-
-            country:
-              "",
-
-            date:
-              event.commence_time ||
-              null,
-
-            timezone:
-              FOOTBALL_TIMEZONE,
-
-            status:
-              "NS",
-
+            id: savedMatch?.id || null,
+            external_id: buildOddsExternalId(event.sport_key, event.id),
+            event_id: event.id,
+            sport_key: event.sport_key,
+            home_team: event.home_team || "Home",
+            away_team: event.away_team || "Away",
+            league: event.sport_title || sportKey,
+            country: "",
+            date: event.commence_time,
+            timezone: FOOTBALL_TIMEZONE,
+            status: "NS",
             markets,
-
-            raw_event:
-              enrichedEvent
-
+            raw_event: event
           });
-
-          if (
-            matches.length >=
-            limit
-          ) {
-            break;
-          }
-        }
-
-        if (
-          matches.length >=
-          limit
-        ) {
-          break;
         }
       }
 
-      res.json({
-
-        success:
-          diagnostics.errors.length === 0,
-
-        count:
-          matches.length,
-
-        matches,
-
-        diagnostics,
-
-        message:
-          matches.length > 0
-            ? "Betting matches loaded successfully."
-            : "No football matches with available betting data are currently available."
-      });
-
-    } catch (error) {
-
-      console.error(
-        "Football betting API error:",
-        error.message
+      matches.sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
       );
 
-      res.status(500).json({
+      const limitedMatches = matches.slice(0, limit);
+      diagnostics.duration_ms = Date.now() - startedAt;
 
-        success: false,
-
-        message:
-          error.message
+      res.json({
+        success: diagnostics.errors.length === 0,
+        count: limitedMatches.length,
+        matches: limitedMatches,
+        diagnostics,
+        message: limitedMatches.length > 0
+          ? "Betting matches loaded successfully."
+          : "No football matches with available betting data are currently available."
       });
-
+    } catch (error) {
+      console.error("Football betting API error:", error.message);
+      res.status(500).json({ success: false, message: error.message });
     }
   }
 );
-
 
 /*
 |--------------------------------------------------------------------------
