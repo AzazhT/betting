@@ -1,94 +1,50 @@
-const express = require("express");
-const cors = require("cors");
-const http = require("http");
-const { Server } = require("socket.io");
-const { Pool } = require("pg");
-const fs = require("fs");
-const path = require("path");
-const crypto = require("crypto");
-require("dotenv").config();
+const express = require(“express”); const cors = require(“cors”); const
+http = require(“http”); const { Server } = require(“socket.io”); const {
+Pool } = require(“pg”); const fs = require(“fs”); const path =
+require(“path”); const crypto = require(“crypto”);
+require(“dotenv”).config();
 
-/*
-|--------------------------------------------------------------------------
-| BSD — Bzzoiro Sports Data
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | BSD — Bzzoiro Sports Data
+|————————————————————————– /
 
-const BSD_API_KEY =
-  process.env.BSD_API_KEY;
+const BSD_API_KEY = process.env.BSD_API_KEY;
 
-const BSD_API_URL =
-  "https://sports.bzzoiro.com/api/v2";
+const BSD_API_URL = “https://sports.bzzoiro.com/api/v2”;
 
-const FOOTBALL_TIMEZONE =
-  "Africa/Addis_Ababa";
+const FOOTBALL_TIMEZONE = “Africa/Addis_Ababa”;
 
-const BSD_CACHE_TTL_MS =
-  60 * 1000;
+const BSD_CACHE_TTL_MS = 60 * 1000;
 
-const bsdCache =
-  new Map();
+const bsdCache = new Map();
 
+const ODDS_API_KEY = BSD_API_KEY; const ODDS_API_REGION = ““; const
+ODDS_API_MARKETS =”“; const ODDS_API_SPORTS = [”bsd”]; const
+ODDS_API_BOOKMAKER_KEY =”“; const ODDS_API_ADDITIONAL_MARKETS =”“;
 
-const ODDS_API_KEY = BSD_API_KEY;
-const ODDS_API_REGION = "";
-const ODDS_API_MARKETS = "";
-const ODDS_API_SPORTS = ["bsd"];
-const ODDS_API_BOOKMAKER_KEY = "";
-const ODDS_API_ADDITIONAL_MARKETS = "";
+async function oddsApiRequest(pathname, params = {}) { return
+bsdRequest(pathname, params); }
 
-async function oddsApiRequest(pathname, params = {}) {
-  return bsdRequest(pathname, params);
-}
+function fetchAdditionalSoccerMarkets() { return Promise.resolve({ ok:
+true, data: null, headers: {} }); }
 
-function fetchAdditionalSoccerMarkets() {
-  return Promise.resolve({ ok: true, data: null, headers: {} });
-}
-
-/*
-|--------------------------------------------------------------------------
-| App
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | App |————————————————————————– /
 
 const app = express();
 
-const server =
-  http.createServer(app);
+const server = http.createServer(app);
 
-/*
-|--------------------------------------------------------------------------
-| Socket.IO
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | Socket.IO |————————————————————————– /
 
-const io =
-  new Server(server, {
-    cors: {
-      origin: "*",
-      methods: ["GET", "POST"]
-    }
-  });
+const io = new Server(server, { cors: { origin: “*“, methods: [“GET”,
+“POST”] } });
 
-/*
-|--------------------------------------------------------------------------
-| Port
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | Port |————————————————————————– /
 
-const PORT =
-  process.env.PORT || 10000;
+const PORT = process.env.PORT || 10000;
 
-/*
-|--------------------------------------------------------------------------
-| PostgreSQL
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | PostgreSQL |————————————————————————– /
 
-const pool =
-  new Pool({
-    connectionString:
-      process.env.DATABASE_URL,
+const pool = new Pool({ connectionString: process.env.DATABASE_URL,
 
     ssl:
       process.env.NODE_ENV === "production"
@@ -96,54 +52,28 @@ const pool =
             rejectUnauthorized: false
           }
         : false
-  });
 
-pool.on(
-  "error",
-  (err) => {
-    console.error(
-      "PostgreSQL pool error:",
-      err.message
-    );
-  }
-);
+});
 
-/*
-|--------------------------------------------------------------------------
-| Middleware
-|--------------------------------------------------------------------------
-*/
+pool.on( “error”, (err) => { console.error( “PostgreSQL pool error:”,
+err.message ); } );
+
+/ |————————————————————————– | Middleware |————————————————————————– /
 
 app.use(cors());
 
-app.use(
-  express.json()
-);
+app.use( express.json() );
 
-app.use(
-  express.urlencoded({
-    extended: true
-  })
-);
+app.use( express.urlencoded({ extended: true }) );
 
-app.use(
-  express.static(
-    path.join(
-      __dirname,
-      "public"
-    )
-  )
-);
+app.use( express.static( path.join( __dirname, “public” ) ) );
 
-/*
-|--------------------------------------------------------------------------
-| Database Initialization
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | Database Initialization
+|————————————————————————– /
 
 async function initializeDatabase() {
 
-  try {
+try {
 
     const schemaPath =
       path.join(
@@ -178,7 +108,7 @@ async function initializeDatabase() {
       "✅ Database tables initialized successfully."
     );
 
-  } catch (error) {
+} catch (error) {
 
     console.error(
       "❌ Database initialization failed:",
@@ -186,18 +116,12 @@ async function initializeDatabase() {
     );
 
     throw error;
-  }
-}
 
-/*
-|--------------------------------------------------------------------------
-| Home
-|--------------------------------------------------------------------------
-*/
+} }
 
-app.get(
-  "/",
-  (req, res) => {
+/ |————————————————————————– | Home |————————————————————————– /
+
+app.get( “/”, (req, res) => {
 
     res.json({
       success: true,
@@ -205,18 +129,11 @@ app.get(
       status: "online"
     });
 
-  }
-);
+} );
 
-/*
-|--------------------------------------------------------------------------
-| Health Check
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | Health Check |————————————————————————– /
 
-app.get(
-  "/api/health",
-  async (req, res) => {
+app.get( “/api/health”, async (req, res) => {
 
     try {
 
@@ -248,18 +165,12 @@ app.get(
 
     }
 
-  }
-);
+} );
 
-/*
-|--------------------------------------------------------------------------
-| Database Test
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | Database Test |————————————————————————–
+/
 
-app.get(
-  "/api/database-test",
-  async (req, res) => {
+app.get( “/api/database-test”, async (req, res) => {
 
     try {
 
@@ -295,18 +206,11 @@ app.get(
 
     }
 
-  }
-);
+} );
 
-/*
-|--------------------------------------------------------------------------
-| Tables Test
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | Tables Test |————————————————————————– /
 
-app.get(
-  "/api/tables-test",
-  async (req, res) => {
+app.get( “/api/tables-test”, async (req, res) => {
 
     try {
 
@@ -342,17 +246,10 @@ app.get(
 
     }
 
-  }
-);
-/*
-|--------------------------------------------------------------------------
-| USER ACCOUNT
-|--------------------------------------------------------------------------
-*/
+} ); / |————————————————————————– | USER ACCOUNT
+|————————————————————————– /
 
-app.post(
-  "/api/user",
-  async (req, res) => {
+app.post( “/api/user”, async (req, res) => {
 
     try {
 
@@ -484,18 +381,11 @@ app.post(
 
     }
 
-  }
-);
+} );
 
-/*
-|--------------------------------------------------------------------------
-| USER TEST
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | USER TEST |————————————————————————– /
 
-app.get(
-  "/api/user-test",
-  async (req, res) => {
+app.get( “/api/user-test”, async (req, res) => {
 
     try {
 
@@ -599,257 +489,167 @@ app.get(
 
     }
 
-  }
-);
+} );
 
-/*
-|--------------------------------------------------------------------------
-| BSD REQUEST HELPER
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | BSD REQUEST HELPER
+|————————————————————————– /
 
-async function bsdRequest(pathname, params = {}) {
-  if (!BSD_API_KEY) {
-    throw new Error("BSD_API_KEY is not configured.");
-  }
+async function bsdRequest(pathname, params = {}) { if (!BSD_API_KEY) {
+throw new Error(“BSD_API_KEY is not configured.”); }
 
-  const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== null && value !== "") {
-      query.set(key, String(value));
-    }
-  }
+const query = new URLSearchParams(); for (const [key, value] of
+Object.entries(params)) { if (value !== undefined && value !== null &&
+value !== ““) { query.set(key, String(value)); } }
 
-  const url = `${BSD_API_URL}${pathname}${query.toString() ? `?${query}` : ""}`;
+const url = ${BSD_API_URL}${pathname}${query.toString() ??${query}: ""};
 
-  console.log("⚽ BSD request:", pathname, params);
+console.log(“⚽ BSD request:”, pathname, params);
 
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Token ${BSD_API_KEY}`,
-      Accept: "application/json"
-    }
-  });
+const response = await fetch(url, { headers: { Authorization:
+Token ${BSD_API_KEY}, Accept: “application/json” } });
 
-  let data = null;
-  try {
-    data = await response.json();
-  } catch (_) {
-    data = { error: "BSD returned invalid JSON." };
-  }
+let data = null; try { data = await response.json(); } catch (_) { data
+= { error: “BSD returned invalid JSON.” }; }
 
-  return {
-    http_status: response.status,
-    ok: response.ok,
-    data
-  };
-}
+return { http_status: response.status, ok: response.ok, data }; }
 
-function addDays(dateString, days) {
-  const d = new Date(`${dateString}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
+function addDays(dateString, days) { const d = new
+Date(${dateString}T00:00:00Z); d.setUTCDate(d.getUTCDate() + days);
+return d.toISOString().slice(0, 10); }
 
-function getAddisDate(offsetDays = 0) {
-  const now = new Date();
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: FOOTBALL_TIMEZONE,
-    year: "numeric", month: "2-digit", day: "2-digit"
-  }).formatToParts(now);
-  const y = Number(parts.find(p => p.type === "year").value);
-  const m = Number(parts.find(p => p.type === "month").value);
-  const d = Number(parts.find(p => p.type === "day").value);
-  const base = new Date(Date.UTC(y, m - 1, d));
-  base.setUTCDate(base.getUTCDate() + offsetDays);
-  return base.toISOString().slice(0, 10);
-}
+function getAddisDate(offsetDays = 0) { const now = new Date(); const
+parts = new Intl.DateTimeFormat(“en-CA”, { timeZone: FOOTBALL_TIMEZONE,
+year: “numeric”, month: “2-digit”, day: “2-digit” }).formatToParts(now);
+const y = Number(parts.find(p => p.type === “year”).value); const m =
+Number(parts.find(p => p.type === “month”).value); const d =
+Number(parts.find(p => p.type === “day”).value); const base = new
+Date(Date.UTC(y, m - 1, d)); base.setUTCDate(base.getUTCDate() +
+offsetDays); return base.toISOString().slice(0, 10); }
 
-async function fetchBsdEvents(options = {}) {
-  const dateFrom = options.dateFrom || getAddisDate(0);
-  const dateTo = options.dateTo || getAddisDate(3);
-  const limit = Math.max(1, Math.min(200, Number(options.limit) || 100));
-  const cacheKey = `events|${dateFrom}|${dateTo}|${limit}`;
-  const cached = bsdCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < BSD_CACHE_TTL_MS) return cached.value;
+async function fetchBsdEvents(options = {}) { const dateFrom =
+options.dateFrom || getAddisDate(0); const dateTo = options.dateTo ||
+getAddisDate(3); const limit = Math.max(1, Math.min(200,
+Number(options.limit) || 100)); const cacheKey =
+events|${dateFrom}|${dateTo}|${limit}; const cached =
+bsdCache.get(cacheKey); if (cached && Date.now() - cached.timestamp <
+BSD_CACHE_TTL_MS) return cached.value;
 
-  // Do not send a status filter here. BSD documentation exposes
-  // different status names in different football views; the safest
-  // approach is to fetch the date window and filter upcoming events
-  // in our own betting route.
-  const result = await bsdRequest("/events/", {
-    date_from: dateFrom,
-    date_to: dateTo,
-    limit,
-    offset: 0
-  });
+// Do not send a status filter here. BSD documentation exposes //
+different status names in different football views; the safest //
+approach is to fetch the date window and filter upcoming events // in
+our own betting route. const result = await bsdRequest(“/events/”, {
+date_from: dateFrom, date_to: dateTo, limit, offset: 0 });
 
-  const value = {
-    ...result,
-    events: Array.isArray(result.data?.results) ? result.data.results : []
-  };
-  bsdCache.set(cacheKey, { timestamp: Date.now(), value });
-  return value;
-}
+const value = { …result, events: Array.isArray(result.data?.results) ?
+result.data.results : [] }; bsdCache.set(cacheKey, { timestamp:
+Date.now(), value }); return value; }
 
-function buildBsdExternalId(eventId) {
-  return `bsd:${eventId}`;
-}
+function buildBsdExternalId(eventId) { return bsd:${eventId}; }
 
-function parseBsdExternalId(externalId) {
-  const value = String(externalId || "").trim();
-  if (!value.startsWith("bsd:")) return null;
-  const id = value.slice(4);
-  return id ? id : null;
-}
+function parseBsdExternalId(externalId) { const value =
+String(externalId || ““).trim(); if (!value.startsWith(”bsd:“)) return
+null; const id = value.slice(4); return id ? id : null; }
 
-function normalizeBsdOdds(event) {
-  const markets = {
-    "1x2": [],
-    double: [],
-    overunder: [],
-    btts: [],
-    handicap: [],
-    draw_no_bet: [],
-    correct_score: [],
-    halftime_fulltime: []
-  };
+function normalizeBsdOdds(event) { const markets = { “1x2”: [], double:
+[], overunder: [], btts: [], handicap: [], draw_no_bet: [],
+correct_score: [], halftime_fulltime: [] };
 
-  const push = (market, name, value, odd, extra = {}) => {
-    const n = Number(odd);
-    if (!Number.isFinite(n) || n <= 1) return;
-    markets[market].push({ name, value: value ?? name, odd: n, ...extra });
-  };
+const push = (market, name, value, odd, extra = {}) => { const n =
+Number(odd); if (!Number.isFinite(n) || n <= 1) return;
+markets[market].push({ name, value: value ?? name, odd: n, …extra }); };
 
-  push("1x2", event.home_team?.name || event.home_team, event.home_team?.name || event.home_team, event.odds_home);
-  push("1x2", "Draw", "Draw", event.odds_draw);
-  push("1x2", event.away_team?.name || event.away_team, event.away_team?.name || event.away_team, event.odds_away);
+push(“1x2”, event.home_team?.name || event.home_team,
+event.home_team?.name || event.home_team, event.odds_home); push(“1x2”,
+“Draw”, “Draw”, event.odds_draw); push(“1x2”, event.away_team?.name ||
+event.away_team, event.away_team?.name || event.away_team,
+event.odds_away);
 
-  return markets;
-}
+return markets; }
 
-async function fetchBsdEventOdds(eventId) {
-  const cacheKey = `event-odds|${eventId}`;
-  const cached = bsdCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < BSD_CACHE_TTL_MS) return cached.value;
-  const result = await bsdRequest(`/events/${encodeURIComponent(eventId)}/odds/`);
-  bsdCache.set(cacheKey, { timestamp: Date.now(), value: result });
-  return result;
-}
+async function fetchBsdEventOdds(eventId) { const cacheKey =
+event-odds|${eventId}; const cached = bsdCache.get(cacheKey); if (cached
+&& Date.now() - cached.timestamp < BSD_CACHE_TTL_MS) return
+cached.value; const result = await
+bsdRequest(/events/${encodeURIComponent(eventId)}/odds/);
+bsdCache.set(cacheKey, { timestamp: Date.now(), value: result }); return
+result; }
 
-function normalizeBsdDetailedOdds(data, event) {
-  const markets = normalizeBsdOdds(event || {});
+function normalizeBsdDetailedOdds(data, event) { const markets =
+normalizeBsdOdds(event || {});
 
-  // BSD odds endpoint returns a compact direct odds object.
-  const direct = data?.odds || {};
-  const home = event?.home_team?.name || event?.home_team || "Home";
-  const away = event?.away_team?.name || event?.away_team || "Away";
-  const pushDirect = (market, name, odd, extra = {}) => {
-    const n = Number(odd);
-    if (!Number.isFinite(n) || n <= 1) return;
-    pushMarket(markets, market, name, name, n, extra);
-  };
+// BSD odds endpoint returns a compact direct odds object. const direct
+= data?.odds || {}; const home = event?.home_team?.name ||
+event?.home_team || “Home”; const away = event?.away_team?.name ||
+event?.away_team || “Away”; const pushDirect = (market, name, odd, extra
+= {}) => { const n = Number(odd); if (!Number.isFinite(n) || n <= 1)
+return; pushMarket(markets, market, name, name, n, extra); };
 
-  pushDirect("1x2", home, direct.home_win);
-  pushDirect("1x2", "Draw", direct.draw);
-  pushDirect("1x2", away, direct.away_win);
+pushDirect(“1x2”, home, direct.home_win); pushDirect(“1x2”, “Draw”,
+direct.draw); pushDirect(“1x2”, away, direct.away_win);
 
-  for (const line of [1.5, 2.5, 3.5]) {
-    const key = String(line).replace(".", "_");
-    pushDirect("overunder", `Over ${line}`, direct[`over_${key}_goals`], { line });
-    pushDirect("overunder", `Under ${line}`, direct[`under_${key}_goals`], { line });
-  }
+for (const line of [1.5, 2.5, 3.5]) { const key =
+String(line).replace(“.”, “_“); pushDirect(”overunder”, Over ${line},
+direct[over_${key}_goals], { line }); pushDirect(“overunder”,
+Under ${line}, direct[under_${key}_goals], { line }); }
 
-  pushDirect("btts", "Yes", direct.btts_yes);
-  pushDirect("btts", "No", direct.btts_no);
+pushDirect(“btts”, “Yes”, direct.btts_yes); pushDirect(“btts”, “No”,
+direct.btts_no);
 
-  const list = Array.isArray(data?.markets) ? data.markets : [];
+const list = Array.isArray(data?.markets) ? data.markets : [];
 
-  for (const market of list) {
-    const kind = String(market?.market_kind || market?.market_family || "").toUpperCase();
-    const family = String(market?.market_family || "").toUpperCase();
-    const line = market?.market_line;
-    const period = market?.market_period || "FT";
-    const books = Array.isArray(market?.bookmakers) ? market.bookmakers : [];
-    const prices = books[0]?.prices || {};
-    for (const [selection, obj] of Object.entries(prices)) {
-      const price = Number(obj?.price);
-      if (!Number.isFinite(price) || price <= 1) continue;
-      const suffix = line !== null && line !== undefined ? ` ${line}` : "";
-      const name = `${selection}${suffix}`;
-      if (kind === "WINNER" || family === "1X2") pushMarket(markets, "1x2", name, name, price, { period });
-      else if (kind === "OU" || family.startsWith("OU")) pushMarket(markets, "overunder", name, name, price, { line, period });
-      else if (kind === "AH" || family.includes("HANDICAP")) pushMarket(markets, "handicap", name, name, price, { line, period });
-      else if (family === "BTTS") pushMarket(markets, "btts", name, name, price, { period });
-      else if (family === "DNB") pushMarket(markets, "draw_no_bet", name, name, price, { period });
-      else if (family === "CS" || kind === "CORRECT_SCORE") pushMarket(markets, "correct_score", name, name, price, { period });
-      else if (family === "HTFT") pushMarket(markets, "halftime_fulltime", name, name, price, { period });
-    }
-  }
-  return markets;
-}
+for (const market of list) { const kind = String(market?.market_kind ||
+market?.market_family || ““).toUpperCase(); const family =
+String(market?.market_family ||”“).toUpperCase(); const line =
+market?.market_line; const period = market?.market_period ||”FT”; const
+books = Array.isArray(market?.bookmakers) ? market.bookmakers : [];
+const prices = books[0]?.prices || {}; for (const [selection, obj] of
+Object.entries(prices)) { const price = Number(obj?.price); if
+(!Number.isFinite(price) || price <= 1) continue; const suffix = line
+!== null && line !== undefined ? ${line} : ““; const name =
+${selection}${suffix}; if (kind ===”WINNER” || family === “1X2”)
+pushMarket(markets, “1x2”, name, name, price, { period }); else if (kind
+=== “OU” || family.startsWith(“OU”)) pushMarket(markets, “overunder”,
+name, name, price, { line, period }); else if (kind === “AH” ||
+family.includes(“HANDICAP”)) pushMarket(markets, “handicap”, name, name,
+price, { line, period }); else if (family === “BTTS”)
+pushMarket(markets, “btts”, name, name, price, { period }); else if
+(family === “DNB”) pushMarket(markets, “draw_no_bet”, name, name, price,
+{ period }); else if (family === “CS” || kind === “CORRECT_SCORE”)
+pushMarket(markets, “correct_score”, name, name, price, { period });
+else if (family === “HTFT”) pushMarket(markets, “halftime_fulltime”,
+name, name, price, { period }); } } return markets; }
 
-function pushMarket(markets, market, name, value, odd, extra = {}) {
-  if (!markets[market]) markets[market] = [];
-  markets[market].push({ name, value, odd: Number(odd), ...extra });
-}
+function pushMarket(markets, market, name, value, odd, extra = {}) { if
+(!markets[market]) markets[market] = []; markets[market].push({ name,
+value, odd: Number(odd), …extra }); }
 
-/*
-|--------------------------------------------------------------------------
-| BSD DIAGNOSTIC / TEST
-|--------------------------------------------------------------------------
-*/
-app.get("/api/football/diagnostic", async (req, res) => {
-  try {
-    const result = await fetchBsdEvents({ limit: 5 });
-    res.json({ success: result.ok, http_status: result.http_status, provider: "BSD", count: result.events.length, errors: result.ok ? {} : result.data, events: result.events });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+/ |————————————————————————– | BSD DIAGNOSTIC / TEST
+|————————————————————————– / app.get(“/api/football/diagnostic”, async
+(req, res) => { try { const result = await fetchBsdEvents({ limit: 5 });
+res.json({ success: result.ok, http_status: result.http_status,
+provider: “BSD”, count: result.events.length, errors: result.ok ? {} :
+result.data, events: result.events }); } catch (error) {
+res.status(500).json({ success: false, message: error.message }); } });
 
-app.get("/api/football/test", async (req, res) => {
-  try {
-    const result = await fetchBsdEvents({ limit: Number(req.query.limit) || 5 });
-    res.json({ success: result.ok, provider: "BSD", http_status: result.http_status, count: result.events.length, errors: result.ok ? {} : result.data, events: result.events });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+app.get(“/api/football/test”, async (req, res) => { try { const result =
+await fetchBsdEvents({ limit: Number(req.query.limit) || 5 });
+res.json({ success: result.ok, provider: “BSD”, http_status:
+result.http_status, count: result.events.length, errors: result.ok ? {}
+: result.data, events: result.events }); } catch (error) {
+res.status(500).json({ success: false, message: error.message }); } });
 
-function normalizeOdds(
-  oddsResponse
-) {
+function normalizeOdds( oddsResponse ) {
 
-  const markets = {
-    "1x2": [],
-    double: [],
-    overunder: [],
-    btts: [],
-    handicap: [],
-    draw_no_bet: [],
-    correct_score: [],
-    halftime_fulltime: [],
-    correct_score_h1: [],
-    btts_h1: [],
-    alternate_totals: [],
-    alternate_spreads: [],
-    alternate_totals_corners: [],
-    alternate_spreads_corners: [],
-    corners_1x2: []
-  };
+const markets = { “1x2”: [], double: [], overunder: [], btts: [],
+handicap: [], draw_no_bet: [], correct_score: [], halftime_fulltime: [],
+correct_score_h1: [], btts_h1: [], alternate_totals: [],
+alternate_spreads: [], alternate_totals_corners: [],
+alternate_spreads_corners: [], corners_1x2: [] };
 
-  const events =
-    Array.isArray(oddsResponse)
-      ? oddsResponse
-      : oddsResponse
-        ? [oddsResponse]
-        : [];
+const events = Array.isArray(oddsResponse) ? oddsResponse : oddsResponse
+? [oddsResponse] : [];
 
-  for (
-    const event
-    of events
-  ) {
+for ( const event of events ) {
 
     const bookmaker =
       chooseOddsBookmaker(
@@ -1050,12 +850,9 @@ function normalizeOdds(
 
     }
 
-  }
+}
 
-  for (
-    const key
-    of Object.keys(markets)
-  ) {
+for ( const key of Object.keys(markets) ) {
 
     const seen =
       new Set();
@@ -1084,179 +881,86 @@ function normalizeOdds(
           return true;
         }
       );
-  }
 
-  return markets;
 }
 
-/*
-|--------------------------------------------------------------------------
-| BSD EXTERNAL MATCH ID
-|--------------------------------------------------------------------------
-*/
+return markets; }
 
-function buildOddsExternalId(eventId) {
-  return buildBsdExternalId(eventId);
-}
+/ |————————————————————————– | BSD EXTERNAL MATCH ID
+|————————————————————————– /
 
-function parseOddsExternalId(externalId) {
-  const id = parseBsdExternalId(externalId);
-  return id ? { eventId: id, sportKey: "bsd" } : null;
-}
+function buildOddsExternalId(eventId) { return
+buildBsdExternalId(eventId); }
 
-/*
-|--------------------------------------------------------------------------
-| SAVE / UPDATE MATCH FROM THE ODDS API
-|--------------------------------------------------------------------------
-*/
+function parseOddsExternalId(externalId) { const id =
+parseBsdExternalId(externalId); return id ? { eventId: id, sportKey:
+“bsd” } : null; }
 
-async function saveOddsEventToDatabase(
-  event
-) {
+/ |————————————————————————– | SAVE / UPDATE MATCH FROM THE ODDS API
+|————————————————————————– /
 
-  if (
-    !event?.id ||
-    !event?.sport_key
-  ) {
-    return null;
-  }
+async function saveOddsEventToDatabase( event ) {
 
-  const externalId =
-    buildOddsExternalId(
-      event.sport_key,
-      event.id
-    );
+if ( !event?.id || !event?.sport_key ) { return null; }
 
-  const homeTeam =
-    event.home_team ||
-    "Home";
+const externalId = buildOddsExternalId( event.sport_key, event.id );
 
-  const awayTeam =
-    event.away_team ||
-    "Away";
+const homeTeam = event.home_team || “Home”;
 
-  const startedAt =
-    event.commence_time
-      ? new Date(
-          event.commence_time
-        )
-      : null;
+const awayTeam = event.away_team || “Away”;
 
-  const validStartedAt =
-    startedAt &&
-    !Number.isNaN(
-      startedAt.getTime()
-    )
-      ? startedAt
-      : null;
+const startedAt = event.commence_time ? new Date( event.commence_time )
+: null;
 
-  const matchStatus =
-    validStartedAt &&
-    validStartedAt.getTime() <=
-      Date.now()
-      ? "live"
-      : "scheduled";
+const validStartedAt = startedAt && !Number.isNaN( startedAt.getTime() )
+? startedAt : null;
 
-  const query = `
-    INSERT INTO matches
-    (
-      external_id,
-      home_team,
-      away_team,
-      status,
-      home_score,
-      away_score,
-      result,
-      started_at,
-      finished_at
-    )
-    VALUES
-    (
-      $1,$2,$3,$4,$5,$6,$7,$8,$9
-    )
-    ON CONFLICT (external_id)
-    DO UPDATE SET
-      home_team = EXCLUDED.home_team,
-      away_team = EXCLUDED.away_team,
-      status = EXCLUDED.status,
-      started_at = EXCLUDED.started_at,
-      updated_at = NOW()
-    RETURNING *
-  `;
+const matchStatus = validStartedAt && validStartedAt.getTime() <=
+Date.now() ? “live” : “scheduled”;
 
-  const dbResult =
-    await pool.query(
-      query,
-      [
-        externalId,
-        homeTeam,
-        awayTeam,
-        matchStatus,
-        null,
-        null,
-        null,
-        validStartedAt,
-        null
-      ]
-    );
+const query =
+INSERT INTO matches     (       external_id,       home_team,       away_team,       status,       home_score,       away_score,       result,       started_at,       finished_at     )     VALUES     (       $1,$2,$3,$4,$5,$6,$7,$8,$9     )     ON CONFLICT (external_id)     DO UPDATE SET       home_team = EXCLUDED.home_team,       away_team = EXCLUDED.away_team,       status = EXCLUDED.status,       started_at = EXCLUDED.started_at,       updated_at = NOW()     RETURNING *;
 
-  return dbResult.rows[0];
-}
+const dbResult = await pool.query( query, [ externalId, homeTeam,
+awayTeam, matchStatus, null, null, null, validStartedAt, null ] );
 
-/*
-|--------------------------------------------------------------------------
-| ADDITIONAL SOCCER MARKETS
-|--------------------------------------------------------------------------
-*/
-async function fetchAdditionalSoccerMarkets(sportKey, eventId) {
-  const markets = ODDS_API_ADDITIONAL_MARKETS;
-  if (!markets) return { ok: true, data: null, headers: {} };
-  const cacheKey = `event|${sportKey}|${eventId}|${markets}`;
-  const cached = oddsCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < ODDS_CACHE_TTL_MS) return cached.value;
-  const result = await oddsApiRequest(
-    `/sports/${encodeURIComponent(sportKey)}/events/${encodeURIComponent(eventId)}/odds/`,
-    { regions: ODDS_API_REGION, markets, oddsFormat: "decimal", dateFormat: "iso" }
-  );
-  oddsCache.set(cacheKey, { timestamp: Date.now(), value: result });
-  return result;
-}
+return dbResult.rows[0]; }
 
-function mergeBookmakerMarkets(baseEvent, additionalEvent) {
-  const merged = { ...(baseEvent || {}) };
-  const map = new Map();
-  for (const b of Array.isArray(baseEvent?.bookmakers) ? baseEvent.bookmakers : []) {
-    if (b?.key) map.set(String(b.key), { ...b, markets: Array.isArray(b.markets) ? [...b.markets] : [] });
-  }
-  for (const b of Array.isArray(additionalEvent?.bookmakers) ? additionalEvent.bookmakers : []) {
-    if (!b?.key) continue;
-    const k = String(b.key);
-    if (!map.has(k)) { map.set(k, { ...b, markets: Array.isArray(b.markets) ? [...b.markets] : [] }); continue; }
-    const cur = map.get(k);
-    const idx = new Map((cur.markets || []).map((m,i)=>[String(m?.key || ""),i]));
-    for (const m of Array.isArray(b.markets) ? b.markets : []) {
-      const mk = String(m?.key || "");
-      if (idx.has(mk)) cur.markets[idx.get(mk)] = m; else { idx.set(mk, cur.markets.length); cur.markets.push(m); }
-    }
-    map.set(k, cur);
-  }
-  merged.bookmakers = Array.from(map.values());
-  return merged;
-}
+/ |————————————————————————– | ADDITIONAL SOCCER MARKETS
+|————————————————————————– / async function
+fetchAdditionalSoccerMarkets(sportKey, eventId) { const markets =
+ODDS_API_ADDITIONAL_MARKETS; if (!markets) return { ok: true, data:
+null, headers: {} }; const cacheKey =
+event|${sportKey}|${eventId}|${markets}; const cached =
+oddsCache.get(cacheKey); if (cached && Date.now() - cached.timestamp <
+ODDS_CACHE_TTL_MS) return cached.value; const result = await
+oddsApiRequest(
+/sports/${encodeURIComponent(sportKey)}/events/${encodeURIComponent(eventId)}/odds/,
+{ regions: ODDS_API_REGION, markets, oddsFormat: “decimal”, dateFormat:
+“iso” } ); oddsCache.set(cacheKey, { timestamp: Date.now(), value:
+result }); return result; }
 
-/*
-|--------------------------------------------------------------------------
-| FOOTBALL BETTING DATA — THE ODDS API
-|--------------------------------------------------------------------------
-*/
+function mergeBookmakerMarkets(baseEvent, additionalEvent) { const
+merged = { …(baseEvent || {}) }; const map = new Map(); for (const b of
+Array.isArray(baseEvent?.bookmakers) ? baseEvent.bookmakers : []) { if
+(b?.key) map.set(String(b.key), { …b, markets: Array.isArray(b.markets)
+? […b.markets] : [] }); } for (const b of
+Array.isArray(additionalEvent?.bookmakers) ? additionalEvent.bookmakers
+: []) { if (!b?.key) continue; const k = String(b.key); if (!map.has(k))
+{ map.set(k, { …b, markets: Array.isArray(b.markets) ? […b.markets] : []
+}); continue; } const cur = map.get(k); const idx = new Map((cur.markets
+|| []).map((m,i)=>[String(m?.key || ““),i])); for (const m of
+Array.isArray(b.markets) ? b.markets : []) { const mk = String(m?.key ||
+““); if (idx.has(mk)) cur.markets[idx.get(mk)] = m; else { idx.set(mk,
+cur.markets.length); cur.markets.push(m); } } map.set(k, cur); }
+merged.bookmakers = Array.from(map.values()); return merged; }
 
-app.get(
-  "/api/football/betting",
-  async (req, res) => {
-    try {
-      let limit = Number(req.query.limit);
-      if (!Number.isFinite(limit)) limit = 30;
-      limit = Math.max(1, Math.min(30, Math.floor(limit)));
+/ |————————————————————————– | FOOTBALL BETTING DATA — THE ODDS API
+|————————————————————————– /
+
+app.get( “/api/football/betting”, async (req, res) => { try { let limit
+= Number(req.query.limit); if (!Number.isFinite(limit)) limit = 200;
+limit = Math.max(1, Math.min(200, Math.floor(limit)));
 
       let days = Number(req.query.days);
       if (!Number.isFinite(days)) days = 3;
@@ -1280,11 +984,33 @@ app.get(
       for (const event of result.events) {
         if (matches.length >= limit) break;
         if (!event?.id || !event?.event_date) continue;
-        const status = String(event.status || "").toLowerCase();
-        if (!["upcoming", "notstarted", "scheduled", "postponed"].includes(status)) continue;
+        const status = String(
+          event.status ||
+          event.event_status ||
+          event.state ||
+          ""
+        ).toLowerCase();
 
         const startedAt = new Date(event.event_date);
-        if (Number.isNaN(startedAt.getTime()) || startedAt.getTime() <= Date.now()) continue;
+        if (Number.isNaN(startedAt.getTime())) continue;
+
+        const explicitlyFinished = [
+          "finished", "completed", "final", "ended", "cancelled",
+          "canceled", "abandoned", "closed", "postponed"
+        ].includes(status);
+        if (explicitlyFinished) continue;
+
+        const explicitlyLive =
+          ["live", "inplay", "in_play", "playing", "started"].includes(status) ||
+          event.live === true ||
+          event.is_live === true ||
+          event.in_play === true ||
+          event.inplay === true;
+
+        const isLive = explicitlyLive || (!status && startedAt.getTime() <= Date.now());
+        const isScheduled = !isLive && startedAt.getTime() > Date.now();
+
+        if (!isLive && !isScheduled) continue;
 
         const markets = normalizeBsdOdds(event);
         let detailed = null;
@@ -1326,7 +1052,7 @@ app.get(
           country: event.league?.country || "",
           date: event.event_date,
           timezone: FOOTBALL_TIMEZONE,
-          status: "NS",
+          status: isLive ? "live" : "scheduled",
           markets: finalMarkets,
           raw_event: event
         });
@@ -1342,18 +1068,13 @@ app.get(
       console.error("BSD football betting error:", error.message);
       res.status(500).json({ success: false, provider: "BSD", message: error.message, matches: [] });
     }
-  }
-);
 
-/*
-|--------------------------------------------------------------------------
-| PLACE ACCUMULATOR BET
-|--------------------------------------------------------------------------
-*/
+} );
 
-app.post(
-  "/api/bets/place-accumulator",
-  async (req, res) => {
+/ |————————————————————————– | PLACE ACCUMULATOR BET
+|————————————————————————– /
+
+app.post( “/api/bets/place-accumulator”, async (req, res) => {
 
     const client =
       await pool.connect();
@@ -1846,18 +1567,13 @@ app.post(
     } finally {
       client.release();
     }
-  }
-);
 
-/*
-|--------------------------------------------------------------------------
-| LOCAL MATCHES
-|--------------------------------------------------------------------------
-*/
+} );
 
-app.get(
-  "/api/matches",
-  async (req, res) => {
+/ |————————————————————————– | LOCAL MATCHES |————————————————————————–
+/
+
+app.get( “/api/matches”, async (req, res) => {
 
     try {
 
@@ -1916,18 +1632,11 @@ app.get(
 
     }
 
-  }
-);
+} );
 
-/*
-|--------------------------------------------------------------------------
-| SINGLE MATCH
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | SINGLE MATCH |————————————————————————– /
 
-app.get(
-  "/api/matches/:id",
-  async (req, res) => {
+app.get( “/api/matches/:id”, async (req, res) => {
 
     try {
 
@@ -2005,23 +1714,11 @@ app.get(
 
     }
 
-  }
-);
-/*
-|--------------------------------------------------------------------------
-| PLACE BET
-|--------------------------------------------------------------------------
-|
-| IMPORTANT:
-| Football bets must use server-side validated
-| match/odds data in production.
-|
-|--------------------------------------------------------------------------
-*/
+} ); / |————————————————————————– | PLACE BET |————————————————————————–
+| | IMPORTANT: | Football bets must use server-side validated |
+match/odds data in production. | |————————————————————————– /
 
-app.post(
-  "/api/bets/place",
-  async (req, res) => {
+app.post( “/api/bets/place”, async (req, res) => {
 
     const client =
       await pool.connect();
@@ -2772,18 +2469,11 @@ app.post(
 
     }
 
-  }
-);
+} );
 
-/*
-|--------------------------------------------------------------------------
-| BET HISTORY
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | BET HISTORY |————————————————————————– /
 
-app.get(
-  "/api/bets/history",
-  async (req, res) => {
+app.get( “/api/bets/history”, async (req, res) => {
 
     try {
 
@@ -2884,18 +2574,11 @@ app.get(
 
     }
 
-  }
-);
+} );
 
-/*
-|--------------------------------------------------------------------------
-| SINGLE BET
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | SINGLE BET |————————————————————————– /
 
-app.get(
-  "/api/bets/:id",
-  async (req, res) => {
+app.get( “/api/bets/:id”, async (req, res) => {
 
     try {
 
@@ -3003,17 +2686,10 @@ app.get(
 
     }
 
-  }
-);
-/*
-|--------------------------------------------------------------------------
-| DEPOSIT REQUEST
-|--------------------------------------------------------------------------
-*/
+} ); / |————————————————————————– | DEPOSIT REQUEST
+|————————————————————————– /
 
-app.post(
-  "/api/deposit/request",
-  async (req, res) => {
+app.post( “/api/deposit/request”, async (req, res) => {
 
     try {
 
@@ -3242,24 +2918,14 @@ app.post(
 
     }
 
-  }
-);
+} );
 
-/*
-|--------------------------------------------------------------------------
-| WITHDRAW REQUEST
-|--------------------------------------------------------------------------
-|
-| Withdrawal reserves the user's cash balance
-| immediately.
-|
-| Bonus balance is NOT withdrawable directly.
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | WITHDRAW REQUEST
+|————————————————————————– | | Withdrawal reserves the user’s cash
+balance | immediately. | | Bonus balance is NOT withdrawable directly.
+|————————————————————————– /
 
-app.post(
-  "/api/withdraw/request",
-  async (req, res) => {
+app.post( “/api/withdraw/request”, async (req, res) => {
 
     const client =
       await pool.connect();
@@ -3657,18 +3323,12 @@ app.post(
 
     }
 
-  }
-);
+} );
 
-/*
-|--------------------------------------------------------------------------
-| WALLET TRANSACTIONS
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | WALLET TRANSACTIONS
+|————————————————————————– /
 
-app.get(
-  "/api/wallet/transactions",
-  async (req, res) => {
+app.get( “/api/wallet/transactions”, async (req, res) => {
 
     try {
 
@@ -3768,18 +3428,12 @@ app.get(
 
     }
 
-  }
-);
+} );
 
-/*
-|--------------------------------------------------------------------------
-| WALLET BALANCE
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | WALLET BALANCE |————————————————————————–
+/
 
-app.get(
-  "/api/wallet/:userId",
-  async (req, res) => {
+app.get( “/api/wallet/:userId”, async (req, res) => {
 
     try {
 
@@ -3889,24 +3543,12 @@ app.get(
 
     }
 
-  }
-);
-/*
-|--------------------------------------------------------------------------
-| ADMIN — PENDING TRANSACTIONS
-|--------------------------------------------------------------------------
-|
-| TEMPORARY ADMIN API
-|
-| IMPORTANT:
-| Real production admin authentication will be
-| added before the platform goes live.
-|--------------------------------------------------------------------------
-*/
+} ); / |————————————————————————– | ADMIN — PENDING TRANSACTIONS
+|————————————————————————– | | TEMPORARY ADMIN API | | IMPORTANT: | Real
+production admin authentication will be | added before the platform goes
+live. |————————————————————————– /
 
-app.get(
-  "/api/admin/transactions/pending",
-  async (req, res) => {
+app.get( “/api/admin/transactions/pending”, async (req, res) => {
 
     try {
 
@@ -3958,18 +3600,12 @@ app.get(
 
     }
 
-  }
-);
+} );
 
-/*
-|--------------------------------------------------------------------------
-| ADMIN — APPROVE DEPOSIT
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | ADMIN — APPROVE DEPOSIT
+|————————————————————————– /
 
-app.post(
-  "/api/admin/deposit/approve",
-  async (req, res) => {
+app.post( “/api/admin/deposit/approve”, async (req, res) => {
 
     const client =
       await pool.connect();
@@ -4225,18 +3861,12 @@ app.post(
 
     }
 
-  }
-);
+} );
 
-/*
-|--------------------------------------------------------------------------
-| ADMIN — APPROVE WITHDRAW
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | ADMIN — APPROVE WITHDRAW
+|————————————————————————– /
 
-app.post(
-  "/api/admin/withdraw/approve",
-  async (req, res) => {
+app.post( “/api/admin/withdraw/approve”, async (req, res) => {
 
     const client =
       await pool.connect();
@@ -4396,18 +4026,12 @@ app.post(
 
     }
 
-  }
-);
+} );
 
-/*
-|--------------------------------------------------------------------------
-| ADMIN — REJECT DEPOSIT
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | ADMIN — REJECT DEPOSIT
+|————————————————————————– /
 
-app.post(
-  "/api/admin/deposit/reject",
-  async (req, res) => {
+app.post( “/api/admin/deposit/reject”, async (req, res) => {
 
     try {
 
@@ -4495,23 +4119,14 @@ app.post(
 
     }
 
-  }
-);
+} );
 
-/*
-|--------------------------------------------------------------------------
-| ADMIN — REJECT WITHDRAW + REFUND
-|--------------------------------------------------------------------------
-|
-| Because withdrawal money was reserved from
-| balance when requested, rejection returns
-| the exact amount to the user's cash balance.
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | ADMIN — REJECT WITHDRAW + REFUND
+|————————————————————————– | | Because withdrawal money was reserved
+from | balance when requested, rejection returns | the exact amount to
+the user’s cash balance. |————————————————————————– /
 
-app.post(
-  "/api/admin/withdraw/reject",
-  async (req, res) => {
+app.post( “/api/admin/withdraw/reject”, async (req, res) => {
 
     const client =
       await pool.connect();
@@ -4762,52 +4377,25 @@ app.post(
 
     }
 
-  }
-);
-/*
-|--------------------------------------------------------------------------
-| SERVER-SIDE ODDS VALIDATION
-|--------------------------------------------------------------------------
-*/
+} ); / |————————————————————————– | SERVER-SIDE ODDS VALIDATION
+|————————————————————————– /
 
-/*
-|--------------------------------------------------------------------------
-| Find a specific selection inside normalized markets
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | Find a specific selection inside
+normalized markets |————————————————————————– /
 
-function findSelectionInMarkets(
-  markets,
-  selection
-) {
+function findSelectionInMarkets( markets, selection ) {
 
-  if (
-    !markets ||
-    typeof markets !== "object"
-  ) {
+if ( !markets || typeof markets !== “object” ) {
 
     return null;
 
-  }
+}
 
-  const requested =
-    String(
-      selection || ""
-    )
-      .trim()
-      .toLowerCase();
+const requested = String( selection || “” ) .trim() .toLowerCase();
 
-  if (!requested) {
-    return null;
-  }
+if (!requested) { return null; }
 
-  for (
-    const [
-      marketName,
-      marketItems
-    ]
-    of Object.entries(markets)
-  ) {
+for ( const [ marketName, marketItems ] of Object.entries(markets) ) {
 
     if (
       !Array.isArray(
@@ -4879,152 +4467,112 @@ function findSelectionInMarkets(
 
     }
 
-  }
+}
 
-  return null;
+return null;
 
 }
 
-/*
-|--------------------------------------------------------------------------
-| LOAD CURRENT SERVER-SIDE ODDS
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | LOAD CURRENT SERVER-SIDE ODDS
+|————————————————————————– /
 
-async function getServerOddsForMatch(externalId) {
-  const parsed = parseBsdExternalId(externalId);
-  if (!parsed) return null;
+async function getServerOddsForMatch(externalId) { const parsed =
+parseBsdExternalId(externalId); if (!parsed) return null;
 
-  const oddsResult = await fetchBsdEventOdds(parsed);
-  if (!oddsResult.ok) return null;
+const oddsResult = await fetchBsdEventOdds(parsed); if (!oddsResult.ok)
+return null;
 
-  const eventResult = await bsdRequest(`/events/${encodeURIComponent(parsed)}/`);
-  const event = eventResult.ok ? eventResult.data : {};
+const eventResult = await
+bsdRequest(/events/${encodeURIComponent(parsed)}/); const event =
+eventResult.ok ? eventResult.data : {};
 
-  return {
-    markets: normalizeBsdDetailedOdds(oddsResult.data, event),
-    raw: oddsResult.data,
-    headers: {}
-  };
-}
+return { markets: normalizeBsdDetailedOdds(oddsResult.data, event), raw:
+oddsResult.data, headers: {} }; }
 
-/*
-|--------------------------------------------------------------------------
-| VALIDATE FOOTBALL BET
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | VALIDATE FOOTBALL BET
+|————————————————————————– /
 
-async function validateFootballBet(
-  match,
-  selection,
-  clientOdds
-) {
+async function validateFootballBet( match, selection, clientOdds ) {
 
-  if (!match) {
+if (!match) {
 
     return {
       valid: false,
       message:
         "Match not found."
     };
-  }
 
-  if (
-    match.status !==
-    "scheduled"
-  ) {
+}
+
+if ( match.status !== “scheduled” ) {
 
     return {
       valid: false,
       message:
         "Betting is closed for this match."
     };
-  }
 
-  if (
-    !match.external_id
-  ) {
+}
+
+if ( !match.external_id ) {
 
     return {
       valid: false,
       message:
         "Match data is incomplete."
     };
-  }
 
-  const oddsData =
-    await getServerOddsForMatch(
-      match.external_id
-    );
+}
 
-  if (!oddsData) {
+const oddsData = await getServerOddsForMatch( match.external_id );
+
+if (!oddsData) {
 
     return {
       valid: false,
       message:
         "Current odds are unavailable for this match."
     };
-  }
 
-  const found =
-    findSelectionInMarkets(
-      oddsData.markets,
-      selection
-    );
+}
 
-  if (!found) {
+const found = findSelectionInMarkets( oddsData.markets, selection );
+
+if (!found) {
 
     return {
       valid: false,
       message:
         "Selected betting option is no longer available."
     };
-  }
 
-  const currentOdds =
-    Number(
-      found.odds
-    );
+}
 
-  const submittedOdds =
-    Number(
-      clientOdds
-    );
+const currentOdds = Number( found.odds );
 
-  if (
-    !Number.isFinite(
-      currentOdds
-    ) ||
-    currentOdds <= 1
-  ) {
+const submittedOdds = Number( clientOdds );
+
+if ( !Number.isFinite( currentOdds ) || currentOdds <= 1 ) {
 
     return {
       valid: false,
       message:
         "Current odds are invalid."
     };
-  }
 
-  if (
-    !Number.isFinite(
-      submittedOdds
-    ) ||
-    submittedOdds <= 1
-  ) {
+}
+
+if ( !Number.isFinite( submittedOdds ) || submittedOdds <= 1 ) {
 
     return {
       valid: false,
       message:
         "Submitted odds are invalid."
     };
-  }
 
-  if (
-    Math.abs(
-      currentOdds -
-      submittedOdds
-    ) > 0.0001
-  ) {
+}
+
+if ( Math.abs( currentOdds - submittedOdds ) > 0.0001 ) {
 
     return {
       valid: false,
@@ -5037,42 +4585,20 @@ async function validateFootballBet(
       current_odds:
         currentOdds
     };
-  }
 
-  return {
-    valid: true,
-    odds:
-      currentOdds,
-    selection:
-      found.selection,
-    market:
-      found.market,
-    bookmaker_key:
-      found.item?.bookmaker_key ||
-      null,
-    bookmaker_title:
-      found.item?.bookmaker_title ||
-      null,
-    raw:
-      oddsData.raw
-  };
 }
 
-/*
-|--------------------------------------------------------------------------
-| REAL BET SETTLEMENT
-|--------------------------------------------------------------------------
-|
-| This endpoint is intentionally admin-controlled.
-|
-| It settles ONLY from a supplied verified result.
-| It does NOT randomly generate a winner.
-|--------------------------------------------------------------------------
-*/
+return { valid: true, odds: currentOdds, selection: found.selection,
+market: found.market, bookmaker_key: found.item?.bookmaker_key || null,
+bookmaker_title: found.item?.bookmaker_title || null, raw: oddsData.raw
+}; }
 
-app.post(
-  "/api/admin/bets/settle",
-  async (req, res) => {
+/ |————————————————————————– | REAL BET SETTLEMENT
+|————————————————————————– | | This endpoint is intentionally
+admin-controlled. | | It settles ONLY from a supplied verified result. |
+It does NOT randomly generate a winner. |————————————————————————– /
+
+app.post( “/api/admin/bets/settle”, async (req, res) => {
 
     const client =
       await pool.connect();
@@ -5522,22 +5048,13 @@ app.post(
 
     }
 
-  }
-);
+} );
 
-/*
-|--------------------------------------------------------------------------
-| DISABLE OLD RANDOM TEST SETTLEMENT
-|--------------------------------------------------------------------------
-|
-| IMPORTANT:
-| Do not use random settlement for real betting.
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | DISABLE OLD RANDOM TEST SETTLEMENT
+|————————————————————————– | | IMPORTANT: | Do not use random settlement
+for real betting. |————————————————————————– /
 
-app.post(
-  "/api/test/settle-bet",
-  async (req, res) => {
+app.post( “/api/test/settle-bet”, async (req, res) => {
 
     return res.status(403).json({
 
@@ -5548,17 +5065,10 @@ app.post(
 
     });
 
-  }
-);
-/*
-|--------------------------------------------------------------------------
-| SOCKET.IO
-|--------------------------------------------------------------------------
-*/
+} ); / |————————————————————————– | SOCKET.IO |————————————————————————–
+/
 
-io.on(
-  "connection",
-  socket => {
+io.on( “connection”, socket => {
 
     console.log(
       "🔌 Client connected:",
@@ -5642,17 +5152,11 @@ io.on(
       }
     );
 
-  }
-);
+} );
 
-/*
-|--------------------------------------------------------------------------
-| 404 HANDLER
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | 404 HANDLER |————————————————————————– /
 
-app.use(
-  (req, res) => {
+app.use( (req, res) => {
 
     if (
       req.path.startsWith(
@@ -5675,22 +5179,12 @@ app.use(
       "Page not found."
     );
 
-  }
-);
+} );
 
-/*
-|--------------------------------------------------------------------------
-| GLOBAL ERROR HANDLER
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | GLOBAL ERROR HANDLER
+|————————————————————————– /
 
-app.use(
-  (
-    error,
-    req,
-    res,
-    next
-  ) => {
+app.use( ( error, req, res, next ) => {
 
     console.error(
       "Unhandled server error:",
@@ -5716,18 +5210,13 @@ app.use(
 
     });
 
-  }
-);
+} );
 
-/*
-|--------------------------------------------------------------------------
-| START SERVER
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | START SERVER |————————————————————————– /
 
 async function startServer() {
 
-  try {
+try {
 
     /*
     |--------------------------------------------------------------------------
@@ -5793,7 +5282,7 @@ async function startServer() {
       }
     );
 
-  } catch (error) {
+} catch (error) {
 
     console.error(
       "❌ Server startup failed:",
@@ -5804,31 +5293,23 @@ async function startServer() {
       1
     );
 
-  }
+}
 
 }
 
-/*
-|--------------------------------------------------------------------------
-| PROCESS ERROR HANDLERS
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | PROCESS ERROR HANDLERS
+|————————————————————————– /
 
-process.on(
-  "unhandledRejection",
-  error => {
+process.on( “unhandledRejection”, error => {
 
     console.error(
       "❌ Unhandled Promise Rejection:",
       error
     );
 
-  }
-);
+} );
 
-process.on(
-  "uncaughtException",
-  error => {
+process.on( “uncaughtException”, error => {
 
     console.error(
       "❌ Uncaught Exception:",
@@ -5848,13 +5329,8 @@ process.on(
       1000
     );
 
-  }
-);
+} );
 
-/*
-|--------------------------------------------------------------------------
-| START
-|--------------------------------------------------------------------------
-*/
+/ |————————————————————————– | START |————————————————————————– /
 
 startServer();
