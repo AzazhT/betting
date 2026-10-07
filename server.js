@@ -23,6 +23,27 @@ const ODDS_API_URL =
 const FOOTBALL_TIMEZONE =
   "Africa/Addis_Ababa";
 
+/*
+|--------------------------------------------------------------------------
+| Telegram
+|--------------------------------------------------------------------------
+*/
+
+const TELEGRAM_BOT_TOKEN =
+  process.env.TELEGRAM_BOT_TOKEN;
+
+const TELEGRAM_WEB_APP_URL =
+  process.env.TELEGRAM_WEB_APP_URL ||
+  "https://betting-1-wsrp.onrender.com/";
+
+const TELEGRAM_API_URL =
+  TELEGRAM_BOT_TOKEN
+    ? `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`
+    : null;
+
+let telegramUpdateOffset = 0;
+let telegramPollingStarted = false;
+
 const ODDS_API_REGION =
   process.env.ODDS_API_REGION ||
   "eu";
@@ -360,6 +381,710 @@ app.get(
 
   }
 );
+/*
+|--------------------------------------------------------------------------
+| TELEGRAM MINI APP AUTHENTICATION
+|--------------------------------------------------------------------------
+*/
+
+function validateTelegramInitData(
+  initData
+) {
+
+  if (
+    !TELEGRAM_BOT_TOKEN ||
+    !initData ||
+    typeof initData !== "string"
+  ) {
+    return null;
+  }
+
+  const params =
+    new URLSearchParams(
+      initData
+    );
+
+  const receivedHash =
+    params.get("hash");
+
+  if (!receivedHash) {
+    return null;
+  }
+
+  const authDate =
+    Number(
+      params.get("auth_date")
+    );
+
+  if (
+    !Number.isFinite(authDate) ||
+    Math.floor(
+      Date.now() / 1000
+    ) - authDate > 86400
+  ) {
+    return null;
+  }
+
+  params.delete("hash");
+
+  const dataCheckString =
+    Array.from(
+      params.entries()
+    )
+      .sort(
+        ([a], [b]) =>
+          a.localeCompare(b)
+      )
+      .map(
+        ([key, value]) =>
+          `${key}=${value}`
+      )
+      .join("\n");
+
+  const secretKey =
+    crypto
+      .createHmac(
+        "sha256",
+        "WebAppData"
+      )
+      .update(
+        TELEGRAM_BOT_TOKEN
+      )
+      .digest();
+
+  const calculatedHash =
+    crypto
+      .createHmac(
+        "sha256",
+        secretKey
+      )
+      .update(
+        dataCheckString
+      )
+      .digest("hex");
+
+  const received =
+    Buffer.from(
+      receivedHash,
+      "hex"
+    );
+
+  const calculated =
+    Buffer.from(
+      calculatedHash,
+      "hex"
+    );
+
+  if (
+    received.length !==
+    calculated.length ||
+    !crypto.timingSafeEqual(
+      received,
+      calculated
+    )
+  ) {
+    return null;
+  }
+
+  let user = null;
+
+  try {
+    user = JSON.parse(
+      params.get("user") ||
+      "null"
+    );
+  } catch (_) {
+    return null;
+  }
+
+  if (
+    !user ||
+    !user.id
+  ) {
+    return null;
+  }
+
+  return user;
+}
+
+async function getOrCreateTelegramUser(
+  telegramUser
+) {
+
+  const telegramId =
+    String(
+      telegramUser.id
+    );
+
+  const existing =
+    await pool.query(
+      `
+      SELECT *
+      FROM users
+      WHERE telegram_id = $1
+      LIMIT 1
+      `,
+      [telegramId]
+    );
+
+  if (
+    existing.rows.length > 0
+  ) {
+
+    const updated =
+      await pool.query(
+        `
+        UPDATE users
+        SET
+          name = $1,
+          username = $2,
+          updated_at = NOW()
+        WHERE id = $3
+        RETURNING *
+        `,
+        [
+          telegramUser.first_name ||
+            telegramUser.username ||
+            "Player",
+          telegramUser.username ||
+            "",
+          existing.rows[0].id
+        ]
+      );
+
+    return updated.rows[0];
+  }
+
+  const signupBonus =
+    50.00;
+
+  const client =
+    await pool.connect();
+
+  try {
+
+    await client.query(
+      "BEGIN"
+    );
+
+    const result =
+      await client.query(
+        `
+        INSERT INTO users
+        (
+          telegram_id,
+          name,
+          username,
+          phone,
+          balance,
+          bonus_balance
+        )
+        VALUES
+        ($1,$2,$3,$4,$5,$6)
+        RETURNING *
+        `,
+        [
+          telegramId,
+          telegramUser.first_name ||
+            telegramUser.username ||
+            "Player",
+          telegramUser.username ||
+            "",
+          "",
+          0,
+          signupBonus
+        ]
+      );
+
+    const user =
+      result.rows[0];
+
+    await client.query(
+      `
+      INSERT INTO transactions
+      (
+        user_id,
+        type,
+        amount,
+        status,
+        reference,
+        description
+      )
+      VALUES
+      ($1,$2,$3,$4,$5,$6)
+      `,
+      [
+        user.id,
+        "signup_bonus",
+        signupBonus,
+        "completed",
+        `SIGNUP-${user.id}`,
+        "50 ETB signup bonus"
+      ]
+    );
+
+    await client.query(
+      "COMMIT"
+    );
+
+    return user;
+
+  } catch (error) {
+
+    try {
+      await client.query(
+        "ROLLBACK"
+      );
+    } catch (_) {}
+
+    if (
+      error.code ===
+      "23505"
+    ) {
+      const retry =
+        await pool.query(
+          `
+          SELECT *
+          FROM users
+          WHERE telegram_id = $1
+          LIMIT 1
+          `,
+          [telegramId]
+        );
+
+      return retry.rows[0] || null;
+    }
+
+    throw error;
+
+  } finally {
+    client.release();
+  }
+}
+
+async function authenticateTelegramRequest(
+  req,
+  res
+) {
+
+  const initData =
+    req.get(
+      "x-telegram-init-data"
+    );
+
+  const telegramUser =
+    validateTelegramInitData(
+      initData
+    );
+
+  if (!telegramUser) {
+
+    res.status(401).json({
+      success: false,
+      message:
+        "Telegram authentication is required. Open the betting app from Telegram."
+    });
+
+    return null;
+  }
+
+  const user =
+    await pool.query(
+      `
+      SELECT
+        id,
+        telegram_id,
+        name,
+        username,
+        phone,
+        balance,
+        bonus_balance,
+        is_active
+      FROM users
+      WHERE telegram_id = $1
+      LIMIT 1
+      `,
+      [String(telegramUser.id)]
+    );
+
+  if (
+    user.rows.length === 0
+  ) {
+
+    res.status(401).json({
+      success: false,
+      message:
+        "Telegram account is not registered yet."
+    });
+
+    return null;
+  }
+
+  return {
+    telegramUser,
+    user: user.rows[0]
+  };
+}
+
+async function telegramApi(
+  method,
+  payload = {}
+) {
+
+  if (!TELEGRAM_API_URL) {
+    throw new Error(
+      "TELEGRAM_BOT_TOKEN is not configured."
+    );
+  }
+
+  const response =
+    await fetch(
+      `${TELEGRAM_API_URL}/${method}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+        body: JSON.stringify(
+          payload
+        )
+      }
+    );
+
+  const data =
+    await response.json();
+
+  if (!response.ok || !data.ok) {
+    throw new Error(
+      data.description ||
+        `Telegram API error (${response.status})`
+    );
+  }
+
+  return data.result;
+}
+
+async function sendTelegramMessage(
+  chatId,
+  text,
+  replyMarkup = null
+) {
+
+  return telegramApi(
+    "sendMessage",
+    {
+      chat_id: chatId,
+      text,
+      ...(replyMarkup
+        ? {
+            reply_markup:
+              replyMarkup
+          }
+        : {})
+    }
+  );
+}
+
+async function handleTelegramUpdate(
+  update
+) {
+
+  const message =
+    update?.message;
+
+  if (!message?.from?.id) {
+    return;
+  }
+
+  const chatId =
+    message.chat?.id;
+
+  const text =
+    String(
+      message.text ||
+      ""
+    ).trim();
+
+  if (!chatId) {
+    return;
+  }
+
+  const telegramUser =
+    message.from;
+
+  if (
+    text.startsWith("/start")
+  ) {
+
+    await getOrCreateTelegramUser(
+      telegramUser
+    );
+
+    await sendTelegramMessage(
+      chatId,
+      "🎯 Ethiopia Betting\n\nWelcome! Tap the button below to open the betting app.",
+      {
+        inline_keyboard: [
+          [
+            {
+              text: "🎯 Open Betting App",
+              web_app: {
+                url:
+                  TELEGRAM_WEB_APP_URL
+              }
+            }
+          ]
+        ]
+      }
+    );
+
+    return;
+  }
+
+  if (
+    text === "/balance"
+  ) {
+
+    const userResult =
+      await pool.query(
+        `
+        SELECT
+          balance,
+          bonus_balance
+        FROM users
+        WHERE telegram_id = $1
+        LIMIT 1
+        `,
+        [
+          String(
+            telegramUser.id
+          )
+        ]
+      );
+
+    if (
+      userResult.rows.length === 0
+    ) {
+      await sendTelegramMessage(
+        chatId,
+        "Please use /start first."
+      );
+      return;
+    }
+
+    const user =
+      userResult.rows[0];
+
+    await sendTelegramMessage(
+      chatId,
+      `💰 Cash: ${Number(user.balance || 0).toFixed(2)} ETB\n🎁 Bonus: ${Number(user.bonus_balance || 0).toFixed(2)} ETB`
+    );
+
+    return;
+  }
+
+  await sendTelegramMessage(
+    chatId,
+    "Use /start to open Ethiopia Betting.\nUse /balance to check your balance."
+  );
+}
+
+async function startTelegramBot() {
+
+  if (
+    !TELEGRAM_BOT_TOKEN ||
+    telegramPollingStarted
+  ) {
+    return;
+  }
+
+  telegramPollingStarted = true;
+
+  try {
+
+    const me =
+      await telegramApi(
+        "getMe"
+      );
+
+    console.log(
+      `🤖 Telegram bot: @${me.username}`
+    );
+
+    await telegramApi(
+      "setMyCommands",
+      {
+        commands: [
+          {
+            command: "start",
+            description:
+              "Open Ethiopia Betting"
+          },
+          {
+            command: "balance",
+            description:
+              "Check balance"
+          }
+        ]
+      }
+    );
+
+    await telegramApi(
+      "setChatMenuButton",
+      {
+        menu_button: {
+          type: "web_app",
+          text: "Open Betting",
+          web_app: {
+            url:
+              TELEGRAM_WEB_APP_URL
+          }
+        }
+      }
+    );
+
+    console.log(
+      "✅ Telegram bot connected."
+    );
+    console.log(
+      `🔗 Telegram Web App: ${TELEGRAM_WEB_APP_URL}`
+    );
+
+  } catch (error) {
+
+    console.error(
+      "❌ Telegram bot setup error:",
+      error.message
+    );
+
+    telegramPollingStarted =
+      false;
+    return;
+  }
+
+  while (telegramPollingStarted) {
+
+    try {
+
+      const updates =
+        await telegramApi(
+          "getUpdates",
+          {
+            offset:
+              telegramUpdateOffset,
+            timeout: 25,
+            allowed_updates: [
+              "message"
+            ]
+          }
+        );
+
+      for (
+        const update of
+        updates || []
+      ) {
+
+        telegramUpdateOffset =
+          update.update_id + 1;
+
+        try {
+          await handleTelegramUpdate(
+            update
+          );
+        } catch (error) {
+          console.error(
+            "Telegram update error:",
+            error.message
+          );
+        }
+      }
+
+    } catch (error) {
+
+      console.error(
+        "Telegram polling error:",
+        error.message
+      );
+
+      await new Promise(
+        resolve =>
+          setTimeout(
+            resolve,
+            5000
+          )
+      );
+    }
+  }
+}
+
+/*
+|--------------------------------------------------------------------------
+| TELEGRAM AUTH ENDPOINT
+|--------------------------------------------------------------------------
+*/
+
+app.post(
+  "/api/telegram/auth",
+  async (req, res) => {
+
+    try {
+
+      const telegramUser =
+        validateTelegramInitData(
+          req.body?.initData
+        );
+
+      if (!telegramUser) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Invalid or expired Telegram session."
+        });
+      }
+
+      const user =
+        await getOrCreateTelegramUser(
+          telegramUser
+        );
+
+      res.json({
+        success: true,
+        user
+      });
+
+    } catch (error) {
+
+      console.error(
+        "Telegram auth error:",
+        error.message
+      );
+
+      res.status(500).json({
+        success: false,
+        message:
+          "Could not authenticate with Telegram."
+      });
+    }
+  }
+);
+
+app.get(
+  "/api/telegram/status",
+  (req, res) => {
+
+    res.json({
+      success: true,
+      configured:
+        Boolean(
+          TELEGRAM_BOT_TOKEN
+        ),
+      web_app_url:
+        TELEGRAM_WEB_APP_URL
+    });
+  }
+);
+
 /*
 |--------------------------------------------------------------------------
 | USER ACCOUNT
@@ -1863,6 +2588,27 @@ app.post(
           req.body.user_id
         );
 
+      const telegramAuth =
+        await authenticateTelegramRequest(
+          req,
+          res
+        );
+
+      if (!telegramAuth) {
+        return;
+      }
+
+      if (
+        Number(telegramAuth.user.id) !==
+        userId
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Telegram user does not match the betting account."
+        });
+      }
+
       const stakeAmount =
         Number(
           req.body.stake
@@ -2544,6 +3290,27 @@ app.post(
 
       const userId =
         Number(user_id);
+
+      const telegramAuth =
+        await authenticateTelegramRequest(
+          req,
+          res
+        );
+
+      if (!telegramAuth) {
+        return;
+      }
+
+      if (
+        Number(telegramAuth.user.id) !==
+        userId
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Telegram user does not match the betting account."
+        });
+      }
 
       const matchId =
         Number(match_id);
@@ -3525,6 +4292,27 @@ app.post(
       const userId =
         Number(user_id);
 
+      const telegramAuth =
+        await authenticateTelegramRequest(
+          req,
+          res
+        );
+
+      if (!telegramAuth) {
+        return;
+      }
+
+      if (
+        Number(telegramAuth.user.id) !==
+        userId
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Telegram user does not match the account."
+        });
+      }
+
       const depositAmount =
         Number(amount);
 
@@ -3773,6 +4561,27 @@ app.post(
 
       const userId =
         Number(user_id);
+
+      const telegramAuth =
+        await authenticateTelegramRequest(
+          req,
+          res
+        );
+
+      if (!telegramAuth) {
+        return;
+      }
+
+      if (
+        Number(telegramAuth.user.id) !==
+        userId
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Telegram user does not match the account."
+        });
+      }
 
       const withdrawAmount =
         Number(amount);
@@ -6295,6 +7104,14 @@ async function startServer() {
         console.log(
           "=================================================="
         );
+
+        if (TELEGRAM_BOT_TOKEN) {
+          startTelegramBot();
+        } else {
+          console.log(
+            "🤖 Telegram bot: NOT configured"
+          );
+        }
 
       }
     );
