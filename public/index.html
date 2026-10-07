@@ -60,7 +60,144 @@
       gap: 12px;
     }
 
-    .balance-box {
+    .balance<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Ethiopia Betting</title>
+  <script src="https://telegram.org/js/telegram-web-app.js?63"></script>
+  <style>
+    :root{
+      --bg:#07111f;--card:#0e1c2d;--card2:#13243a;--text:#eef5ff;--muted:#9db0c7;
+      --accent:#28d17c;--accent2:#1fa968;--danger:#ff6b7a;--border:#1d334d;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#06101d,#091726 60%,#07111f);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    a{text-decoration:none;color:inherit}
+    .wrap{max-width:1050px;margin:0 auto;padding:18px 16px 40px}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+    .brand{font-size:26px;font-weight:800;letter-spacing:.2px}.sub{font-size:13px;color:var(--muted);margin-top:4px}
+    .wallet{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}.wallet-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px 14px;min-width:120px}.wallet-card small{display:block;color:var(--muted);font-size:11px}.wallet-card b{display:block;margin-top:3px;font-size:15px}
+    .hero{background:linear-gradient(135deg,#0d2136,#102944);border:1px solid var(--border);border-radius:20px;padding:24px;margin-bottom:18px}.hero h1{margin:0 0 8px;font-size:30px}.hero p{margin:0;color:var(--muted);line-height:1.5}
+    .auth{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:18px}.auth-left{min-width:0}.auth-name{font-weight:700}.auth-note{font-size:12px;color:var(--muted);margin-top:3px}.pill{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:700}.pill.ok{background:rgba(40,209,124,.12);color:#8ef0be}.pill.bad{background:rgba(255,107,122,.12);color:#ffabb4}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.game{display:flex;flex-direction:column;min-height:165px;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:16px;transition:.18s transform,.18s border-color}.game:hover{transform:translateY(-2px);border-color:#2b4c70}.icon{font-size:30px}.game h3{margin:12px 0 6px;font-size:18px}.game p{margin:0;color:var(--muted);font-size:12px;line-height:1.45}.game .cta{margin-top:auto;padding-top:14px}.btn{display:inline-flex;align-items:center;justify-content:center;width:100%;padding:11px 13px;border-radius:11px;border:0;font-weight:800;cursor:pointer}.btn.primary{background:var(--accent);color:#042011}.btn.secondary{background:#1a2b40;color:#dce9f8;border:1px solid var(--border)}.bonus{margin-top:18px;background:linear-gradient(135deg,#153324,#0f2a20);border:1px solid #1f5c40;border-radius:18px;padding:18px}.bonus strong{display:block;font-size:18px;margin-bottom:6px}.bonus span{color:#a8d5bf;font-size:13px}.footer{margin-top:24px;text-align:center;color:var(--muted);font-size:12px}
+    .loading{opacity:.75}.error{color:#ffacb5}.hidden{display:none!important}
+    @media(max-width:850px){.grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:520px){.wrap{padding:12px 12px 30px}.top{align-items:flex-start;flex-direction:column}.wallet{width:100%;justify-content:stretch}.wallet-card{flex:1}.hero h1{font-size:25px}.grid{grid-template-columns:1fr}.auth{align-items:flex-start;flex-direction:column}.auth .pill{align-self:stretch;justify-content:center}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div>
+        <div class="brand">🎯 Ethiopia Betting</div>
+        <div class="sub">Games · Wallet · Betting</div>
+      </div>
+      <div class="wallet">
+        <div class="wallet-card"><small>Cash</small><b id="cashBalance">0.00 ETB</b></div>
+        <div class="wallet-card"><small>Bonus</small><b id="bonusBalance">0.00 ETB</b></div>
+      </div>
+    </header>
+
+    <section class="hero">
+      <h1>Welcome to Ethiopia Betting</h1>
+      <p>Open football betting and your other games from one Telegram Mini App.</p>
+    </section>
+
+    <section class="auth">
+      <div class="auth-left">
+        <div class="auth-name" id="userName">Connecting to Telegram…</div>
+        <div class="auth-note" id="authNote">Checking your Telegram account and wallet.</div>
+      </div>
+      <div id="authPill" class="pill loading">Connecting</div>
+    </section>
+
+    <section class="grid">
+      <a class="game" href="/betting.html" id="footballLink">
+        <div class="icon">⚽</div>
+        <h3>Football Betting</h3>
+        <p>Live matches, markets, odds and accumulator bets.</p>
+        <div class="cta"><span class="btn primary">Open Betting</span></div>
+      </a>
+      <div class="game"><div class="icon">🎲</div><h3>Keno</h3><p>Number game coming soon.</p><div class="cta"><span class="btn secondary">Coming Soon</span></div></div>
+      <div class="game"><div class="icon">🍀</div><h3>Lucky Draw</h3><p>Lucky draw game coming soon.</p><div class="cta"><span class="btn secondary">Coming Soon</span></div></div>
+      <div class="game"><div class="icon">💣</div><h3>Mines</h3><p>Risk and reward game coming soon.</p><div class="cta"><span class="btn secondary">Coming Soon</span></div></div>
+      <div class="game"><div class="icon">⬆️</div><h3>High / Low</h3><p>Quick prediction game coming soon.</p><div class="cta"><span class="btn secondary">Coming Soon</span></div></div>
+      <div class="game"><div class="icon">🔢</div><h3>Number Pick</h3><p>Pick your number and play.</p><div class="cta"><span class="btn secondary">Coming Soon</span></div></div>
+      <div class="game"><div class="icon">🟢</div><h3>Bingo</h3><p>Bingo game coming soon.</p><div class="cta"><span class="btn secondary">Coming Soon</span></div></div>
+      <div class="game"><div class="icon">🏆</div><h3>Jackpot</h3><p>Jackpot game coming soon.</p><div class="cta"><span class="btn secondary">Coming Soon</span></div></div>
+    </section>
+
+    <section class="bonus">
+      <strong>🎁 50 ETB Signup Bonus</strong>
+      <span>Your bonus is stored separately. Eligible game winnings become withdrawable according to the platform rules.</span>
+    </section>
+
+    <div class="footer">Ethiopia Betting · Telegram Mini App</div>
+  </div>
+
+<script>
+  const tg = window.Telegram?.WebApp || null;
+
+  function money(v){
+    const n = Number(v) || 0;
+    return n.toFixed(2) + " ETB";
+  }
+
+  function setAuth(ok, name, note){
+    const pill = document.getElementById("authPill");
+    const userName = document.getElementById("userName");
+    const authNote = document.getElementById("authNote");
+    userName.textContent = name;
+    authNote.textContent = note;
+    pill.textContent = ok ? "Telegram connected" : "Not connected";
+    pill.className = "pill " + (ok ? "ok" : "bad");
+  }
+
+  async function authenticate(){
+    if (!tg) {
+      setAuth(false, "Open this page from Telegram", "Telegram Mini App data is not available in a normal browser.");
+      return;
+    }
+
+    tg.ready();
+    tg.expand();
+
+    const initData = tg.initData || "";
+    if (!initData) {
+      setAuth(false, "Telegram session not found", "Open Ethiopia Betting from the Telegram bot button.");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/telegram/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData })
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success || !data.user) {
+        throw new Error(data.message || "Telegram authentication failed.");
+      }
+
+      const user = data.user;
+      document.getElementById("cashBalance").textContent = money(user.balance);
+      document.getElementById("bonusBalance").textContent = money(user.bonus_balance);
+
+      const displayName = user.name || (tg.initDataUnsafe?.user?.first_name || "Telegram User");
+      const username = user.username ? " @" + user.username : "";
+      setAuth(true, displayName + username, "Your Telegram account is connected to your betting wallet.");
+    } catch (error) {
+      setAuth(false, "Telegram authentication failed", error.message || "Please reopen the app from Telegram.");
+    }
+  }
+
+  authenticate();
+</script>
+</body>
+</html>-box {
       background: #102235;
       border: 1px solid #20364e;
       padding: 8px 14px;
