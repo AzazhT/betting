@@ -1,345 +1,459 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>BetEthio Pro - Leagues & Accumulator</title>
-    <style>
-        :root {
-            --primary: #facc15;
-            --bg: #0f172a;
-            --card: #1e293b;
-            --text: #f8fafc;
-            --muted: #94a3b8;
-            --accent: #22c55e;
-            --danger: #ef4444;
-        }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
-        body { 
-            margin: 0; 
-            font-family: -apple-system, system-ui, sans-serif; 
-            background: var(--bg); 
-            color: var(--text);
-            padding-bottom: 100px;
-        }
+const express = require("express");
+const cors = require("cors");
+const http = require("http");
+const { Server } = require("socket.io");
+const { Pool } = require("pg");
+const fs = require("fs");
+const path = require("path");
+require("dotenv").config();
 
-        /* Top Navigation */
-        .header {
-            background: var(--card);
-            padding: 12px 15px;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            border-bottom: 1px solid #334155;
-        }
-        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .brand { font-weight: 800; font-size: 20px; color: var(--primary); }
-        .balance { font-weight: bold; background: #0f172a; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--primary); }
+/*
+|--------------------------------------------------------------------------
+| BSD — Bzzoiro Sports Data
+|--------------------------------------------------------------------------
+*/
 
-        /* Time Filters */
-        .time-filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; }
-        .time-filters::-webkit-scrollbar { display: none; }
-        .filter-btn {
-            background: #334155;
-            border: none;
-            color: var(--text);
-            padding: 8px 16px;
-            border-radius: 20px;
-            white-space: nowrap;
-            font-size: 13px;
-            font-weight: 600;
-        }
-        .filter-btn.active { background: var(--primary); color: #000; }
+const BSD_API_KEY = process.env.BSD_API_KEY;
+const BSD_API_URL = "https://sports.bzzoiro.com/api/v2";
+const FOOTBALL_TIMEZONE = "Africa/Addis_Ababa";
+const BSD_CACHE_TTL_MS = 60 * 1000;
+const bsdCache = new Map();
 
-        /* League Dropdown */
-        .league-select-container { padding: 10px 15px; }
-        #league-select {
-            width: 100%;
-            background: var(--card);
-            color: var(--text);
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid #334155;
-            font-size: 14px;
-        }
+/*
+|--------------------------------------------------------------------------
+| BSD REQUEST HELPER
+|--------------------------------------------------------------------------
+*/
 
-        .container { padding: 10px; }
-        
-        /* Match Card */
-        .match {
-            background: var(--card);
-            border-radius: 12px;
-            margin-bottom: 15px;
-            border: 1px solid #334155;
-            overflow: hidden;
-        }
-        .match-header { padding: 8px 15px; background: #33415566; display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
-        .teams-area { padding: 15px; text-align: center; border-bottom: 1px solid #33415533; }
-        .team-name { font-size: 16px; font-weight: 700; margin: 4px 0; }
-        .vs-text { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+async function bsdRequest(pathname, params = {}) {
+  if (!BSD_API_KEY) {
+    throw new Error("BSD_API_KEY is not configured.");
+  }
 
-        /* Market Section */
-        .market-group { padding: 10px 15px; border-bottom: 1px solid #33415533; }
-        .market-label { font-size: 11px; color: var(--primary); font-weight: bold; margin-bottom: 8px; }
-        .odds-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-        .odd-btn {
-            background: #0f172a;
-            border: 1px solid #334155;
-            color: var(--text);
-            padding: 10px 4px;
-            border-radius: 6px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-size: 13px;
-            transition: 0.2s;
-        }
-        .odd-btn .val { font-weight: 800; color: var(--primary); margin-top: 2px; }
-        .odd-btn.active { background: var(--primary); border-color: var(--primary); color: #000; }
-        .odd-btn.active .val { color: #000; }
-        .odd-btn:disabled { opacity: 0.4; }
-
-        /* Floating Bet Slip Bar */
-        .slip-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background: var(--primary);
-            color: #000;
-            padding: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: bold;
-            z-index: 2000;
-            box-shadow: 0 -4px 10px rgba(0,0,0,0.3);
-            display: none;
-        }
-        .slip-count { background: #000; color: #fff; border-radius: 50%; width: 24px; height: 24px; display: inline-flex; justify-content: center; align-items: center; margin-right: 8px; }
-
-        .live-tag { color: var(--accent); font-weight: bold; display: flex; align-items: center; gap: 4px; }
-        .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: blink 1s infinite; }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
-
-        /* Full Screen Slip Overlay */
-        #slip-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg);
-            z-index: 3000;
-            display: none;
-            flex-direction: column;
-        }
-        .overlay-header { padding: 15px; background: var(--card); display: flex; justify-content: space-between; align-items: center; }
-        .slip-items { flex: 1; overflow-y: auto; padding: 15px; }
-        .slip-item { background: var(--card); padding: 12px; border-radius: 8px; margin-bottom: 10px; position: relative; }
-        .remove-item { position: absolute; top: 10px; right: 10px; color: var(--danger); font-weight: bold; }
-        .stake-area { padding: 20px; background: var(--card); border-top: 1px solid #334155; }
-        .stake-input { width: 100%; padding: 15px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; font-size: 18px; text-align: center; }
-    </style>
-</head>
-<body>
-
-<div class="header">
-    <div class="top-bar">
-        <div class="brand">BetEthio</div>
-        <div class="balance" id="balance-display">0.00 ETB</div>
-    </div>
-    <div class="time-filters">
-        <button class="filter-btn active" onclick="setTimeFilter('all')">All</button>
-        <button class="filter-btn" onclick="setTimeFilter('live')">Live</button>
-        <button class="filter-btn" onclick="setTimeFilter('today')">Today</button>
-        <button class="filter-btn" onclick="setTimeFilter('tomorrow')">Tomorrow</button>
-    </div>
-</div>
-
-<div class="league-select-container">
-    <select id="league-select" onchange="setLeagueFilter(this.value)">
-        <option value="all">All Leagues</option>
-    </select>
-</div>
-
-<div class="container" id="match-list"></div>
-
-<div class="slip-bar" id="slip-bar" onclick="toggleSlip(true)">
-    <div><span class="slip-count" id="count-ui">0</span> Bet Slip</div>
-    <div id="total-odds-ui">Total Odds: 1.00</div>
-</div>
-
-<div id="slip-overlay">
-    <div class="overlay-header">
-        <div style="font-weight: 800;">YOUR BET SLIP</div>
-        <button onclick="toggleSlip(false)" style="background:none; border:none; color:var(--primary); font-weight:bold;">CLOSE</button>
-    </div>
-    <div class="slip-items" id="slip-content"></div>
-    <div class="stake-area">
-        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-            <span>Possible Win:</span>
-            <span id="win-ui" style="color:var(--accent); font-weight:bold;">0.00 ETB</span>
-        </div>
-        <input type="number" class="stake-input" id="stake-amount" placeholder="Enter Stake Amount" oninput="updatePotentialWin()">
-        <button onclick="placeBet()" style="width:100%; padding:15px; background:var(--primary); border:none; border-radius:8px; margin-top:15px; font-weight:bold; font-size:16px;">PLACE BET</button>
-    </div>
-</div>
-
-<script>
-    let rawData = [];
-    let state = {
-        timeFilter: 'all',
-        leagueFilter: 'all',
-        selected: [] 
-    };
-
-    async function fetchData() {
-        try {
-            const res = await fetch('/api/football/betting?limit=100');
-            const data = await res.json();
-            if (data.success) {
-                rawData = data.matches;
-                updateLeagueDropdown();
-                renderMatches();
-            }
-        } catch (e) { console.error("Fetch error:", e); }
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, String(value));
     }
+  }
 
-    function updateLeagueDropdown() {
-        const select = document.getElementById('league-select');
-        const leagues = [...new Set(rawData.map(m => m.league))].sort();
-        const current = state.leagueFilter;
-        select.innerHTML = '<option value="all">All Leagues</option>';
-        leagues.forEach(l => {
-            const opt = document.createElement('option');
-            opt.value = l;
-            opt.textContent = l;
-            select.appendChild(opt);
-        });
-        select.value = current;
+  const url = `${BSD_API_URL}${pathname}${query.toString() ? `?${query}` : ""}`;
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Token ${BSD_API_KEY}`,
+      Accept: "application/json"
     }
+  });
 
-    function setTimeFilter(f) {
-        state.timeFilter = f;
-        document.querySelectorAll('.filter-btn').forEach(b => {
-            b.classList.toggle('active', b.textContent.toLowerCase() === f);
-        });
-        renderMatches();
+  let data = null;
+  try {
+    data = await response.json();
+  } catch (_) {
+    data = { error: "BSD returned invalid JSON." };
+  }
+
+  return {
+    http_status: response.status,
+    ok: response.ok,
+    data
+  };
+}
+
+/*
+|--------------------------------------------------------------------------
+| BSD HELPERS
+|--------------------------------------------------------------------------
+*/
+
+function getAddisDate(offsetDays = 0) {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: FOOTBALL_TIMEZONE,
+    year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(now);
+  const y = Number(parts.find(p => p.type === "year").value);
+  const m = Number(parts.find(p => p.type === "month").value);
+  const d = Number(parts.find(p => p.type === "day").value);
+  const base = new Date(Date.UTC(y, m - 1, d));
+  base.setUTCDate(base.getUTCDate() + offsetDays);
+  return base.toISOString().slice(0, 10);
+}
+
+function buildBsdExternalId(eventId) {
+  return `bsd:${eventId}`;
+}
+
+function parseBsdExternalId(externalId) {
+  const value = String(externalId || "").trim();
+  if (!value.startsWith("bsd:")) return null;
+  const id = value.slice(4);
+  return id ? id : null;
+}
+
+function normalizeBsdOdds(event) {
+  const markets = {
+    "1x2": [],
+    double: [],
+    overunder: [],
+    btts: [],
+    handicap: [],
+    draw_no_bet: [],
+    correct_score: [],
+    halftime_fulltime: []
+  };
+
+  const push = (market, name, value, odd, extra = {}) => {
+    const n = Number(odd);
+    if (!Number.isFinite(n) || n <= 1) return;
+    markets[market].push({ name, value: value ?? name, odd: n, ...extra });
+  };
+
+  push("1x2", event.home_team?.name || event.home_team, event.home_team?.name || event.home_team, event.odds_home);
+  push("1x2", "Draw", "Draw", event.odds_draw);
+  push("1x2", event.away_team?.name || event.away_team, event.away_team?.name || event.away_team, event.odds_away);
+
+  return markets;
+}
+
+function pushMarket(markets, market, name, value, odd, extra = {}) {
+  if (!markets[market]) markets[market] = [];
+  markets[market].push({ name, value, odd: Number(odd), ...extra });
+}
+
+function normalizeBsdDetailedOdds(data, event) {
+  const markets = normalizeBsdOdds(event || {});
+  const direct = data?.odds || {};
+  const home = event?.home_team?.name || event?.home_team || "Home";
+  const away = event?.away_team?.name || event?.away_team || "Away";
+
+  const pushDirect = (market, name, odd, extra = {}) => {
+    const n = Number(odd);
+    if (!Number.isFinite(n) || n <= 1) return;
+    pushMarket(markets, market, name, name, n, extra);
+  };
+
+  pushDirect("1x2", home, direct.home_win);
+  pushDirect("1x2", "Draw", direct.draw);
+  pushDirect("1x2", away, direct.away_win);
+
+  for (const line of [1.5, 2.5, 3.5]) {
+    const key = String(line).replace(".", "_");
+    pushDirect("overunder", `Over ${line}`, direct[`over_${key}_goals`], { line });
+    pushDirect("overunder", `Under ${line}`, direct[`under_${key}_goals`], { line });
+  }
+
+  pushDirect("btts", "Yes", direct.btts_yes);
+  pushDirect("btts", "No", direct.btts_no);
+
+  const list = Array.isArray(data?.markets) ? data.markets : [];
+  for (const market of list) {
+    const kind = String(market?.market_kind || market?.market_family || "").toUpperCase();
+    const family = String(market?.market_family || "").toUpperCase();
+    const line = market?.market_line;
+    const period = market?.market_period || "FT";
+    const books = Array.isArray(market?.bookmakers) ? market.bookmakers : [];
+    const prices = books[0]?.prices || {};
+    for (const [selection, obj] of Object.entries(prices)) {
+      const price = Number(obj?.price);
+      if (!Number.isFinite(price) || price <= 1) continue;
+      const suffix = line !== null && line !== undefined ? ` ${line}` : "";
+      const name = `${selection}${suffix}`;
+      if (kind === "WINNER" || family === "1X2") pushMarket(markets, "1x2", name, name, price, { period });
+      else if (kind === "OU" || family.startsWith("OU")) pushMarket(markets, "overunder", name, name, price, { line, period });
+      else if (kind === "AH" || family.includes("HANDICAP")) pushMarket(markets, "handicap", name, name, price, { line, period });
+      else if (family === "BTTS") pushMarket(markets, "btts", name, name, price, { period });
+      else if (family === "DNB") pushMarket(markets, "draw_no_bet", name, name, price, { period });
+      else if (family === "CS" || kind === "CORRECT_SCORE") pushMarket(markets, "correct_score", name, name, price, { period });
+      else if (family === "HTFT") pushMarket(markets, "halftime_fulltime", name, name, price, { period });
     }
+  }
+  return markets;
+}
 
-    function setLeagueFilter(f) {
-        state.leagueFilter = f;
-        renderMatches();
+async function fetchBsdEvents(options = {}) {
+  const dateFrom = options.dateFrom || getAddisDate(0);
+  const dateTo = options.dateTo || getAddisDate(3);
+  const limit = Math.max(1, Math.min(200, Number(options.limit) || 100));
+  const cacheKey = `events|${dateFrom}|${dateTo}|${limit}`;
+  const cached = bsdCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < BSD_CACHE_TTL_MS) return cached.value;
+
+  const result = await bsdRequest("/events/", {
+    date_from: dateFrom,
+    date_to: dateTo,
+    limit,
+    offset: 0
+  });
+
+  const value = {
+    ...result,
+    events: Array.isArray(result.data?.results) ? result.data.results : []
+  };
+  bsdCache.set(cacheKey, { timestamp: Date.now(), value });
+  return value;
+}
+
+async function fetchBsdEventOdds(eventId) {
+  const cacheKey = `event-odds|${eventId}`;
+  const cached = bsdCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < BSD_CACHE_TTL_MS) return cached.value;
+  const result = await bsdRequest(`/events/${encodeURIComponent(eventId)}/odds/`);
+  bsdCache.set(cacheKey, { timestamp: Date.now(), value: result });
+  return result;
+}
+
+/*
+|--------------------------------------------------------------------------
+| App Setup
+|--------------------------------------------------------------------------
+*/
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
+const PORT = process.env.PORT || 10000;
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false
+});
+
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, "public")));
+
+/*
+|--------------------------------------------------------------------------
+| Database Initialization
+|--------------------------------------------------------------------------
+*/
+
+async function initializeDatabase() {
+  try {
+    const schemaPath = path.join(__dirname, "schema.sql");
+    if (!fs.existsSync(schemaPath)) return;
+    const schema = fs.readFileSync(schemaPath, "utf8");
+    await pool.query(schema);
+    console.log("✅ Database tables initialized.");
+  } catch (error) {
+    console.error("❌ Database initialization failed:", error.message);
+  }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Match Logic
+|--------------------------------------------------------------------------
+*/
+
+async function saveOddsEventToDatabase(event) {
+  if (!event?.id || !event?.sport_key) return null;
+  const externalId = buildBsdExternalId(event.id);
+  const homeTeam = event.home_team || "Home";
+  const awayTeam = event.away_team || "Away";
+  const startedAt = event.commence_time ? new Date(event.commence_time) : null;
+  const matchStatus = startedAt && startedAt.getTime() <= Date.now() ? "live" : "scheduled";
+
+  const query = `
+    INSERT INTO matches (external_id, home_team, away_team, status, started_at)
+    VALUES ($1, $2, $3, $4, $5)
+    ON CONFLICT (external_id)
+    DO UPDATE SET
+      home_team = EXCLUDED.home_team,
+      away_team = EXCLUDED.away_team,
+      status = EXCLUDED.status,
+      started_at = EXCLUDED.started_at,
+      updated_at = NOW()
+    RETURNING *
+  `;
+  const dbResult = await pool.query(query, [externalId, homeTeam, awayTeam, matchStatus, startedAt]);
+  return dbResult.rows[0];
+}
+
+function getEventScore(event, side) {
+  const scores = event?.scores || event?.score || {};
+  const val = side === "home" ? (event.home_score ?? scores.home) : (event.away_score ?? scores.away);
+  return (val !== undefined && val !== null) ? Number(val) : null;
+}
+
+function classifyBsdEvent(event) {
+  const status = String(event?.status || "").toLowerCase();
+  const date = new Date(event?.event_date || event?.commence_time || "");
+  const now = Date.now();
+  const finished = ["finished", "completed", "final", "ended"].includes(status);
+  const live = ["live", "inplay", "in_play"].includes(status) || event?.live === true;
+
+  if (finished) return { display: false, live: false, section: "finished" };
+  if (live) return { display: true, live: true, section: "live" };
+  if (date.getTime() > now) return { display: true, live: false, section: "upcoming" };
+  return { display: false, live: false, section: "past" };
+}
+
+async function buildBsdBettingMatch(event) {
+  if (!event?.id) return null;
+  const classification = classifyBsdEvent(event);
+  if (!classification.display) return null;
+
+  const home = event.home_team?.name || event.home_team || "Home";
+  const away = event.away_team?.name || event.away_team || "Away";
+  let markets = normalizeBsdOdds(event);
+
+  try {
+    const oddsResult = await fetchBsdEventOdds(event.id);
+    if (oddsResult.ok) markets = normalizeBsdDetailedOdds(oddsResult.data, event);
+  } catch (e) { console.error("Odds error:", e.message); }
+
+  if (!Object.values(markets).some(m => m.length)) return null;
+
+  const savedMatch = await saveOddsEventToDatabase({
+    id: String(event.id),
+    sport_key: "bsd",
+    home_team: home,
+    away_team: away,
+    commence_time: event.event_date
+  });
+
+  return {
+    id: savedMatch?.id || null,
+    external_id: buildBsdExternalId(event.id),
+    event_id: String(event.id),
+    sport_key: "bsd",
+    home_team: home,
+    away_team: away,
+    league: event.league?.name || "Football",
+    date: event.event_date,
+    live: classification.live,
+    status: classification.live ? "LIVE" : "NS",
+    home_score: getEventScore(event, "home"),
+    away_score: getEventScore(event, "away"),
+    markets
+  };
+}
+
+/*
+|--------------------------------------------------------------------------
+| Routes
+|--------------------------------------------------------------------------
+*/
+
+app.get("/api/football/betting", async (req, res) => {
+  try {
+    const limit = Math.min(100, Number(req.query.limit) || 30);
+    const result = await fetchBsdEvents({ limit: limit * 4 });
+    const matches = [];
+    for (const event of result.events) {
+      if (matches.length >= limit) break;
+      const match = await buildBsdBettingMatch(event);
+      if (match) matches.push(match);
     }
+    res.json({ success: true, count: matches.length, matches });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
-    function renderMatches() {
-        const container = document.getElementById('match-list');
-        container.innerHTML = '';
-        const now = new Date();
-        const tomorrow = new Date(); tomorrow.setDate(now.getDate() + 1);
+app.post("/api/user", async (req, res) => {
+  try {
+    const { telegram_id, name, username } = req.body;
+    if (!telegram_id) return res.status(400).json({ success: false, message: "Missing telegram_id" });
+    const existing = await pool.query("SELECT * FROM users WHERE telegram_id = $1", [telegram_id]);
+    if (existing.rows.length) return res.json({ success: true, user: existing.rows[0] });
 
-        let filtered = rawData.filter(m => {
-            if (state.leagueFilter !== 'all' && m.league !== state.leagueFilter) return false;
-            const mDate = new Date(m.date);
-            const isLive = m.is_live || (m.status && m.status.toLowerCase().includes('live'));
-            if (state.timeFilter === 'live') return isLive;
-            if (state.timeFilter === 'today') return mDate.toDateString() === now.toDateString();
-            if (state.timeFilter === 'tomorrow') return mDate.toDateString() === tomorrow.toDateString();
-            return true;
-        });
+    const result = await pool.query(
+      "INSERT INTO users (telegram_id, name, username, balance, bonus_balance) VALUES ($1, $2, $3, 0, 50) RETURNING *",
+      [telegram_id, name || "Player", username]
+    );
+    res.json({ success: true, user: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
-        if (filtered.length === 0) {
-            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--muted);">No matches found.</div>';
-            return;
-        }
+/* 
+|--------------------------------------------------------------------------
+| Bet Placement Logic
+|--------------------------------------------------------------------------
+*/
 
-        filtered.forEach(m => {
-            const card = document.createElement('div');
-            card.className = 'match';
-            let marketsHtml = '';
-            if (m.markets) {
-                marketsHtml = Object.entries(m.markets).map(([mKey, outcomes]) => `
-                    <div class="market-group">
-                        <div class="market-label">${mKey.toUpperCase()}</div>
-                        <div class="odds-grid">
-                            ${outcomes.map(o => {
-                                const selId = `${m.id}_${mKey}_${o.name}`;
-                                const isActive = state.selected.some(s => s.id === selId);
-                                return `<button class="odd-btn ${isActive ? 'active' : ''}" onclick="toggleSelection('${m.id}', '${mKey}', '${o.name}', ${o.odd}, '${m.home_team} vs ${m.away_team}')">
-                                    <span style="font-size:10px">${o.name}</span>
-                                    <span class="val">${o.odd.toFixed(2)}</span>
-                                </button>`;
-                            }).join('')}
-                        </div>
-                    </div>
-                `).join('');
-            }
-            card.innerHTML = `
-                <div class="match-header">
-                    <span>${m.league}</span>
-                    <span>${m.is_live ? '<div class="live-tag"><div class="dot"></div>LIVE</div>' : new Date(m.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-                </div>
-                <div class="teams-area"><div class="team-name">${m.home_team}</div><div class="vs-text">vs</div><div class="team-name">${m.away_team}</div></div>
-                ${marketsHtml}
-            `;
-            container.appendChild(card);
-        });
-    }
+async function validateFootballBet(matchId, selection, clientOdds) {
+  const matchRes = await pool.query("SELECT * FROM matches WHERE id = $1", [matchId]);
+  if (!matchRes.rows.length) return { valid: false, message: "Match not found" };
+  const match = matchRes.rows[0];
+  if (match.status !== "scheduled" && match.status !== "live") return { valid: false, message: "Betting closed" };
 
-    function toggleSelection(matchId, market, outcome, odd, teams) {
-        const selId = `${matchId}_${market}_${outcome}`;
-        const existingIdx = state.selected.findIndex(s => s.id === selId);
-        if (existingIdx > -1) {
-            state.selected.splice(existingIdx, 1);
-        } else {
-            state.selected = state.selected.filter(s => s.matchId !== matchId);
-            state.selected.push({ id: selId, matchId, market, outcome, odd, teams });
-        }
-        updateSlipUI();
-        renderMatches();
-    }
+  const eventId = parseBsdExternalId(match.external_id);
+  const oddsData = await fetchBsdEventOdds(eventId);
+  if (!oddsData.ok) return { valid: false, message: "Odds unavailable" };
 
-    function updateSlipUI() {
-        const bar = document.getElementById('slip-bar');
-        const count = state.selected.length;
-        bar.style.display = count > 0 ? 'flex' : 'none';
-        document.getElementById('count-ui').textContent = count;
-        const totalOdd = state.selected.reduce((acc, curr) => acc * curr.odd, 1);
-        document.getElementById('total-odds-ui').textContent = `Total Odds: ${totalOdd.toFixed(2)}`;
-    }
+  const eventRes = await bsdRequest(`/events/${encodeURIComponent(eventId)}/`);
+  const markets = normalizeBsdDetailedOdds(oddsData.data, eventRes.data);
 
-    function toggleSlip(show) {
-        document.getElementById('slip-overlay').style.display = show ? 'flex' : 'none';
-        if (show) {
-            const content = document.getElementById('slip-content');
-            content.innerHTML = state.selected.map(s => `
-                <div class="slip-item">
-                    <div class="remove-item" onclick="toggleSelection('${s.matchId}', '${s.market}', '${s.outcome}', ${s.odd}); renderSlipItems();">X</div>
-                    <div style="font-size:12px; color:var(--muted);">${s.teams}</div>
-                    <div style="font-weight:bold; margin:5px 0;">${s.market.toUpperCase()}: ${s.outcome}</div>
-                    <div style="color:var(--primary); font-weight:bold;">@ ${s.odd.toFixed(2)}</div>
-                </div>
-            `).join('');
-            updatePotentialWin();
-        }
-    }
+  let found = null;
+  for (const [mKey, mItems] of Object.entries(markets)) {
+    const item = mItems.find(i => String(i.name).toLowerCase() === String(selection).toLowerCase());
+    if (item) { found = { odds: item.odd, market: mKey, selection: item.name }; break; }
+  }
 
-    function renderSlipItems() { toggleSlip(true); }
+  if (!found) return { valid: false, message: "Selection no longer available" };
+  if (Math.abs(found.odds - clientOdds) > 0.01) return { valid: false, message: "Odds changed", current: found.odds };
 
-    function updatePotentialWin() {
-        const stake = parseFloat(document.getElementById('stake-amount').value) || 0;
-        const totalOdd = state.selected.reduce((acc, curr) => acc * curr.odd, 1);
-        document.getElementById('win-ui').textContent = (stake * totalOdd).toFixed(2) + ' ETB';
-    }
+  return { valid: true, odds: found.odds, selection: found.selection, market: found.market };
+}
 
-    function placeBet() {
-        alert("Bet Placed Successfully!");
-        state.selected = [];
-        toggleSlip(false);
-        updateSlipUI();
-        renderMatches();
-    }
+app.post("/api/bets/place", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { user_id, match_id, selection, stake, odds } = req.body;
+    const validation = await validateFootballBet(match_id, selection, odds);
+    if (!validation.valid) return res.status(409).json({ success: false, ...validation });
 
-    fetchData();
-    setInterval(fetchData, 45000);
-</script>
-</body>
-</html>
+    await client.query("BEGIN");
+    const userRes = await client.query("SELECT * FROM users WHERE id = $1 FOR UPDATE", [user_id]);
+    const user = userRes.rows[0];
+    if (user.balance + user.bonus_balance < stake) throw new Error("Insufficient funds");
+
+    const cashUsed = Math.min(user.balance, stake);
+    const bonusUsed = stake - cashUsed;
+
+    const updatedUser = await client.query(
+      "UPDATE users SET balance = balance - $1, bonus_balance = bonus_balance - $2 WHERE id = $3 RETURNING *",
+      [cashUsed, bonusUsed, user_id]
+    );
+
+    const bet = await client.query(
+      "INSERT INTO bets (user_id, game, stake, potential_win, status, result) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+      [user_id, "football", stake, stake * validation.odds, "pending", JSON.stringify({ match_id, selection, odds: validation.odds })]
+    );
+
+    await client.query("COMMIT");
+    io.to(`user:${user_id}`).emit("balance:update", { balance: updatedUser.rows[0].balance, bonus_balance: updatedUser.rows[0].bonus_balance });
+    res.json({ success: true, bet: bet.rows[0], wallet: updatedUser.rows[0] });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    res.status(500).json({ success: false, message: error.message });
+  } finally { client.release(); }
+});
+
+/*
+|--------------------------------------------------------------------------
+| Socket Logic
+|--------------------------------------------------------------------------
+*/
+
+io.on("connection", socket => {
+  socket.on("join:user", id => socket.join(`user:${id}`));
+});
+
+/*
+|--------------------------------------------------------------------------
+| Server Start
+|--------------------------------------------------------------------------
+*/
+
+async function start() {
+  await initializeDatabase();
+  server.listen(PORT, "0.0.0.0", () => console.log(`🚀 Betting server live on ${PORT}`));
+}
+
+start();
