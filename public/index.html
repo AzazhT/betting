@@ -1,666 +1,488 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="am">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport"
-        content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#07111f">
-  <title>Ethiopia Betting</title>
-  <script src="https://telegram.org/js/telegram-web-app.js?63"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#10131c">
+  <title>Lucky Hub | የጨዋታ ማዕከል</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Ethiopic:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <style>
     :root {
       color-scheme: dark;
-      --bg: #07111f;
-      --panel: #0d1b2b;
-      --border: #23384e;
-      --text: #f1f6fc;
-      --muted: #a5b7c9;
-      --accent: #35dc91;
-      --danger: #ff8a98;
+      --bg: #10131c;
+      --panel: #191d29;
+      --panel-light: #202535;
+      --text: #f4f5f8;
+      --muted: #9ca3b4;
+      --accent: #8b6cff;
+      --accent-2: #b09cff;
+      --green: #4fe0a0;
+      --border: rgba(255, 255, 255, .08);
     }
 
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body {
+    * {
+      box-sizing: border-box;
       margin: 0;
+      padding: 0;
+    }
+
+    body {
       min-height: 100vh;
       background:
-        radial-gradient(ellipse at 85% 0%, #14344a 0, transparent 45%),
+        radial-gradient(ellipse at 80% 0%, rgba(117, 77, 255, .12), transparent 32rem),
         var(--bg);
       color: var(--text);
-      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-      line-height: 1.5;
+      font-family: "Inter", "Noto Sans Ethiopic", sans-serif;
+      line-height: 1.6;
     }
 
-    a { color: inherit; text-decoration: none; }
-    button { font: inherit; cursor: pointer; }
-    button:disabled { cursor: wait; opacity: .6; }
-    [hidden] { display: none !important; }
-
-    :focus-visible {
-      outline: 3px solid var(--accent);
-      outline-offset: 5px;
+    button, a {
+      font: inherit;
     }
 
-    .skip-link {
-      position: fixed;
-      top: -100px;
-      left: 16px;
-      z-index: 300;
-      background: var(--accent);
-      color: #062318;
-      padding: 12px;
-      border-radius: 10px;
-    }
-    .skip-link:focus { top: 12px; }
-
-    .app {
-      max-width: 1140px;
-      margin: auto;
-      padding: 0 24px 35px;
+    a {
+      color: inherit;
+      text-decoration: none;
     }
 
-    .header {
-      min-height: 88px;
+    .container {
+      width: min(1120px, calc(100% - 36px));
+      margin: 0 auto;
+    }
+
+    .topbar {
+      border-bottom: 1px solid var(--border);
+      background: rgba(16, 19, 28, .82);
+      backdrop-filter: blur(14px);
+    }
+
+    .nav {
+      min-height: 76px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
-    }
-    .brand { display: flex; align-items: center; gap: 12px; }
-    .brand-mark {
-      display: grid;
-      place-items: center;
-      flex-shrink: 0;
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-      background: linear-gradient(140deg, #35dc91, #14895b);
-      font-size: 23px;
-    }
-    .brand strong { display: block; font-size: 18px; }
-    .brand small { color: var(--muted); font-size: 12px; }
-    .header-actions { display: flex; align-items: center; gap: 20px; }
-    .history-link { font-size: 14px; color: var(--muted); }
-    .profile {
-      width: 42px;
-      height: 42px;
-      display: grid;
-      place-items: center;
-      border: 1px solid #39536c;
-      border-radius: 50%;
-      background: #183149;
-      font-weight: 800;
-    }
-
-    .hero {
-      position: relative;
-      overflow: hidden;
-      display: grid;
-      grid-template-columns: 1.5fr 1fr;
-      align-items: center;
       gap: 24px;
-      padding: 44px;
-      border: 1px solid #2a4658;
-      border-radius: 26px;
-      background: linear-gradient(120deg, #102c35, #0e2033 65%, #15344a);
     }
-    .hero-content { position: relative; z-index: 1; }
-    .eyebrow {
-      display: inline-block;
-      margin-bottom: 16px;
-      color: #a5f4ce;
-      font-size: 11px;
-      font-weight: 750;
-      letter-spacing: 1.5px;
-    }
-    h1 {
-      margin: 0 0 16px;
-      font-size: clamp(32px, 5vw, 54px);
-      line-height: 1.08;
-      letter-spacing: -1.5px;
-    }
-    h1 span { color: var(--accent); }
-    .hero p { max-width: 470px; margin: 0; color: #b5c8d6; }
-    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 26px; }
 
-    .btn {
-      display: inline-flex;
+    .brand {
+      display: flex;
       align-items: center;
-      justify-content: center;
-      min-height: 46px;
-      padding: 11px 18px;
-      border: 1px solid #385068;
+      gap: 11px;
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: -.4px;
+    }
+
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
       border-radius: 12px;
-      background: #152c40;
-      color: var(--text);
-      font-weight: 750;
+      background: linear-gradient(135deg, var(--accent), #6044d9);
+      box-shadow: 0 8px 24px rgba(139, 108, 255, .28);
+      font-size: 19px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 26px;
+      color: var(--muted);
       font-size: 14px;
     }
-    .btn-primary {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #052719;
-    }
-    .btn-primary:hover { background: #70edb1; }
 
-    .pitch {
-      position: relative;
-      min-height: 210px;
-      border: 2px solid #54867e;
-      border-radius: 18px;
-      background: repeating-linear-gradient(
-        90deg, #17453f66 0 40px, #22605255 40px 80px
-      );
-      transform: rotate(-7deg);
-      display: grid;
-      place-items: center;
-    }
-    .pitch::before {
-      content: "";
-      position: absolute;
-      height: 100%;
-      left: 50%;
-      border-left: 2px solid #54867e;
-    }
-    .pitch::after {
-      content: "";
-      position: absolute;
-      width: 90px;
-      height: 90px;
-      border: 2px solid #54867e;
-      border-radius: 50%;
-    }
-    .pitch span {
-      position: relative;
-      z-index: 1;
-      font-size: 72px;
-      filter: drop-shadow(0 12px 15px #0008);
+    .nav-links a:hover {
+      color: var(--text);
     }
 
-    #account, #games { scroll-margin-top: 24px; }
-    .account { margin: 24px 0 32px; }
-    .account-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-    }
-    .account-card {
-      padding: 19px;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      min-width: 0;
-    }
-    .label { display: block; color: var(--muted); font-size: 12px; }
-    .value {
-      display: block;
-      margin-top: 7px;
-      font-size: 21px;
-      font-weight: 800;
-      overflow-wrap: anywhere;
-    }
-    .bonus-value { color: var(--accent); }
-    #userName { font-size: 18px; }
-    .auth-row {
+    .profile {
       display: flex;
       align-items: center;
       gap: 10px;
-      flex-wrap: wrap;
-      margin: 12px 2px 0;
     }
-    .auth-status {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--muted);
-      font-size: 12px;
-      flex: 1;
-      min-width: 180px;
+
+    .balance {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--panel);
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 700;
     }
-    .status-dot {
-      flex-shrink: 0;
-      width: 8px;
-      height: 8px;
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
       border-radius: 50%;
-      background: #e5ba65;
+      background: #30364a;
+      font-size: 17px;
     }
-    .status-dot.ok { background: var(--accent); }
-    .status-dot.bad { background: var(--danger); }
-    .retry { min-height: 44px; padding: 8px 14px; font-size: 12px; }
+
+    main {
+      padding: 50px 0 70px;
+    }
+
+    .welcome {
+      display: grid;
+      grid-template-columns: 1.4fr .8fr;
+      align-items: center;
+      gap: 28px;
+      margin-bottom: 42px;
+    }
+
+    .welcome-copy h1 {
+      max-width: 650px;
+      margin: 12px 0;
+      font-size: clamp(30px, 5vw, 48px);
+      line-height: 1.22;
+      letter-spacing: -1.5px;
+    }
+
+    .welcome-copy p {
+      max-width: 580px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .eyebrow {
+      color: var(--accent-2);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+    }
+
+    .welcome-card {
+      min-height: 185px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 1px solid rgba(176, 156, 255, .2);
+      border-radius: 20px;
+      background:
+        radial-gradient(circle at 85% 25%, rgba(176, 156, 255, .25), transparent 9rem),
+        linear-gradient(135deg, #292342, #1b1d2a);
+    }
+
+    .welcome-card .icon {
+      font-size: 35px;
+    }
+
+    .welcome-card h2 {
+      margin: 9px 0 3px;
+      font-size: 18px;
+    }
+
+    .welcome-card p {
+      color: #c0bdd1;
+      font-size: 13px;
+    }
 
     .section-heading {
       display: flex;
-      align-items: baseline;
+      align-items: end;
       justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 16px;
+      gap: 16px;
+      margin-bottom: 18px;
     }
-    h2 { font-size: 23px; margin: 0; }
-    .section-heading p { color: var(--muted); font-size: 13px; margin: 0; }
 
-    .games {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 14px;
+    .section-heading h2 {
+      font-size: 21px;
     }
-    .game {
+
+    .section-heading p {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .game-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .game-card {
+      min-height: 190px;
+      padding: 22px;
       display: flex;
       flex-direction: column;
-      min-width: 0;
-      padding: 20px;
+      justify-content: space-between;
+      overflow: hidden;
+      position: relative;
       border: 1px solid var(--border);
-      border-radius: 20px;
-      background: linear-gradient(145deg, #14283c, #0c1a2a);
+      border-radius: 18px;
+      background: linear-gradient(145deg, var(--panel-light), var(--panel));
+      transition: transform .2s ease, border-color .2s ease;
     }
-    a.game { transition: transform .18s, border-color .18s; }
-    a.game:hover { transform: translateY(-4px); border-color: var(--accent); }
-    .game.featured {
-      background: linear-gradient(145deg, #123d32, #102431);
-      border-color: #32765b;
+
+    .game-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(176, 156, 255, .42);
     }
-    .game-art {
+
+    .game-card::after {
+      content: "";
+      position: absolute;
+      width: 150px;
+      height: 150px;
+      right: -45px;
+      top: -48px;
+      border-radius: 50%;
+      background: var(--glow, rgba(139, 108, 255, .15));
+      filter: blur(2px);
+      pointer-events: none;
+    }
+
+    .game-top, .game-bottom {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .game-icon {
+      width: 48px;
+      height: 48px;
       display: grid;
       place-items: center;
-      height: 110px;
-      margin-bottom: 18px;
-      border-radius: 14px;
-      font-size: 56px;
-      background: radial-gradient(circle, #35dc9126, transparent 75%);
+      border-radius: 15px;
+      background: rgba(255, 255, 255, .07);
+      font-size: 24px;
     }
-    .bingo .game-art { background: radial-gradient(circle, #ad85ff33, transparent 75%); }
-    .keno .game-art { background: radial-gradient(circle, #56b9ff33, transparent 75%); }
-    .lottery .game-art { background: radial-gradient(circle, #ffc25b33, transparent 75%); }
-    .game h3 { margin: 0 0 8px; font-size: 18px; }
-    .game p { margin: 0 0 22px; color: var(--muted); font-size: 13px; }
-    .game-action {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-top: auto;
-      min-height: 44px;
-      padding: 10px 12px;
+
+    .tag {
+      padding: 5px 9px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: #c6c9d4;
+      font-size: 11px;
+    }
+
+    .game-card h3 {
+      margin: 17px 0 4px;
+      font-size: 18px;
+    }
+
+    .game-card p {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .play-button {
+      padding: 9px 13px;
+      border: 0;
       border-radius: 10px;
-      background: #1a3045;
+      background: rgba(139, 108, 255, .16);
+      color: #d5caff;
+      cursor: pointer;
       font-size: 12px;
-      font-weight: 750;
+      font-weight: 700;
     }
-    .featured .game-action { background: var(--accent); color: #052719; }
-    .coming { color: #bccbda; }
+
+    .play-button:hover {
+      background: rgba(139, 108, 255, .27);
+    }
 
     .notice {
       margin-top: 24px;
-      padding: 20px;
-      display: flex;
-      align-items: flex-start;
-      gap: 14px;
-      border: 1px solid var(--border);
-      background: #0d1c2b;
-      border-radius: 16px;
-    }
-    .notice-icon {
-      flex-shrink: 0;
-      padding: 6px 9px;
-      border: 1px solid #496077;
-      border-radius: 9px;
-      font-weight: 800;
-    }
-    .notice h2 { font-size: 15px; margin: 0 0 5px; }
-    .notice p { margin: 0; color: var(--muted); font-size: 12px; }
-    .footer {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 26px 2px 0;
-      color: var(--muted);
+      padding: 15px 17px;
+      border: 1px solid rgba(79, 224, 160, .16);
+      border-radius: 13px;
+      background: rgba(79, 224, 160, .05);
+      color: #b4c8be;
       font-size: 12px;
     }
-    .mobile-nav { display: none; }
 
-    @media (max-width: 900px) {
-      .games { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .hero { padding: 30px; }
+    .notice strong {
+      color: var(--green);
     }
 
-    @media (max-width: 620px) {
-      .app { padding: 0 14px calc(92px + env(safe-area-inset-bottom, 0px)); }
-      .header { min-height: 74px; }
-      .brand strong { font-size: 16px; }
-      .brand small { font-size: 10px; }
-      .brand-mark { width: 38px; height: 38px; }
-      .history-link { display: none; }
-      .hero { grid-template-columns: 1fr; padding: 26px 22px; border-radius: 20px; }
-      .pitch { display: none; }
-      .hero p { font-size: 14px; }
-      .hero-actions { gap: 8px; }
-      .hero-actions .btn { flex: 1; padding: 11px 10px; font-size: 12px; }
-      .account { margin-top: 16px; }
-      .account-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
-      .account-card { padding: 15px; }
-      .user-card { grid-column: 1 / -1; }
-      .value { font-size: 19px; }
-      .section-heading { align-items: flex-start; }
-      h2 { font-size: 21px; }
-      .section-heading p { font-size: 11px; padding-top: 5px; }
-      .games { gap: 10px; }
-      .game { padding: 14px; border-radius: 16px; }
-      .game-art { height: 84px; font-size: 43px; margin-bottom: 12px; }
-      .game h3 { font-size: 16px; }
-      .game p { font-size: 12px; margin-bottom: 16px; }
-      .game-action { padding: 9px; font-size: 11px; }
-      .footer { flex-direction: column; gap: 5px; }
-      .mobile-nav {
-        position: fixed;
-        z-index: 100;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        background: #091624f5;
-        border-top: 1px solid #2a4056;
-        backdrop-filter: blur(16px);
-        padding-bottom: env(safe-area-inset-bottom, 0px);
+    footer {
+      padding: 22px 0;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    @media (max-width: 720px) {
+      .nav {
+        min-height: 68px;
       }
-      .mobile-nav a {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 4px;
-        min-height: 64px;
-        color: var(--muted);
+
+      .nav-links {
+        display: none;
+      }
+
+      main {
+        padding-top: 34px;
+      }
+
+      .welcome {
+        grid-template-columns: 1fr;
+        gap: 20px;
+        margin-bottom: 34px;
+      }
+
+      .welcome-card {
+        min-height: 150px;
+      }
+
+      .game-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .container {
+        width: min(100% - 24px, 1120px);
+      }
+
+      .brand {
+        font-size: 16px;
+      }
+
+      .balance {
+        padding: 7px 9px;
         font-size: 11px;
       }
-      .mobile-nav a span { font-size: 21px; line-height: 1; }
-      .mobile-nav a[aria-current] { color: var(--accent); }
-    }
 
-    @media (prefers-reduced-motion: reduce) {
-      html { scroll-behavior: auto; }
-      a.game { transition: none; }
-      a.game:hover { transform: none; }
+      .game-card {
+        min-height: 180px;
+        padding: 18px;
+      }
     }
   </style>
 </head>
 
 <body>
-  <a class="skip-link" href="#games">Skip to games</a>
-
-  <div class="app">
-    <header class="header">
-      <a class="brand" href="/" aria-label="Ethiopia Betting home">
-        <span class="brand-mark" aria-hidden="true">🎯</span>
-        <span>
-          <strong>Ethiopia Betting</strong>
-          <small>Sports &amp; games</small>
-        </span>
+  <header class="topbar">
+    <div class="container nav">
+      <a class="brand" href="#" aria-label="Lucky Hub መነሻ">
+        <span class="brand-mark">✦</span>
+        <span>Lucky Hub</span>
       </a>
-      <div class="header-actions">
-        <a class="history-link" href="/history.html">Betting history</a>
-        <a class="profile" href="#account" aria-label="View your account">
-          <span id="profileLetter">?</span>
-        </a>
+
+      <nav class="nav-links" aria-label="ዋና ማውጫ">
+        <a href="#games">ጨዋታዎች</a>
+        <a href="history.html">ታሪክ</a>
+        <a href="#about">ስለ እኛ</a>
+      </nav>
+
+      <div class="profile">
+        <span class="balance">● 1,000 ነጥብ</span>
+        <span class="avatar" aria-label="የተጠቃሚ መገለጫ">👤</span>
       </div>
-    </header>
+    </div>
+  </header>
 
-    <main>
-      <section class="hero" aria-labelledby="welcomeTitle">
-        <div class="hero-content">
-          <span class="eyebrow">TELEGRAM MINI APP</span>
-          <h1 id="welcomeTitle">Your games.<br><span>One place.</span></h1>
-          <p>Explore football events and betting markets, view your wallet,
-             and keep track of your account.</p>
-          <div class="hero-actions">
-            <a class="btn btn-primary" href="/betting.html">⚽ Open Football</a>
-            <a class="btn" href="#games">Explore Games</a>
-          </div>
-        </div>
-        <div class="pitch" aria-hidden="true"><span>⚽</span></div>
-      </section>
+  <main class="container">
+    <section class="welcome">
+      <div class="welcome-copy">
+        <span class="eyebrow">እንኳን ወደ LUCKY HUB በደህና መጡ</span>
+        <h1>ጨዋታውን ይምረጡ፣<br>መዝናናቱን ይጀምሩ</h1>
+        <p>ከጓደኞችዎ ጋር በምናባዊ ነጥቦች ይጫወቱ። ይህ ማዕከል ለመዝናኛ ብቻ ነው።</p>
+      </div>
 
-      <section class="account" id="account" aria-label="Your account">
-        <div class="account-grid" id="accountDetails" aria-busy="true">
-          <div class="account-card">
-            <span class="label">Available balance</span>
-            <strong class="value" id="cashBalance">—</strong>
-          </div>
-          <div class="account-card">
-            <span class="label">Bonus balance</span>
-            <strong class="value bonus-value" id="bonusBalance">—</strong>
-          </div>
-          <div class="account-card user-card">
-            <span class="label">Your account</span>
-            <strong class="value" id="userName">Connecting…</strong>
-          </div>
-        </div>
-
-        <div class="auth-row">
-          <div class="auth-status" role="status" aria-live="polite">
-            <span class="status-dot" id="statusDot" aria-hidden="true"></span>
-            <span id="authNote">Connecting to Telegram…</span>
-          </div>
-          <button class="btn retry" id="retryAuth" type="button" hidden>
-            Retry connection
-          </button>
-        </div>
-      </section>
-
-      <section id="games" aria-labelledby="gamesTitle">
-        <div class="section-heading">
-          <h2 id="gamesTitle">Explore games</h2>
-          <p>Find your next game</p>
-        </div>
-
-        <div class="games">
-          <a class="game featured" href="/betting.html">
-            <div class="game-art" aria-hidden="true">⚽</div>
-            <h3>Football</h3>
-            <p>Explore events, odds and available betting markets.</p>
-            <div class="game-action">Open Football <span aria-hidden="true">↗</span></div>
-          </a>
-
-          <article class="game bingo">
-            <div class="game-art" aria-hidden="true">🎱</div>
-            <h3>Bingo</h3>
-            <p>A dedicated bingo experience is planned for this platform.</p>
-            <div class="game-action coming">Coming soon</div>
-          </article>
-
-          <article class="game keno">
-            <div class="game-art" aria-hidden="true">🔢</div>
-            <h3>Keno</h3>
-            <p>Number selections and draw results, once available.</p>
-            <div class="game-action coming">Coming soon</div>
-          </article>
-
-          <article class="game lottery">
-            <div class="game-art" aria-hidden="true">🎟️</div>
-            <h3>Weekly Lottery</h3>
-            <p>Draw schedules and entry details will appear at launch.</p>
-            <div class="game-action coming">Coming soon</div>
-          </article>
-        </div>
-      </section>
-
-      <aside class="notice" aria-labelledby="responsibleTitle">
-        <span class="notice-icon" aria-hidden="true">18+</span>
+      <aside class="welcome-card">
+        <div class="icon">🎮</div>
         <div>
-          <h2 id="responsibleTitle">Play responsibly</h2>
-          <p>For adults of legal gambling age in their location only.
-             Winnings are not guaranteed. Set a budget, take breaks,
-             and never bet money you cannot afford to lose.</p>
+          <h2>ለመጫወት ዝግጁ ነዎት?</h2>
+          <p>የሚወዱትን ጨዋታ ይምረጡና ይጀምሩ።</p>
         </div>
       </aside>
-    </main>
+    </section>
 
-    <footer class="footer">
-      <span>Ethiopia Betting · Telegram Mini App</span>
-      <a href="/history.html">View betting history →</a>
-    </footer>
-  </div>
+    <section id="games">
+      <div class="section-heading">
+        <div>
+          <h2>ጨዋታዎች</h2>
+          <p>አንዱን ይምረጡና በምናባዊ ነጥቦች ይደሰቱ።</p>
+        </div>
+      </div>
 
-  <nav class="mobile-nav" aria-label="Main navigation">
-    <a href="/" aria-current="page"><span aria-hidden="true">⌂</span>Home</a>
-    <a href="/betting.html"><span aria-hidden="true">⚽</span>Football</a>
-    <a href="/history.html"><span aria-hidden="true">▤</span>History</a>
-    <a href="#account"><span aria-hidden="true">👤</span>Account</a>
-  </nav>
+      <div class="game-grid">
+        <article class="game-card" style="--glow: rgba(139, 108, 255, .18)">
+          <div>
+            <div class="game-top">
+              <span class="game-icon">🎯</span>
+              <span class="tag">ምናባዊ ነጥቦች</span>
+            </div>
+            <h3>Betting</h3>
+            <p>በጨዋታ ውጤቶች ላይ ምናባዊ ግምት ያድርጉ።</p>
+          </div>
+          <div class="game-bottom">
+            <span class="tag">የጨዋታ ሁኔታ</span>
+            <a class="play-button" href="betting.html">ይክፈቱ →</a>
+          </div>
+        </article>
 
-  <script>
-    (() => {
-      "use strict";
+        <article class="game-card" style="--glow: rgba(255, 190, 92, .15)">
+          <div>
+            <div class="game-top">
+              <span class="game-icon">🎱</span>
+              <span class="tag">ምናባዊ ነጥቦች</span>
+            </div>
+            <h3>Bingo</h3>
+            <p>ቁጥሮችን ይከታተሉና የቢንጎ ጨዋታ ይደሰቱ።</p>
+          </div>
+          <div class="game-bottom">
+            <span class="tag">በቅርቡ</span>
+            <button class="play-button" type="button" disabled>በቅርቡ</button>
+          </div>
+        </article>
 
-      const tg = window.Telegram?.WebApp || null;
-      const retryButton = document.getElementById("retryAuth");
-      const accountDetails = document.getElementById("accountDetails");
-      let authenticating = false;
+        <article class="game-card" style="--glow: rgba(79, 224, 160, .13)">
+          <div>
+            <div class="game-top">
+              <span class="game-icon">🔢</span>
+              <span class="tag">ምናባዊ ነጥቦች</span>
+            </div>
+            <h3>Keno</h3>
+            <p>ቁጥሮችን ይምረጡና የኪኖ ጨዋታ ይሞክሩ።</p>
+          </div>
+          <div class="game-bottom">
+            <span class="tag">በቅርቡ</span>
+            <button class="play-button" type="button" disabled>በቅርቡ</button>
+          </div>
+        </article>
 
-      const formatter = new Intl.NumberFormat("en-ET", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      });
+        <article class="game-card" style="--glow: rgba(255, 112, 147, .15)">
+          <div>
+            <div class="game-top">
+              <span class="game-icon">🚗</span>
+              <span class="tag">ምናባዊ ነጥቦች</span>
+            </div>
+            <h3>የሳምንቱ ሎተሪ</h3>
+            <p>የምናባዊ ሎተሪ ትኬት ይያዙና ውጤቱን ይጠብቁ።</p>
+          </div>
+          <div class="game-bottom">
+            <span class="tag">በቅርቡ</span>
+            <button class="play-button" type="button" disabled>በቅርቡ</button>
+          </div>
+        </article>
+      </div>
+    </section>
 
-      function money(value) {
-        if (
-          value === null ||
-          value === undefined ||
-          (typeof value !== "number" && typeof value !== "string") ||
-          (typeof value === "string" && value.trim() === "")
-        ) return "—";
+    <aside class="notice" id="about">
+      <strong>ማስታወሻ፦</strong>
+      ነጥቦቹ ለማሳያና ለመዝናኛ ብቻ ናቸው። በእውነተኛ ገንዘብ ግብይት ወይም ክፍያ አይደረግም።
+    </aside>
+  </main>
 
-        const amount = Number(value);
-        return Number.isFinite(amount)
-          ? formatter.format(amount) + " ETB"
-          : "—";
-      }
-
-      function setText(id, value) {
-        document.getElementById(id).textContent = value;
-      }
-
-      function setStatus(state, note) {
-        document.getElementById("statusDot").className =
-          "status-dot" + (state === "ok" ? " ok" : state === "error" ? " bad" : "");
-        setText("authNote", note);
-      }
-
-      function clearAccount(name) {
-        setText("cashBalance", "—");
-        setText("bonusBalance", "—");
-        setText("userName", name);
-        setText("profileLetter", "?");
-      }
-
-      async function authenticate() {
-        if (authenticating) return;
-
-        authenticating = true;
-        accountDetails.setAttribute("aria-busy", "true");
-        retryButton.hidden = true;
-        retryButton.disabled = true;
-        clearAccount("Connecting…");
-        setStatus("pending", "Connecting to Telegram…");
-
-        let timeoutId;
-
-        try {
-          if (tg) {
-            try {
-              tg.ready();
-              tg.expand();
-            } catch {
-              // Authentication can still proceed if a UI method is unavailable.
-            }
-          }
-
-          const initData = tg?.initData || "";
-
-          if (!initData) {
-            clearAccount("Not connected");
-            setStatus(
-              "error",
-              "Open Ethiopia Betting using the Telegram bot’s Mini App button."
-            );
-            return;
-          }
-
-          const controller = new AbortController();
-          timeoutId = window.setTimeout(() => controller.abort(), 15000);
-
-          const response = await fetch("/api/telegram/auth", {
-            method: "POST",
-            credentials: "same-origin",
-            headers: {
-              "Content-Type": "application/json",
-              "Accept": "application/json"
-            },
-            body: JSON.stringify({ initData }),
-            signal: controller.signal
-          });
-
-          let data;
-          try {
-            data = await response.json();
-          } catch (error) {
-            if (error.name === "AbortError") throw error;
-            throw new Error("The server returned an unexpected response. Please retry.");
-          }
-
-          if (!response.ok || !data?.success || !data?.user) {
-            throw new Error(
-              response.status === 401 || response.status === 403
-                ? "Your Telegram session could not be verified. Reopen the app from the bot."
-                : "Unable to connect your account. Please try again."
-            );
-          }
-
-          const user = data.user;
-          const name =
-            typeof user.name === "string" && user.name.trim()
-              ? user.name.trim()
-              : "Telegram User";
-
-          setText("cashBalance", money(user.balance));
-          setText("bonusBalance", money(user.bonus_balance));
-          setText("userName", name);
-          setText("profileLetter", Array.from(name)[0].toUpperCase());
-
-          const username =
-            typeof user.username === "string"
-              ? user.username.trim().replace(/^@/, "")
-              : "";
-
-          setStatus(
-            "ok",
-            username
-              ? "@" + username + " · Telegram connected"
-              : "Telegram account connected."
-          );
-        } catch (error) {
-          clearAccount("Not connected");
-
-          const note =
-            error.name === "AbortError"
-              ? "Connection timed out. Please try again."
-              : error instanceof TypeError
-                ? "Unable to reach the server. Check your connection and retry."
-                : error.message || "Connection failed. Please try again.";
-
-          setStatus("error", note);
-          retryButton.hidden = false;
-        } finally {
-          window.clearTimeout(timeoutId);
-          authenticating = false;
-          retryButton.disabled = false;
-          accountDetails.setAttribute("aria-busy", "false");
-        }
-      }
-
-      retryButton.addEventListener("click", authenticate);
-      authenticate();
-    })();
-  </script>
+  <footer>
+    <div class="container">© 2026 Lucky Hub · በኃላፊነት ይጫወቱ</div>
+  </footer>
 </body>
 </html>
