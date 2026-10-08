@@ -1,6 +1,5 @@
 
 
-The primary entry point for the Express/Socket.IO server.
 
 const express = require("express");
 const cors = require("cors");
