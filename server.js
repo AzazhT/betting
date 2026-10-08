@@ -568,6 +568,81 @@ app.get("/api/events", async (req, res) => {
 });
 
 /* =========================================================
+   LEAGUES
+   ========================================================= */
+
+app.get("/api/leagues", async (req, res) => {
+  try {
+    const data = await fetchBSD(BSD_API_URL);
+    const rawEvents = extractArray(data);
+
+    const leagues = [
+      ...new Set(
+        rawEvents
+          .map(event =>
+            event.league?.name ||
+            event.league_name ||
+            event.league ||
+            event.competition?.name
+          )
+          .filter(value => typeof value === "string" && value.trim())
+      )
+    ];
+
+    res.json({
+      success: true,
+      source: "BSD",
+      count: leagues.length,
+      leagues
+    });
+  } catch (error) {
+    console.error("BSD LEAGUES ERROR:", error.message);
+
+    res.status(502).json({
+      success: false,
+      error: "Could not load leagues from BSD.",
+      leagues: []
+    });
+  }
+});
+
+/* =========================================================
+   LIVE EVENTS
+   ========================================================= */
+
+app.get("/api/live", async (req, res) => {
+  try {
+    const data = await fetchBSD(BSD_API_URL);
+    const rawEvents = extractArray(data);
+
+    const events = rawEvents
+      .map((event, index) => normalizeEvent(event, index))
+      .filter(event =>
+        event.live === true ||
+        event.status === "live" ||
+        event.status === "inprogress"
+      );
+
+    res.json({
+      success: true,
+      source: "BSD",
+      count: events.length,
+      events,
+      updatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("BSD LIVE ERROR:", error.message);
+
+    res.status(502).json({
+      success: false,
+      error: "Could not load live events from BSD.",
+      events: []
+    });
+  }
+});
+
+
+/* =========================================================
    WALLET
    ========================================================= */
 
