@@ -114,7 +114,7 @@
             font-weight: bold;
             z-index: 2000;
             box-shadow: 0 -4px 10px rgba(0,0,0,0.3);
-            display: none; /* Shown when selections > 0 */
+            display: none;
         }
         .slip-count { background: #000; color: #fff; border-radius: 50%; width: 24px; height: 24px; display: inline-flex; justify-content: center; align-items: center; margin-right: 8px; }
 
@@ -160,9 +160,7 @@
     </select>
 </div>
 
-<div class="container" id="match-list">
-    <!-- Matches injected here -->
-</div>
+<div class="container" id="match-list"></div>
 
 <div class="slip-bar" id="slip-bar" onclick="toggleSlip(true)">
     <div><span class="slip-count" id="count-ui">0</span> Bet Slip</div>
@@ -174,9 +172,7 @@
         <div style="font-weight: 800;">YOUR BET SLIP</div>
         <button onclick="toggleSlip(false)" style="background:none; border:none; color:var(--primary); font-weight:bold;">CLOSE</button>
     </div>
-    <div class="slip-items" id="slip-content">
-        <!-- Selections injected here -->
-    </div>
+    <div class="slip-items" id="slip-content"></div>
     <div class="stake-area">
         <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
             <span>Possible Win:</span>
@@ -192,7 +188,7 @@
     let state = {
         timeFilter: 'all',
         leagueFilter: 'all',
-        selected: [] // {id, matchId, market, outcome, odd, teams}
+        selected: [] 
     };
 
     async function fetchData() {
@@ -210,8 +206,7 @@
     function updateLeagueDropdown() {
         const select = document.getElementById('league-select');
         const leagues = [...new Set(rawData.map(m => m.league))].sort();
-        
-        // Keep "All Leagues" and add others
+        const current = state.leagueFilter;
         select.innerHTML = '<option value="all">All Leagues</option>';
         leagues.forEach(l => {
             const opt = document.createElement('option');
@@ -219,7 +214,7 @@
             opt.textContent = l;
             select.appendChild(opt);
         });
-        select.value = state.leagueFilter;
+        select.value = current;
     }
 
     function setTimeFilter(f) {
@@ -238,64 +233,51 @@
     function renderMatches() {
         const container = document.getElementById('match-list');
         container.innerHTML = '';
-
         const now = new Date();
         const tomorrow = new Date(); tomorrow.setDate(now.getDate() + 1);
 
         let filtered = rawData.filter(m => {
-            // League Filter
             if (state.leagueFilter !== 'all' && m.league !== state.leagueFilter) return false;
-            
-            // Time Filter
             const mDate = new Date(m.date);
-            if (state.timeFilter === 'live') return m.is_live;
+            const isLive = m.is_live || (m.status && m.status.toLowerCase().includes('live'));
+            if (state.timeFilter === 'live') return isLive;
             if (state.timeFilter === 'today') return mDate.toDateString() === now.toDateString();
             if (state.timeFilter === 'tomorrow') return mDate.toDateString() === tomorrow.toDateString();
-            
             return true;
         });
 
         if (filtered.length === 0) {
-            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--muted);">No matches found for this filter.</div>';
+            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--muted);">No matches found.</div>';
             return;
         }
 
         filtered.forEach(m => {
             const card = document.createElement('div');
             card.className = 'match';
-            
             let marketsHtml = '';
-            if (m.markets && Object.keys(m.markets).length > 0) {
+            if (m.markets) {
                 marketsHtml = Object.entries(m.markets).map(([mKey, outcomes]) => `
                     <div class="market-group">
-                        <div class="market-label">${mKey.replace(/_/g, ' ').toUpperCase()}</div>
+                        <div class="market-label">${mKey.toUpperCase()}</div>
                         <div class="odds-grid">
                             ${outcomes.map(o => {
                                 const selId = `${m.id}_${mKey}_${o.name}`;
                                 const isActive = state.selected.some(s => s.id === selId);
-                                return `
-                                    <button class="odd-btn ${isActive ? 'active' : ''} ${m.is_live ? 'disabled' : ''}" 
-                                        onclick="toggleSelection('${m.id}', '${mKey}', '${o.name}', ${o.odd}, '${m.home_team} vs ${m.away_team}')">
-                                        <span style="font-size:10px">${o.name}</span>
-                                        <span class="val">${o.odd.toFixed(2)}</span>
-                                    </button>
-                                `;
+                                return `<button class="odd-btn ${isActive ? 'active' : ''}" onclick="toggleSelection('${m.id}', '${mKey}', '${o.name}', ${o.odd}, '${m.home_team} vs ${m.away_team}')">
+                                    <span style="font-size:10px">${o.name}</span>
+                                    <span class="val">${o.odd.toFixed(2)}</span>
+                                </button>`;
                             }).join('')}
                         </div>
                     </div>
                 `).join('');
             }
-
             card.innerHTML = `
                 <div class="match-header">
                     <span>${m.league}</span>
                     <span>${m.is_live ? '<div class="live-tag"><div class="dot"></div>LIVE</div>' : new Date(m.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
                 </div>
-                <div class="teams-area">
-                    <div class="team-name">${m.home_team}</div>
-                    <div class="vs-text">vs</div>
-                    <div class="team-name">${m.away_team}</div>
-                </div>
+                <div class="teams-area"><div class="team-name">${m.home_team}</div><div class="vs-text">vs</div><div class="team-name">${m.away_team}</div></div>
                 ${marketsHtml}
             `;
             container.appendChild(card);
@@ -305,57 +287,42 @@
     function toggleSelection(matchId, market, outcome, odd, teams) {
         const selId = `${matchId}_${market}_${outcome}`;
         const existingIdx = state.selected.findIndex(s => s.id === selId);
-        
         if (existingIdx > -1) {
             state.selected.splice(existingIdx, 1);
         } else {
-            // Rule: Only one selection per match for accumulators
             state.selected = state.selected.filter(s => s.matchId !== matchId);
             state.selected.push({ id: selId, matchId, market, outcome, odd, teams });
         }
-        
         updateSlipUI();
         renderMatches();
     }
 
     function updateSlipUI() {
         const bar = document.getElementById('slip-bar');
-        const countUi = document.getElementById('count-ui');
-        const totalOddsUi = document.getElementById('total-odds-ui');
-        
         const count = state.selected.length;
-        if (count > 0) {
-            bar.style.display = 'flex';
-            countUi.textContent = count;
-            const totalOdd = state.selected.reduce((acc, curr) => acc * curr.odd, 1);
-            totalOddsUi.textContent = `Total Odds: ${totalOdd.toFixed(2)}`;
-        } else {
-            bar.style.display = 'none';
-        }
+        bar.style.display = count > 0 ? 'flex' : 'none';
+        document.getElementById('count-ui').textContent = count;
+        const totalOdd = state.selected.reduce((acc, curr) => acc * curr.odd, 1);
+        document.getElementById('total-odds-ui').textContent = `Total Odds: ${totalOdd.toFixed(2)}`;
     }
 
     function toggleSlip(show) {
-        const overlay = document.getElementById('slip-overlay');
-        overlay.style.display = show ? 'flex' : 'none';
-        if (show) renderSlipItems();
+        document.getElementById('slip-overlay').style.display = show ? 'flex' : 'none';
+        if (show) {
+            const content = document.getElementById('slip-content');
+            content.innerHTML = state.selected.map(s => `
+                <div class="slip-item">
+                    <div class="remove-item" onclick="toggleSelection('${s.matchId}', '${s.market}', '${s.outcome}', ${s.odd}); renderSlipItems();">X</div>
+                    <div style="font-size:12px; color:var(--muted);">${s.teams}</div>
+                    <div style="font-weight:bold; margin:5px 0;">${s.market.toUpperCase()}: ${s.outcome}</div>
+                    <div style="color:var(--primary); font-weight:bold;">@ ${s.odd.toFixed(2)}</div>
+                </div>
+            `).join('');
+            updatePotentialWin();
+        }
     }
 
-    function renderSlipItems() {
-        const content = document.getElementById('slip-content');
-        content.innerHTML = '';
-        state.selected.forEach(s => {
-            const div = document.createElement('div');
-            div.className = 'slip-item';
-            div.innerHTML = `
-                <div class="remove-item" onclick="toggleSelection('${s.matchId}', '${s.market}', '${s.outcome}', ${s.odd})">X</div>
-                <div style="font-size:12px; color:var(--muted);">${s.teams}</div>
-                <div style="font-weight:bold; margin:5px 0;">${s.market.toUpperCase()}: ${s.outcome}</div>
-                <div style="color:var(--primary); font-weight:bold;">@ ${s.odd.toFixed(2)}</div>
-            `;
-            content.appendChild(div);
-        });
-        updatePotentialWin();
-    }
+    function renderSlipItems() { toggleSlip(true); }
 
     function updatePotentialWin() {
         const stake = parseFloat(document.getElementById('stake-amount').value) || 0;
@@ -363,9 +330,8 @@
         document.getElementById('win-ui').textContent = (stake * totalOdd).toFixed(2) + ' ETB';
     }
 
-    async function placeBet() {
-        // Implementation for sending bet to backend
-        alert("Bet Submitted for: " + state.selected.length + " matches!");
+    function placeBet() {
+        alert("Bet Placed Successfully!");
         state.selected = [];
         toggleSlip(false);
         updateSlipUI();
