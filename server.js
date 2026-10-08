@@ -339,6 +339,21 @@ app.get("/api/live", async (req, res) => {
     });
   }
 });
+app.get("/api/odds/:eventId", async (req, res) => {
+  try {
+    const eventId = encodeURIComponent(req.params.eventId);
+    const data = await fetchBSD(
+      `${BSD_BASE_URL}/events/${eventId}/odds/`
+    );
+    res.json({ success: true, odds: data });
+  } catch (error) {
+    res.status(502).json({
+      success: false,
+      error: "Could not load odds",
+      details: error.status ? `BSD HTTP ${error.status}` : "Request failed"
+    });
+  }
+});
 
 app.get("/api/wallet", (req, res) => {
   const wallet = getWallet(req.query.userId || "demo");
