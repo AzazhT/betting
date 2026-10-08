@@ -1,3 +1,7 @@
+
+
+The primary entry point for the Express/Socket.IO server.
+
 const express = require("express");
 const cors = require("cors");
 const http = require("http");
@@ -5,7 +9,6 @@ const { Server } = require("socket.io");
 const { Pool } = require("pg");
 const fs = require("fs");
 const path = require("path");
-const crypto = require("crypto");
 require("dotenv").config();
 
 /*
