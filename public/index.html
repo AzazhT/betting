@@ -1,128 +1,666 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#07111f" />
+  <meta charset="utf-8">
+  <meta name="viewport"
+        content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
   <title>Ethiopia Betting</title>
   <script src="https://telegram.org/js/telegram-web-app.js?63"></script>
+
   <style>
-    :root{--bg:#07111f;--panel:#0d1b2b;--panel2:#11243a;--text:#f1f6fc;--muted:#91a5ba;--accent:#20c878;--accent2:#159d5e;--border:#1b3047;--soft:#14283e;--danger:#ff7180}
-    *{box-sizing:border-box}
-    html{scroll-behavior:smooth}
-    body{margin:0;background:radial-gradient(circle at 50% -10%,#122941 0,#07111f 42%,#06101c 100%);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;min-height:100vh}
-    a{text-decoration:none;color:inherit}
-    button{font:inherit}
-    .app{width:100%;max-width:1180px;margin:0 auto;padding:0 18px 34px}
-    .header{height:76px;display:flex;align-items:center;justify-content:space-between;gap:16px}
-    .brand{display:flex;align-items:center;gap:10px;min-width:0}.brand-mark{width:40px;height:40px;border-radius:12px;background:linear-gradient(145deg,#20c878,#118c54);display:grid;place-items:center;font-size:21px;box-shadow:0 8px 25px rgba(32,200,120,.16)}
-    .brand-name{font-weight:900;font-size:19px;white-space:nowrap}.brand-sub{font-size:11px;color:var(--muted);margin-top:2px}
-    .header-right{display:flex;align-items:center;gap:9px}.wallet-mini{background:#0d1b2b;border:1px solid var(--border);border-radius:12px;padding:8px 12px;min-width:105px}.wallet-mini small{display:block;color:var(--muted);font-size:10px}.wallet-mini strong{display:block;font-size:13px;margin-top:2px}.profile{width:40px;height:40px;border-radius:50%;background:#17304a;border:1px solid #25425e;display:grid;place-items:center;font-weight:900;color:#cfe1f2}
-    .hero{position:relative;overflow:hidden;border:1px solid var(--border);border-radius:22px;background:linear-gradient(135deg,#0d2238,#0c1b2d 58%,#102941);padding:34px 36px;margin-bottom:18px;min-height:235px;display:flex;align-items:center}.hero:before{content:"";position:absolute;width:300px;height:300px;border-radius:50%;right:-100px;top:-130px;background:rgba(32,200,120,.10)}.hero:after{content:"";position:absolute;width:180px;height:180px;border-radius:50%;right:105px;bottom:-125px;background:rgba(61,130,255,.07)}.hero-content{position:relative;z-index:1;max-width:720px}.eyebrow{display:inline-flex;align-items:center;gap:7px;color:#8de9b9;background:rgba(32,200,120,.09);border:1px solid rgba(32,200,120,.2);border-radius:999px;padding:7px 10px;font-size:11px;font-weight:800;margin-bottom:13px}.dot{width:7px;height:7px;background:var(--accent);border-radius:50%;box-shadow:0 0 0 4px rgba(32,200,120,.08)}.hero h1{margin:0 0 11px;font-size:43px;line-height:1.05;letter-spacing:-.7px}.hero h1 span{color:var(--accent)}.hero p{margin:0;color:var(--muted);font-size:15px;line-height:1.65;max-width:610px}.hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}.btn{display:inline-flex;align-items:center;justify-content:center;border-radius:11px;padding:12px 17px;font-size:13px;font-weight:900;min-height:44px}.btn-primary{background:var(--accent);color:#04160c}.btn-primary:hover{background:#2ddd89}.btn-secondary{background:#12263b;border:1px solid #29445f;color:#e4eef8}
-    .account{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:25px}.account-card{background:rgba(13,27,43,.94);border:1px solid var(--border);border-radius:15px;padding:15px}.account-card .label{color:var(--muted);font-size:11px}.account-card .value{font-size:18px;font-weight:900;margin-top:5px}.account-card.bonus-card .value{color:var(--accent)}.account-card.user-card .value{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.auth-line{grid-column:1/-1;display:flex;align-items:center;gap:8px;color:var(--muted);font-size:11px;padding:0 2px}.status-dot{width:7px;height:7px;border-radius:50%;background:#71869a}.status-dot.ok{background:var(--accent)}.status-dot.bad{background:var(--danger)}
-    .section-title{display:flex;align-items:end;justify-content:space-between;gap:10px;margin:0 2px 13px}.section-title h2{font-size:21px;margin:0}.section-title span{color:#70869d;font-size:11px}
-    .games{display:grid;grid-template-columns:repeat(4,1fr);gap:13px}.game{position:relative;overflow:hidden;min-height:180px;background:linear-gradient(145deg,#0d1b2b,#0b1827);border:1px solid var(--border);border-radius:17px;padding:17px;display:flex;flex-direction:column;transition:transform .18s,border-color .18s,background .18s}.game:hover{transform:translateY(-2px);border-color:#2b4b69;background:#0e2032}.game.featured{border-color:#1d6b49;background:linear-gradient(145deg,#0d2a22,#0d1c2b)}.game-icon{width:45px;height:45px;border-radius:12px;background:#12283d;display:grid;place-items:center;font-size:22px}.game.featured .game-icon{background:rgba(32,200,120,.13)}.game h3{font-size:16px;margin:13px 0 6px}.game p{font-size:11px;line-height:1.5;color:#8297ab;margin:0}.game-bottom{margin-top:auto;padding-top:13px}.game-button{display:flex;align-items:center;justify-content:space-between;background:#132a40;border:1px solid #213b55;border-radius:9px;padding:9px 10px;font-size:11px;font-weight:800;color:#dbe8f4}.game.featured .game-button{background:var(--accent);border-color:var(--accent);color:#04160c}.soon{color:#7890a6}
-    .bonus{margin-top:20px;border:1px solid #1b5a40;border-radius:17px;background:linear-gradient(135deg,#102a22,#0d1d2a);padding:20px;display:flex;align-items:center;justify-content:space-between;gap:20px}.bonus-left{display:flex;align-items:center;gap:13px}.bonus-icon{width:46px;height:46px;border-radius:13px;background:rgba(32,200,120,.12);display:grid;place-items:center;font-size:23px}.bonus h3{margin:0 0 5px;font-size:16px}.bonus p{margin:0;color:#8eafa2;font-size:11px;line-height:1.5}.bonus-amount{font-size:27px;font-weight:950;color:var(--accent);white-space:nowrap}
-    .footer{text-align:center;color:#637b91;font-size:10px;padding:25px 0 8px}.footer strong{color:#849bb0}
-    .mobile-nav{display:none}
-    @media(max-width:920px){.games{grid-template-columns:repeat(2,1fr)}.hero h1{font-size:37px}}
-    @media(max-width:620px){body{background:#07111f}.app{padding:0 11px 78px}.header{height:62px}.brand-mark{width:35px;height:35px;border-radius:10px;font-size:18px}.brand-name{font-size:16px}.brand-sub{display:none}.wallet-mini{display:none}.profile{width:36px;height:36px}.hero{border-radius:17px;padding:23px 19px;min-height:260px;margin-bottom:12px}.eyebrow{font-size:10px;margin-bottom:11px}.hero h1{font-size:30px;line-height:1.08;letter-spacing:-.4px}.hero p{font-size:12px;line-height:1.6}.hero-actions{margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:8px}.btn{width:100%;padding:11px 9px;font-size:11px}.account{grid-template-columns:1fr 1fr;gap:8px;margin-bottom:22px}.account-card{padding:12px}.account-card.user-card{grid-column:1/-1}.account-card .value{font-size:16px}.account-card.user-card .value{font-size:13px}.auth-line{font-size:10px}.section-title{margin-bottom:10px}.section-title h2{font-size:18px}.section-title span{font-size:10px}.games{grid-template-columns:repeat(2,1fr);gap:8px}.game{min-height:157px;padding:13px;border-radius:14px}.game-icon{width:39px;height:39px;border-radius:10px;font-size:19px}.game h3{font-size:14px;margin:10px 0 5px}.game p{font-size:10px;line-height:1.45}.game-bottom{padding-top:9px}.game-button{padding:8px;font-size:9px}.bonus{padding:15px;gap:10px;border-radius:14px}.bonus-left{gap:10px}.bonus-icon{width:39px;height:39px;font-size:19px}.bonus h3{font-size:14px}.bonus p{font-size:9px}.bonus-amount{font-size:20px}.mobile-nav{position:fixed;left:0;right:0;bottom:0;height:62px;background:rgba(7,17,31,.97);border-top:1px solid #1a3046;display:grid;grid-template-columns:repeat(4,1fr);z-index:100;padding-bottom:env(safe-area-inset-bottom)}.mobile-nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;color:#72889d;font-size:9px;gap:3px}.mobile-nav a span{font-size:19px;line-height:1}.mobile-nav a.active{color:var(--accent)}}
+    :root {
+      color-scheme: dark;
+      --bg: #07111f;
+      --panel: #0d1b2b;
+      --border: #23384e;
+      --text: #f1f6fc;
+      --muted: #a5b7c9;
+      --accent: #35dc91;
+      --danger: #ff8a98;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 85% 0%, #14344a 0, transparent 45%),
+        var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; cursor: pointer; }
+    button:disabled { cursor: wait; opacity: .6; }
+    [hidden] { display: none !important; }
+
+    :focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 5px;
+    }
+
+    .skip-link {
+      position: fixed;
+      top: -100px;
+      left: 16px;
+      z-index: 300;
+      background: var(--accent);
+      color: #062318;
+      padding: 12px;
+      border-radius: 10px;
+    }
+    .skip-link:focus { top: 12px; }
+
+    .app {
+      max-width: 1140px;
+      margin: auto;
+      padding: 0 24px 35px;
+    }
+
+    .header {
+      min-height: 88px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: linear-gradient(140deg, #35dc91, #14895b);
+      font-size: 23px;
+    }
+    .brand strong { display: block; font-size: 18px; }
+    .brand small { color: var(--muted); font-size: 12px; }
+    .header-actions { display: flex; align-items: center; gap: 20px; }
+    .history-link { font-size: 14px; color: var(--muted); }
+    .profile {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #39536c;
+      border-radius: 50%;
+      background: #183149;
+      font-weight: 800;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      align-items: center;
+      gap: 24px;
+      padding: 44px;
+      border: 1px solid #2a4658;
+      border-radius: 26px;
+      background: linear-gradient(120deg, #102c35, #0e2033 65%, #15344a);
+    }
+    .hero-content { position: relative; z-index: 1; }
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: #a5f4ce;
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: 1.5px;
+    }
+    h1 {
+      margin: 0 0 16px;
+      font-size: clamp(32px, 5vw, 54px);
+      line-height: 1.08;
+      letter-spacing: -1.5px;
+    }
+    h1 span { color: var(--accent); }
+    .hero p { max-width: 470px; margin: 0; color: #b5c8d6; }
+    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 26px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 11px 18px;
+      border: 1px solid #385068;
+      border-radius: 12px;
+      background: #152c40;
+      color: var(--text);
+      font-weight: 750;
+      font-size: 14px;
+    }
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #052719;
+    }
+    .btn-primary:hover { background: #70edb1; }
+
+    .pitch {
+      position: relative;
+      min-height: 210px;
+      border: 2px solid #54867e;
+      border-radius: 18px;
+      background: repeating-linear-gradient(
+        90deg, #17453f66 0 40px, #22605255 40px 80px
+      );
+      transform: rotate(-7deg);
+      display: grid;
+      place-items: center;
+    }
+    .pitch::before {
+      content: "";
+      position: absolute;
+      height: 100%;
+      left: 50%;
+      border-left: 2px solid #54867e;
+    }
+    .pitch::after {
+      content: "";
+      position: absolute;
+      width: 90px;
+      height: 90px;
+      border: 2px solid #54867e;
+      border-radius: 50%;
+    }
+    .pitch span {
+      position: relative;
+      z-index: 1;
+      font-size: 72px;
+      filter: drop-shadow(0 12px 15px #0008);
+    }
+
+    #account, #games { scroll-margin-top: 24px; }
+    .account { margin: 24px 0 32px; }
+    .account-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .account-card {
+      padding: 19px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      min-width: 0;
+    }
+    .label { display: block; color: var(--muted); font-size: 12px; }
+    .value {
+      display: block;
+      margin-top: 7px;
+      font-size: 21px;
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+    .bonus-value { color: var(--accent); }
+    #userName { font-size: 18px; }
+    .auth-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 12px 2px 0;
+    }
+    .auth-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      flex: 1;
+      min-width: 180px;
+    }
+    .status-dot {
+      flex-shrink: 0;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #e5ba65;
+    }
+    .status-dot.ok { background: var(--accent); }
+    .status-dot.bad { background: var(--danger); }
+    .retry { min-height: 44px; padding: 8px 14px; font-size: 12px; }
+
+    .section-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    h2 { font-size: 23px; margin: 0; }
+    .section-heading p { color: var(--muted); font-size: 13px; margin: 0; }
+
+    .games {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .game {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      padding: 20px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: linear-gradient(145deg, #14283c, #0c1a2a);
+    }
+    a.game { transition: transform .18s, border-color .18s; }
+    a.game:hover { transform: translateY(-4px); border-color: var(--accent); }
+    .game.featured {
+      background: linear-gradient(145deg, #123d32, #102431);
+      border-color: #32765b;
+    }
+    .game-art {
+      display: grid;
+      place-items: center;
+      height: 110px;
+      margin-bottom: 18px;
+      border-radius: 14px;
+      font-size: 56px;
+      background: radial-gradient(circle, #35dc9126, transparent 75%);
+    }
+    .bingo .game-art { background: radial-gradient(circle, #ad85ff33, transparent 75%); }
+    .keno .game-art { background: radial-gradient(circle, #56b9ff33, transparent 75%); }
+    .lottery .game-art { background: radial-gradient(circle, #ffc25b33, transparent 75%); }
+    .game h3 { margin: 0 0 8px; font-size: 18px; }
+    .game p { margin: 0 0 22px; color: var(--muted); font-size: 13px; }
+    .game-action {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: auto;
+      min-height: 44px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #1a3045;
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .featured .game-action { background: var(--accent); color: #052719; }
+    .coming { color: #bccbda; }
+
+    .notice {
+      margin-top: 24px;
+      padding: 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      border: 1px solid var(--border);
+      background: #0d1c2b;
+      border-radius: 16px;
+    }
+    .notice-icon {
+      flex-shrink: 0;
+      padding: 6px 9px;
+      border: 1px solid #496077;
+      border-radius: 9px;
+      font-weight: 800;
+    }
+    .notice h2 { font-size: 15px; margin: 0 0 5px; }
+    .notice p { margin: 0; color: var(--muted); font-size: 12px; }
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 26px 2px 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .mobile-nav { display: none; }
+
+    @media (max-width: 900px) {
+      .games { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .hero { padding: 30px; }
+    }
+
+    @media (max-width: 620px) {
+      .app { padding: 0 14px calc(92px + env(safe-area-inset-bottom, 0px)); }
+      .header { min-height: 74px; }
+      .brand strong { font-size: 16px; }
+      .brand small { font-size: 10px; }
+      .brand-mark { width: 38px; height: 38px; }
+      .history-link { display: none; }
+      .hero { grid-template-columns: 1fr; padding: 26px 22px; border-radius: 20px; }
+      .pitch { display: none; }
+      .hero p { font-size: 14px; }
+      .hero-actions { gap: 8px; }
+      .hero-actions .btn { flex: 1; padding: 11px 10px; font-size: 12px; }
+      .account { margin-top: 16px; }
+      .account-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+      .account-card { padding: 15px; }
+      .user-card { grid-column: 1 / -1; }
+      .value { font-size: 19px; }
+      .section-heading { align-items: flex-start; }
+      h2 { font-size: 21px; }
+      .section-heading p { font-size: 11px; padding-top: 5px; }
+      .games { gap: 10px; }
+      .game { padding: 14px; border-radius: 16px; }
+      .game-art { height: 84px; font-size: 43px; margin-bottom: 12px; }
+      .game h3 { font-size: 16px; }
+      .game p { font-size: 12px; margin-bottom: 16px; }
+      .game-action { padding: 9px; font-size: 11px; }
+      .footer { flex-direction: column; gap: 5px; }
+      .mobile-nav {
+        position: fixed;
+        z-index: 100;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        background: #091624f5;
+        border-top: 1px solid #2a4056;
+        backdrop-filter: blur(16px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      .mobile-nav a {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        min-height: 64px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .mobile-nav a span { font-size: 21px; line-height: 1; }
+      .mobile-nav a[aria-current] { color: var(--accent); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      a.game { transition: none; }
+      a.game:hover { transform: none; }
+    }
   </style>
 </head>
+
 <body>
-  <main class="app">
+  <a class="skip-link" href="#games">Skip to games</a>
+
+  <div class="app">
     <header class="header">
-      <a class="brand" href="/">
-        <div class="brand-mark">🎯</div>
-        <div><div class="brand-name">Ethiopia Betting</div><div class="brand-sub">Play · Predict · Win</div></div>
+      <a class="brand" href="/" aria-label="Ethiopia Betting home">
+        <span class="brand-mark" aria-hidden="true">🎯</span>
+        <span>
+          <strong>Ethiopia Betting</strong>
+          <small>Sports &amp; games</small>
+        </span>
       </a>
-      <div class="header-right">
-        <div class="wallet-mini"><small>Balance</small><strong id="topBalance">0.00 ETB</strong></div>
-        <div class="profile" id="profileLetter">T</div>
+      <div class="header-actions">
+        <a class="history-link" href="/history.html">Betting history</a>
+        <a class="profile" href="#account" aria-label="View your account">
+          <span id="profileLetter">?</span>
+        </a>
       </div>
     </header>
 
-    <section class="hero">
-      <div class="hero-content">
-        <div class="eyebrow"><span class="dot"></span> TELEGRAM BETTING PLATFORM</div>
-        <h1>Play. Predict.<br><span>Win.</span></h1>
-        <p>Welcome to Ethiopia Betting — enjoy exciting games, football predictions and entertainment from one simple platform.</p>
-        <div class="hero-actions">
-          <a class="btn btn-primary" href="/betting.html">⚽ Play Football</a>
-          <a class="btn btn-secondary" href="#games">🎮 View Games</a>
+    <main>
+      <section class="hero" aria-labelledby="welcomeTitle">
+        <div class="hero-content">
+          <span class="eyebrow">TELEGRAM MINI APP</span>
+          <h1 id="welcomeTitle">Your games.<br><span>One place.</span></h1>
+          <p>Explore football events and betting markets, view your wallet,
+             and keep track of your account.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="/betting.html">⚽ Open Football</a>
+            <a class="btn" href="#games">Explore Games</a>
+          </div>
         </div>
-      </div>
-    </section>
+        <div class="pitch" aria-hidden="true"><span>⚽</span></div>
+      </section>
 
-    <section class="account" aria-label="Account">
-      <div class="account-card"><div class="label">Balance</div><div class="value" id="cashBalance">0.00 ETB</div></div>
-      <div class="account-card bonus-card"><div class="label">Bonus Balance</div><div class="value" id="bonusBalance">0.00 ETB</div></div>
-      <div class="account-card user-card"><div class="label">Account</div><div class="value" id="userName">Test Player</div></div>
-      <div class="auth-line"><span class="status-dot" id="statusDot"></span><span id="authNote">Connecting to Telegram…</span></div>
-    </section>
+      <section class="account" id="account" aria-label="Your account">
+        <div class="account-grid" id="accountDetails" aria-busy="true">
+          <div class="account-card">
+            <span class="label">Available balance</span>
+            <strong class="value" id="cashBalance">—</strong>
+          </div>
+          <div class="account-card">
+            <span class="label">Bonus balance</span>
+            <strong class="value bonus-value" id="bonusBalance">—</strong>
+          </div>
+          <div class="account-card user-card">
+            <span class="label">Your account</span>
+            <strong class="value" id="userName">Connecting…</strong>
+          </div>
+        </div>
 
-    <section id="games">
-      <div class="section-title"><h2>Games</h2><span>Choose your game</span></div>
-      <div class="games">
-        <a class="game featured" href="/betting.html"><div class="game-icon">⚽</div><h3>Football Betting</h3><p>Upcoming events, markets, odds and accumulator bets.</p><div class="game-bottom"><div class="game-button">Open Betting <span>→</span></div></div></a>
-        <div class="game"><div class="game-icon">🔢</div><h3>Keno</h3><p>Pick numbers and test your luck.</p><div class="game-bottom"><div class="game-button soon">Coming Soon <span>•</span></div></div></div>
-        <div class="game"><div class="game-icon">🎟️</div><h3>Lucky Draw</h3><p>Enter the draw and wait for the result.</p><div class="game-bottom"><div class="game-button soon">Coming Soon <span>•</span></div></div></div>
-        <div class="game"><div class="game-icon">💣</div><h3>Mines</h3><p>Reveal safe positions and manage your risk.</p><div class="game-bottom"><div class="game-button soon">Coming Soon <span>•</span></div></div></div>
-        <div class="game"><div class="game-icon">⬆️</div><h3>High / Low</h3><p>Predict whether the next number is high or low.</p><div class="game-bottom"><div class="game-button soon">Coming Soon <span>•</span></div></div></div>
-        <div class="game"><div class="game-icon">🎯</div><h3>Number Pick</h3><p>Choose a number and predict the result.</p><div class="game-bottom"><div class="game-button soon">Coming Soon <span>•</span></div></div></div>
-        <div class="game"><div class="game-icon">🎱</div><h3>Bingo</h3><p>Play a fast and exciting bingo game.</p><div class="game-bottom"><div class="game-button soon">Coming Soon <span>•</span></div></div></div>
-        <div class="game"><div class="game-icon">🏆</div><h3>Jackpot</h3><p>Special jackpot events with larger prizes.</p><div class="game-bottom"><div class="game-button soon">Coming Soon <span>•</span></div></div></div>
-      </div>
-    </section>
+        <div class="auth-row">
+          <div class="auth-status" role="status" aria-live="polite">
+            <span class="status-dot" id="statusDot" aria-hidden="true"></span>
+            <span id="authNote">Connecting to Telegram…</span>
+          </div>
+          <button class="btn retry" id="retryAuth" type="button" hidden>
+            Retry connection
+          </button>
+        </div>
+      </section>
 
-    <section class="bonus">
-      <div class="bonus-left"><div class="bonus-icon">🎁</div><div><h3>50 ETB Signup Bonus</h3><p>Your bonus is stored separately. Eligible game winnings become withdrawable according to platform rules.</p></div></div>
-      <div class="bonus-amount">50 ETB</div>
-    </section>
+      <section id="games" aria-labelledby="gamesTitle">
+        <div class="section-heading">
+          <h2 id="gamesTitle">Explore games</h2>
+          <p>Find your next game</p>
+        </div>
 
-    <footer class="footer"><strong>Ethiopia Betting</strong> · Telegram Mini App</footer>
-  </main>
+        <div class="games">
+          <a class="game featured" href="/betting.html">
+            <div class="game-art" aria-hidden="true">⚽</div>
+            <h3>Football</h3>
+            <p>Explore events, odds and available betting markets.</p>
+            <div class="game-action">Open Football <span aria-hidden="true">↗</span></div>
+          </a>
 
-  <nav class="mobile-nav" aria-label="Mobile navigation">
-    <a class="active" href="/"><span>⌂</span>Home</a>
-    <a href="/betting.html"><span>⚽</span>Betting</a>
-    <a href="#games"><span>🎮</span>Games</a>
-    <a href="#account" id="accountNav"><span>👤</span>Account</a>
+          <article class="game bingo">
+            <div class="game-art" aria-hidden="true">🎱</div>
+            <h3>Bingo</h3>
+            <p>A dedicated bingo experience is planned for this platform.</p>
+            <div class="game-action coming">Coming soon</div>
+          </article>
+
+          <article class="game keno">
+            <div class="game-art" aria-hidden="true">🔢</div>
+            <h3>Keno</h3>
+            <p>Number selections and draw results, once available.</p>
+            <div class="game-action coming">Coming soon</div>
+          </article>
+
+          <article class="game lottery">
+            <div class="game-art" aria-hidden="true">🎟️</div>
+            <h3>Weekly Lottery</h3>
+            <p>Draw schedules and entry details will appear at launch.</p>
+            <div class="game-action coming">Coming soon</div>
+          </article>
+        </div>
+      </section>
+
+      <aside class="notice" aria-labelledby="responsibleTitle">
+        <span class="notice-icon" aria-hidden="true">18+</span>
+        <div>
+          <h2 id="responsibleTitle">Play responsibly</h2>
+          <p>For adults of legal gambling age in their location only.
+             Winnings are not guaranteed. Set a budget, take breaks,
+             and never bet money you cannot afford to lose.</p>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="footer">
+      <span>Ethiopia Betting · Telegram Mini App</span>
+      <a href="/history.html">View betting history →</a>
+    </footer>
+  </div>
+
+  <nav class="mobile-nav" aria-label="Main navigation">
+    <a href="/" aria-current="page"><span aria-hidden="true">⌂</span>Home</a>
+    <a href="/betting.html"><span aria-hidden="true">⚽</span>Football</a>
+    <a href="/history.html"><span aria-hidden="true">▤</span>History</a>
+    <a href="#account"><span aria-hidden="true">👤</span>Account</a>
   </nav>
 
-<script>
-  const tg = window.Telegram?.WebApp || null;
-  const money = v => (Number(v) || 0).toFixed(2) + " ETB";
-  const setText = (id, value) => { const el=document.getElementById(id); if(el) el.textContent=value; };
-  function setAuth(ok, name, note){
-    setText("userName", name || "Test Player");
-    setText("authNote", note);
-    const dot=document.getElementById("statusDot");
-    if(dot) dot.className="status-dot " + (ok ? "ok" : "bad");
-    const letter=(name||"T").trim().charAt(0).toUpperCase() || "T";
-    setText("profileLetter", letter);
-  }
-  async function authenticate(){
-    if(!tg){ setAuth(false,"Test Player","Telegram Mini App data is not available in a normal browser."); return; }
-    try{ tg.ready(); tg.expand(); }catch(e){}
-    const initData=tg.initData || "";
-    if(!initData){ setAuth(false,"Test Player","Open Ethiopia Betting from the Telegram bot button."); return; }
-    try{
-      const response=await fetch("/api/telegram/auth",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({initData})});
-      const data=await response.json();
-      if(!response.ok || !data.success || !data.user) throw new Error(data.message || "Telegram authentication failed.");
-      const user=data.user;
-      setText("cashBalance",money(user.balance));
-      setText("bonusBalance",money(user.bonus_balance));
-      setText("topBalance",money(user.balance));
-      const first=tg.initDataUnsafe?.user?.first_name || "Telegram User";
-      const name=user.name || first;
-      setAuth(true,name,user.username ? "@"+user.username+" · Telegram connected" : "Telegram account connected to your betting wallet.");
-    }catch(error){ setAuth(false,"Test Player",error.message || "Please reopen the app from Telegram."); }
-  }
-  const accountNav=document.getElementById("accountNav");
-  if(accountNav) accountNav.addEventListener("click",()=>window.scrollTo({top:0,behavior:"smooth"}));
-  authenticate();
-</script>
+  <script>
+    (() => {
+      "use strict";
+
+      const tg = window.Telegram?.WebApp || null;
+      const retryButton = document.getElementById("retryAuth");
+      const accountDetails = document.getElementById("accountDetails");
+      let authenticating = false;
+
+      const formatter = new Intl.NumberFormat("en-ET", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+
+      function money(value) {
+        if (
+          value === null ||
+          value === undefined ||
+          (typeof value !== "number" && typeof value !== "string") ||
+          (typeof value === "string" && value.trim() === "")
+        ) return "—";
+
+        const amount = Number(value);
+        return Number.isFinite(amount)
+          ? formatter.format(amount) + " ETB"
+          : "—";
+      }
+
+      function setText(id, value) {
+        document.getElementById(id).textContent = value;
+      }
+
+      function setStatus(state, note) {
+        document.getElementById("statusDot").className =
+          "status-dot" + (state === "ok" ? " ok" : state === "error" ? " bad" : "");
+        setText("authNote", note);
+      }
+
+      function clearAccount(name) {
+        setText("cashBalance", "—");
+        setText("bonusBalance", "—");
+        setText("userName", name);
+        setText("profileLetter", "?");
+      }
+
+      async function authenticate() {
+        if (authenticating) return;
+
+        authenticating = true;
+        accountDetails.setAttribute("aria-busy", "true");
+        retryButton.hidden = true;
+        retryButton.disabled = true;
+        clearAccount("Connecting…");
+        setStatus("pending", "Connecting to Telegram…");
+
+        let timeoutId;
+
+        try {
+          if (tg) {
+            try {
+              tg.ready();
+              tg.expand();
+            } catch {
+              // Authentication can still proceed if a UI method is unavailable.
+            }
+          }
+
+          const initData = tg?.initData || "";
+
+          if (!initData) {
+            clearAccount("Not connected");
+            setStatus(
+              "error",
+              "Open Ethiopia Betting using the Telegram bot’s Mini App button."
+            );
+            return;
+          }
+
+          const controller = new AbortController();
+          timeoutId = window.setTimeout(() => controller.abort(), 15000);
+
+          const response = await fetch("/api/telegram/auth", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json"
+            },
+            body: JSON.stringify({ initData }),
+            signal: controller.signal
+          });
+
+          let data;
+          try {
+            data = await response.json();
+          } catch (error) {
+            if (error.name === "AbortError") throw error;
+            throw new Error("The server returned an unexpected response. Please retry.");
+          }
+
+          if (!response.ok || !data?.success || !data?.user) {
+            throw new Error(
+              response.status === 401 || response.status === 403
+                ? "Your Telegram session could not be verified. Reopen the app from the bot."
+                : "Unable to connect your account. Please try again."
+            );
+          }
+
+          const user = data.user;
+          const name =
+            typeof user.name === "string" && user.name.trim()
+              ? user.name.trim()
+              : "Telegram User";
+
+          setText("cashBalance", money(user.balance));
+          setText("bonusBalance", money(user.bonus_balance));
+          setText("userName", name);
+          setText("profileLetter", Array.from(name)[0].toUpperCase());
+
+          const username =
+            typeof user.username === "string"
+              ? user.username.trim().replace(/^@/, "")
+              : "";
+
+          setStatus(
+            "ok",
+            username
+              ? "@" + username + " · Telegram connected"
+              : "Telegram account connected."
+          );
+        } catch (error) {
+          clearAccount("Not connected");
+
+          const note =
+            error.name === "AbortError"
+              ? "Connection timed out. Please try again."
+              : error instanceof TypeError
+                ? "Unable to reach the server. Check your connection and retry."
+                : error.message || "Connection failed. Please try again.";
+
+          setStatus("error", note);
+          retryButton.hidden = false;
+        } finally {
+          window.clearTimeout(timeoutId);
+          authenticating = false;
+          retryButton.disabled = false;
+          accountDetails.setAttribute("aria-busy", "false");
+        }
+      }
+
+      retryButton.addEventListener("click", authenticate);
+      authenticate();
+    })();
+  </script>
 </body>
 </html>
