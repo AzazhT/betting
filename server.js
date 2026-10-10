@@ -382,16 +382,17 @@ function normalizeEvent(event, index = 0) {
     `event-${index}`
   );
 
+  // ሊግ ወይም ውድድር ስሙን በትክክል ለማምጣት የተደረገ ማስተካከያ
   const league = textValue(
-    event.league,
-    event.competition,
-    event.tournament,
     event.league_name,
     event.competition_name,
     event.tournament_name,
     event.league?.name,
-    event.competition?.name
-  ) || "Football";
+    event.competition?.name,
+    event.league,
+    event.competition,
+    event.tournament
+  ) || "Premier League";
 
   const startTime = firstValue(
     event.start_time, event.startTime, event.starts_at,
@@ -720,7 +721,7 @@ app.get("/", (req, res) => {
 });
 
 // ==================================================
-// ERROR HANDLERS (Prevent App Exit)
+// ERROR HANDLERS
 // ==================================================
 
 process.on("uncaughtException", (err) => {
