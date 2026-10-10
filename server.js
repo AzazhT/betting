@@ -355,6 +355,30 @@ app.get("/api/odds/:eventId", async (req, res) => {
   }
 });
 
+// Fetch the BSD odds feed for one event.
+// Diagnostic endpoint: it shows the raw response returned by BSD.
+app.get("/api/odds-feed/:eventId", async (req, res) => {
+  try {
+    const eventId = encodeURIComponent(req.params.eventId);
+    const params = new URLSearchParams({ event_id: eventId, limit: "100" });
+    const data = await fetchBSD(`${BSD_BASE_URL}/odds/?${params.toString()}`);
+
+    res.json({
+      success: true,
+      source: "BSD",
+      eventId: req.params.eventId,
+      data
+    });
+  } catch (error) {
+    console.error("BSD ODDS FEED ERROR:", error.message);
+    res.status(502).json({
+      success: false,
+      error: "Could not load odds feed from BSD.",
+      details: error.status ? `BSD HTTP ${error.status}` : "Request failed"
+    });
+  }
+});
+
 app.get("/api/wallet", (req, res) => {
   const wallet = getWallet(req.query.userId || "demo");
   res.json({
@@ -452,4 +476,5 @@ app.listen(PORT, () => {
   console.log(`BSD API configured: ${Boolean(BSD_API_KEY)}`);
   console.log(`BSD events endpoint: ${BSD_API_URL}`);
   console.log(`BSD live endpoint: ${BSD_LIVE_URL}`);
+  console.log(`BSD odds endpoint: ${BSD_BASE_URL}/odds/`);
 });
