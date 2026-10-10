@@ -266,59 +266,49 @@ function leagueName(league) {
   );
 }
 
-app.get("/api/events", async (req, res) => {
- 
-const oddsCache = new Map();
-
-async function getEventOdds(eventId) {
-  const id = String(eventId);
-  const cached = oddsCache.get(id);
-
-  // Cache results for 5 minutes to reduce API requests.
-  if (cached && Date.now() - cached.time < 5 * 60 * 1000) {
-    return cached.odds;
-  }
-
-  const emptyOdds = {
-    "1": null,
-    X: null,
-    "2": null,
-    over: null,
-    under: null,
-    bttsYes: null,
-    bttsNo: null
-  };
-
+app.get("/api/odds/:eventId", async (req, res) => {
   try {
-    const data = await fetchBSD(
-      `${BSD_BASE_URL}/events/${encodeURIComponent(id)}/odds/`
-    );
+    const eventId = String(req.params.eventId);
 
-    const source = data?.odds || {};
-
-    const odds = {
-      "1": numberValue(source.home_win),
-      X: numberValue(source.draw),
-      "2": numberValue(source.away_win),
-      over: numberValue(source.over_25_goals),
-      under: numberValue(source.under_25_goals),
-      bttsYes: numberValue(source.btts_yes),
-      bttsNo: numberValue(source.btts_no)
-    };
-
-    oddsCache.set(id, {
-      time: Date.now(),
-      odds
+    const params = new URLSearchParams({
+      event_id: eventId,
+      limit: "100"
     });
 
-    return odds;
-  } catch (error) {
-    // Keep the match visible even if its odds are unavailable.
-    console.error(`Odds unavailable for event ${id}:`, error.message);
-    return cached?.odds || emptyOdds;
-  }
-}
+    const data = await fetchBSD(
+      `${BSD_BASE_URL}/odds/?${params.toString()}`
+    );
 
+    const results = Array.isArray(data.results)
+      ? data.results
+      : [];
+
+    res.json({
+      success: true,
+      source: "BSD",
+      eventId,
+      count: results.length,
+      odds: results.map(item => ({
+        market: item.market,
+        outcome: item.outcome,
+        outcomeName: item.outcome_name,
+        decimalOdds: item.decimal_odds,
+        bookmaker: item.bookmaker_name,
+        updatedAt: item.updated_at
+      }))
+    });
+  } catch (error) {
+    console.error("BSD ODDS ERROR:", error.message);
+
+    res.status(502).json({
+      success: false,
+      error: "Could not load odds",
+      details: error.status
+        ? `BSD HTTP ${error.status}`
+        : "Request failed"
+    });
+  }
+});
 app.get("/api/events", async (req, res) => {
   try {
     const data = await fetchBSD(BSD_API_URL);
