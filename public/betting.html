@@ -1402,133 +1402,135 @@
      EVENT CARD
      ======================================================= */
 
-  function eventCard(event) {
+ 
+/* =======================================================
+   EVENT CARD
+   ======================================================= */
 
-    const odds =
-      event.odds || {};
+function eventCard(event) {
+  const odds = event.odds || {};
 
-    const selected1 =
-      isSelected(
-        event.id,
-        "1"
-      );
+  // BSD API Over/Under odds
+  const over25 = odds.over25 ?? odds.over ?? null;
+  const under25 = odds.under25 ?? odds.under ?? null;
 
-    const selectedX =
-      isSelected(
-        event.id,
-        "X"
-      );
+  // Current selections
+  const selected1 = isSelected(event.id, "1");
+  const selectedX = isSelected(event.id, "X");
+  const selected2 = isSelected(event.id, "2");
+  const selectedOver = isSelected(event.id, "over");
+  const selectedUnder = isSelected(event.id, "under");
+  const selectedYes = isSelected(event.id, "bttsYes");
+  const selectedNo = isSelected(event.id, "bttsNo");
 
-    const selected2 =
-      isSelected(
-        event.id,
-        "2"
-      );
+  return `
+    <div class="event">
 
-    const selectedOver =
-      isSelected(
-        event.id,
-        "over"
-      );
+      <div class="league">
+        🏆 ${escapeHtml(event.league || "Football")}
+      </div>
 
-    const selectedUnder =
-      isSelected(
-        event.id,
-        "under"
-      );
+      <div class="event-head">
+        <div class="teams">
 
-    const selectedYes =
-      isSelected(
-        event.id,
-        "bttsYes"
-      );
+          <div class="team">
+            <span class="team-name">
+              ${escapeHtml(event.home?.name || "Home")}
+            </span>
 
-    const selectedNo =
-      isSelected(
-        event.id,
-        "bttsNo"
-      );
+            ${
+              event.live
+                ? `<span class="score">${event.score?.home ?? 0}</span>`
+                : ""
+            }
+          </div>
 
+          <div class="team">
+            <span class="team-name">
+              ${escapeHtml(event.away?.name || "Away")}
+            </span>
 
-    return `
+            ${
+              event.live
+                ? `<span class="score">${event.score?.away ?? 0}</span>`
+                : ""
+            }
+          </div>
 
-      <div class="event">
-
-        <div class="league">
-
-          🏆
-          ${escapeHtml(
-            event.league ||
-            "Football"
-          )}
-
-        </div>
-
-
-        <div class="event-head">
-
-          <div class="teams">
-
-            <div class="team">
-
-              <span class="team-name">
-                ${escapeHtml(
-                  event.home?.name ||
-                  "Home"
-                )}
-              </span>
-
-              ${
-                event.live
-                  ? `<span class="score">
-                      ${event.score?.home ?? 0}
-                    </span>`
-                  : ""
-              }
-
-            </div>
-
-
-            <div class="team">
-
-              <span class="team-name">
-                ${escapeHtml(
-                  event.away?.name ||
-                  "Away"
-                )}
-              </span>
-
-              ${
-                event.live
-                  ? `<span class="score">
-                      ${event.score?.away ?? 0}
-                    </span>`
-                  : ""
-              }
-
-            </div>
-
-
-            <div
-              class="match-status
-                ${event.live ? "live" : ""}"
-            >
-
-              ${
-                event.live
-                  ? "🔴 LIVE"
-                  : escapeHtml(
-                      formatDate(
-                        event.startTime
-                      )
-                    )
-              }
-
-            </div>
-
+          <div class="match-status ${event.live ? "live" : ""}">
+            ${
+              event.live
+                ? "🔴 LIVE"
+                : escapeHtml(formatDate(event.startTime))
+            }
           </div>
 
         </div>
+      </div>
+
+      <div class="markets">
+
+        ${oddButton(
+          event,
+          "1",
+          "1",
+          odds["1"],
+          selected1
+        )}
+
+        ${oddButton(
+          event,
+          "X",
+          "X",
+          odds.X,
+          selectedX
+        )}
+
+        ${oddButton(
+          event,
+          "2",
+          "2",
+          odds["2"],
+          selected2
+        )}
+
+        ${oddButton(
+          event,
+          "Over 2.5",
+          "over",
+          over25,
+          selectedOver
+        )}
+
+        ${oddButton(
+          event,
+          "Under 2.5",
+          "under",
+          under25,
+          selectedUnder
+        )}
+
+        ${oddButton(
+          event,
+          "BTTS Yes",
+          "bttsYes",
+          odds.bttsYes,
+          selectedYes
+        )}
+
+        ${oddButton(
+          event,
+          "BTTS No",
+          "bttsNo",
+          odds.bttsNo,
+          selectedNo
+        )}
+
+      </div>
+
+    </div>
+  `;
+}
 
 
         <div class="markets">
