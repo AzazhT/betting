@@ -726,7 +726,8 @@
         if (!event.startTime) return false;
         const now = new Date();
         const date = new Date(event.startTime);
-        return date.toDateString() === now.toDateString();
+        // የዛሬው ቀን ሆኖ ከአሁን ጀምሮ ያሉትን ብቻ ማሳየት
+        return date.toDateString() === now.toDateString() && date >= now;
       }
 
       if (currentFilter === "tomorrow") {
@@ -745,7 +746,8 @@
     const container = document.getElementById("events");
 
     if (currentFilter === "leagues" && selectedLeague === "all") {
-      const uniqueLeagues = [...new Set(events.map(e => e.league || "Football"))];
+      // 'Football' የሚለውን አጠቃላይ ቃል በማስወገድ ትክክለኛዎቹን ሊጎች ብቻ ማሳየት
+      const uniqueLeagues = [...new Set(events.map(e => e.league).filter(l => l && l !== "Football"))];
       
       container.innerHTML = `
         <div style="padding: 10px;">
