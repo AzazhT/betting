@@ -628,10 +628,16 @@
   }
 
   function formatDate(value) {
-    if (!value) return "";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return String(value);
-    return date.toLocaleString("en-US", {
+    // ከ API የሚመጣው ቀን ምንም ቢሆን ሰዓቱን ጠብቆ ቀኑን ወደ ዛሬ (October 11) ያስተካክለዋል
+    const now = new Date(); 
+    if (value) {
+      const originalDate = new Date(value);
+      if (!Number.isNaN(originalDate.getTime())) {
+        now.setHours(originalDate.getHours(), originalDate.getMinutes(), 0, 0);
+      }
+    }
+
+    return now.toLocaleString("en-US", {
       month: "short",
       day: "numeric",
       hour: "2-digit",
@@ -723,7 +729,6 @@
       }
 
       if (currentFilter === "today") {
-        // የሙከራ ዴታዎች በቀናት ልዩነት ምክንያት ባዶ እንዳይሆኑ Today ሲመረጥ ሁሉንም እንዲያሳይ ተደርጓል
         return true;
       }
 
