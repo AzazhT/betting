@@ -1134,8 +1134,19 @@
   }
 
   async function placeBet() {
-    const stake = Number(document.getElementById("stake").value) || 0;
-    if (stake <= 0) {
+    if (selections.length === 0) {
+      showMessage("Please select odds first.", "error");
+      return;
+    }
+
+    if (betType === "combo" && selections.length < 2) {
+      showMessage("Combo needs at least 2 selections.", "error");
+      return;
+    }
+
+    const stake = Number(document.getElementById("stake").value);
+
+    if (!Number.isFinite(stake) || stake <= 0) {
       showMessage("Please enter a valid stake amount.", "error");
       return;
     }
@@ -1145,27 +1156,35 @@
     placeBtn.textContent = "Placing Bet...";
 
     try {
-      const response = await fetch("/api/bets", {
+      const selectionsToSend =
+        betType === "single" ? [selections[0]] : selections;
+
+      const response = await fetch("/api/bet", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify({
           userId,
           betType,
           stake,
-          selections
+          selections: selectionsToSend
         })
       });
 
       const data = await response.json();
-      if (!data.success) {
+
+      if (!response.ok || !data.success) {
         throw new Error(data.error || "Failed to place bet.");
       }
 
       showMessage("Bet placed successfully!", "success");
       selections = [];
+
+      await loadWallet();
       renderEvents();
       updateSlip();
-      loadWallet();
+
     } catch (error) {
       showMessage(error.message || "Failed to place bet.", "error");
     } finally {
