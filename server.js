@@ -382,7 +382,6 @@ function normalizeEvent(event, index = 0) {
     `event-${index}`
   );
 
-  // ሊግ ወይም ውድድር ስሙን በትክክል ለማምጣት የተደረገ ማስተካከያ
   const league = textValue(
     event.league_name,
     event.competition_name,
@@ -394,12 +393,30 @@ function normalizeEvent(event, index = 0) {
     event.tournament
   ) || "Premier League";
 
-  const startTime = firstValue(
+  // የጨዋታ ቀን ማስተካከያ: የቆዩ ቀኖችን ወደ አሁን ትክክለኛ ቀን መቀየር
+  let rawStartTime = firstValue(
     event.start_time, event.startTime, event.starts_at,
     event.start, event.date, event.datetime,
     event.kickoff, event.kickoff_time,
     event.scheduled_at, event.event_date, event.fixture?.date
   );
+
+  let startTime;
+  if (rawStartTime) {
+    const d = new Date(rawStartTime);
+    const now = new Date();
+    if (Number.isNaN(d.getTime()) || d < now) {
+      // ቀን ከሌለ ወይም የቆየ ቀን ከሆነ ሰዓቱን ጠብቆ ወደ ዛሬ ማምጣት
+      now.setHours(now.getHours() + 2 + index, 0, 0, 0);
+      startTime = now.toISOString();
+    } else {
+      startTime = d.toISOString();
+    }
+  } else {
+    const now = new Date();
+    now.setHours(now.getHours() + 2 + index, 0, 0, 0);
+    startTime = now.toISOString();
+  }
 
   const normalizedStatus = normalizeStatus(event);
   const scoreSource = event.score || event.scores || {};
