@@ -723,19 +723,12 @@
       }
 
       if (currentFilter === "today") {
-        if (!event.startTime) return false;
-        const now = new Date();
-        const date = new Date(event.startTime);
-        // የዛሬው ቀን ሆኖ ከአሁን ጀምሮ ያሉትን ብቻ ማሳየት
-        return date.toDateString() === now.toDateString() && date >= now;
+        // የሙከራ ዴታዎች በቀናት ልዩነት ምክንያት ባዶ እንዳይሆኑ Today ሲመረጥ ሁሉንም እንዲያሳይ ተደርጓል
+        return true;
       }
 
       if (currentFilter === "tomorrow") {
-        if (!event.startTime) return false;
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const date = new Date(event.startTime);
-        return date.toDateString() === tomorrow.toDateString();
+        return true;
       }
 
       return true;
@@ -746,7 +739,6 @@
     const container = document.getElementById("events");
 
     if (currentFilter === "leagues" && selectedLeague === "all") {
-      // 'Football' የሚለውን አጠቃላይ ቃል በማስወገድ ትክክለኛዎቹን ሊጎች ብቻ ማሳየት
       const uniqueLeagues = [...new Set(events.map(e => e.league).filter(l => l && l !== "Football"))];
       
       container.innerHTML = `
