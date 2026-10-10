@@ -340,17 +340,47 @@ app.get("/api/live", async (req, res) => {
   }
 });
 app.get("/api/odds/:eventId", async (req, res) => {
+ 
+app.get("/api/odds/:eventId", async (req, res) => {
   try {
-    const eventId = encodeURIComponent(req.params.eventId);
+    const eventId = String(req.params.eventId);
+
+    const params = new URLSearchParams({
+      event_id: eventId,
+      limit: "100"
+    });
+
     const data = await fetchBSD(
-      `${BSD_BASE_URL}/events/${eventId}/odds/`
+      `${BSD_BASE_URL}/odds/?${params.toString()}`
     );
-    res.json({ success: true, odds: data });
+
+    const results = Array.isArray(data.results)
+      ? data.results
+      : [];
+
+    res.json({
+      success: true,
+      source: "BSD",
+      eventId,
+      count: results.length,
+      odds: results.map(item => ({
+        market: item.market,
+        outcome: item.outcome,
+        outcomeName: item.outcome_name,
+        decimalOdds: item.decimal_odds,
+        bookmaker: item.bookmaker_name,
+        updatedAt: item.updated_at
+      }))
+    });
   } catch (error) {
+    console.error("BSD ODDS ERROR:", error.message);
+
     res.status(502).json({
       success: false,
       error: "Could not load odds",
-      details: error.status ? `BSD HTTP ${error.status}` : "Request failed"
+      details: error.status
+        ? `BSD HTTP ${error.status}`
+        : "Request failed"
     });
   }
 });
