@@ -267,10 +267,76 @@ function leagueName(league) {
 }
 
 app.get("/api/events", async (req, res) => {
+ 
+const oddsCache = new Map();
+
+async function getEventOdds(eventId) {
+  const id = String(eventId);
+  const cached = oddsCache.get(id);
+
+  // Cache results for 5 minutes to reduce API requests.
+  if (cached && Date.now() - cached.time < 5 * 60 * 1000) {
+    return cached.odds;
+  }
+
+  const emptyOdds = {
+    "1": null,
+    X: null,
+    "2": null,
+    over: null,
+    under: null,
+    bttsYes: null,
+    bttsNo: null
+  };
+
+  try {
+    const data = await fetchBSD(
+      `${BSD_BASE_URL}/events/${encodeURIComponent(id)}/odds/`
+    );
+
+    const source = data?.odds || {};
+
+    const odds = {
+      "1": numberValue(source.home_win),
+      X: numberValue(source.draw),
+      "2": numberValue(source.away_win),
+      over: numberValue(source.over_25_goals),
+      under: numberValue(source.under_25_goals),
+      bttsYes: numberValue(source.btts_yes),
+      bttsNo: numberValue(source.btts_no)
+    };
+
+    oddsCache.set(id, {
+      time: Date.now(),
+      odds
+    });
+
+    return odds;
+  } catch (error) {
+    // Keep the match visible even if its odds are unavailable.
+    console.error(`Odds unavailable for event ${id}:`, error.message);
+    return cached?.odds || emptyOdds;
+  }
+}
+
+app.get("/api/events", async (req, res) => {
   try {
     const data = await fetchBSD(BSD_API_URL);
     const rawEvents = asArray(data);
     const events = rawEvents.map(normalizeEvent);
+
+    // Limit concurrent requests to avoid overwhelming the API.
+    const batchSize = 5;
+
+    for (let i = 0; i < events.length; i += batchSize) {
+      const batch = events.slice(i, i + batchSize);
+
+      await Promise.all(
+        batch.map(async event => {
+          event.odds = await getEventOdds(event.id);
+        })
+      );
+    }
 
     res.json({
       success: true,
@@ -281,14 +347,18 @@ app.get("/api/events", async (req, res) => {
     });
   } catch (error) {
     console.error("BSD EVENTS ERROR:", error.message);
+
     res.status(502).json({
       success: false,
       error: "Could not load football events from BSD.",
-      details: error.status ? `BSD HTTP ${error.status}` : "Request failed",
+      details: error.status
+        ? `BSD HTTP ${error.status}`
+        : "Request failed",
       events: []
     });
   }
 });
+
 
 app.get("/api/leagues", async (req, res) => {
   try {
