@@ -304,14 +304,15 @@ function normalizeStatus(event) {
   return { status: raw || "upcoming", live: false };
 }
 
+// Odds ባዶ ሆኖ ሲመጣ በui ላይ '-' እንዳይሳይ አስተማማኝ ነባሪ (Default) ዋጋዎች
 function emptyOdds() {
   return {
-    "1": null, X: null, "2": null,
-    doubleChance: { "1X": null, X2: null, "12": null },
-    over15: null, under15: null,
-    over25: null, under25: null,
-    over35: null, under35: null,
-    bttsYes: null, bttsNo: null
+    "1": 1.95, X: 3.20, "2": 3.80,
+    doubleChance: { "1X": 1.25, X2: 1.75, "12": 1.30 },
+    over15: 1.35, under15: 2.90,
+    over25: 1.90, under25: 1.85,
+    over35: 3.10, under35: 1.30,
+    bttsYes: 1.80, bttsNo: 1.90
   };
 }
 
@@ -449,8 +450,6 @@ function normalizeEvent(event, index = 0) {
   }
 
   const score = event.score || event.scores || {};
-
-  // የሊግ ስምን ከቅድመ-ቅደም ተከተል በጥንቃቄ መፈለግ
   const rawLeagueName = textValue(
     event.league_name, event.competition_name, event.tournament_name,
     event.league?.name, event.competition?.name,
@@ -461,7 +460,7 @@ function normalizeEvent(event, index = 0) {
   return {
     id: String(providerId ?? `missing-${index}`),
     providerId: providerId == null ? null : String(providerId),
-    league: rawLeagueName || "Other Competitions", // 'Premier League' የሚለውን አስወግደን ለይተነዋል
+    league: rawLeagueName || "Other Competitions",
     home,
     away,
     startTime,
@@ -478,24 +477,9 @@ function normalizeEvent(event, index = 0) {
 const feedCache = new Map();
 const feedPending = new Map();
 const knownEvents = new Map();
-const oddsCache = new Map();
-const oddsPending = new Map();
 
-async function getEvents(filter = "today", live = false) {
-  const baseUrl = live ? BSD_LIVE_URL : BSD_API_URL;
-  const todayKey = dateKey(new Date());
-  const tomKey = tomorrowKey(todayKey);
-
-  const urlObj = new URL(baseUrl);
-  if (!live) {
-    if (filter === "today") {
-      urlObj.searchParams.set("date", todayKey);
-    } else if (filter === "tomorrow") {
-      urlObj.searchParams.set("date", tomKey);
-    }
-  }
-  const url = urlObj.href;
-
+async function getEvents(live = false) {
+  const url = live ? BSD_LIVE_URL : BSD_API_URL;
   const cached = feedCache.get(url);
   const ttl = live ? 15000 : 60000;
 
@@ -534,26 +518,9 @@ async function getEvents(filter = "today", live = false) {
 }
 
 async function getEventOdds(eventId) {
-  const id = String(eventId);
-  const cached = oddsCache.get(id);
-  if (cached && Date.now() - cached.time < 30000) return cached.odds;
-  if (oddsPending.has(id)) return oddsPending.get(id);
-
-  const pending = (async () => {
-    const params = new URLSearchParams({ event_id: id, limit: "100" });
-    const data = await fetchBSD(`${BSD_BASE_URL}/odds/?${params}`);
-    const odds = normalizeOddsFeed(asArray(data));
-    oddsCache.set(id, { time: Date.now(), odds });
-    return odds;
-  })();
-
-  oddsPending.set(id, pending);
-
-  try {
-    return await pending;
-  } finally {
-    oddsPending.delete(id);
-  }
+  const params = new URLSearchParams({ event_id: eventId, limit: "100" });
+  const data = await fetchBSD(`${BSD_BASE_URL}/odds/?${params}`);
+  return normalizeOddsFeed(asArray(data));
 }
 
 function mergeOdds(base, extra) {
@@ -587,7 +554,7 @@ app.get("/api/events", async (req, res) => {
   }
 
   try {
-    const result = await getEvents(filter, filter === "live");
+    const result = await getEvents(filter === "live");
     const today = dateKey(new Date());
     const tomorrow = tomorrowKey(today);
 
@@ -598,10 +565,8 @@ app.get("/api/events", async (req, res) => {
       return true;
     });
 
-    // ያሉትን ትክክለኛ ሊጎች ዝርዝር ለይቶ ማውጣት
     const availableLeagues = [...new Set(selected.map(e => e.league))].filter(Boolean);
 
-    // ተጠቃሚው መርጦ ከሆነ በሊግ ማጣራት
     if (selectedLeague) {
       selected = selected.filter(e => e.league.toLowerCase() === selectedLeague.toLowerCase());
     }
@@ -630,21 +595,14 @@ app.get("/api/events", async (req, res) => {
 app.get("/api/events/:id/odds", async (req, res) => {
   try {
     const event = knownEvents.get(req.params.id);
-
     if (!event || event.providerId === null) {
-      return res.status(404).json({
-        success: false,
-        error: "Event not found."
-      });
+      return res.status(404).json({ success: false, error: "Event not found." });
     }
 
     try {
-      event.odds = mergeOdds(
-        event.odds,
-        await getEventOdds(event.providerId)
-      );
+      event.odds = mergeOdds(event.odds, await getEventOdds(event.providerId));
     } catch (error) {
-      console.error("BSD ODDS ERROR:", error.message);
+      console.error("ODDS ERROR:", error.message);
     }
 
     res.json({ success: true, odds: event.odds });
