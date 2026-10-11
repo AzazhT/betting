@@ -150,7 +150,22 @@ async function fetchPages(initialUrl) {
     visited.add(url);
 
     const data = await fetchBSD(url);
-    rows.push(...asArray(data));
+    const pageRows = asArray(data);
+
+    if (page === 0) {
+      console.log("BSD FIRST PAGE:", JSON.stringify({
+        responseKeys:
+          data && typeof data === "object" && !Array.isArray(data)
+            ? Object.keys(data)
+            : [],
+        count: data?.count ?? null,
+        next: data?.next ?? data?.pagination?.next ?? data?.links?.next ?? null,
+        returnedRows: pageRows.length,
+        sampleEvents: pageRows.slice(0, 2)
+      }, null, 2));
+    }
+
+    rows.push(...pageRows);
 
     const next = firstValue(
       data?.next,
