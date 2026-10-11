@@ -27,7 +27,6 @@ function integerSetting(value, fallback, min, max) {
     : fallback;
 }
 
-// Change only after reviewing pagination diagnostics.
 const BSD_MAX_PAGES = integerSetting(
   process.env.BSD_MAX_PAGES, 10, 1, 200
 );
@@ -35,7 +34,6 @@ const BSD_TIMEOUT_MS = integerSetting(
   process.env.BSD_TIMEOUT_MS, 15000, 1000, 60000
 );
 
-// Raw samples are logged only when explicitly enabled.
 const BSD_DEBUG = process.env.BSD_DEBUG === "true";
 
 app.disable("x-powered-by");
@@ -135,10 +133,6 @@ function tomorrowKey(today = dateKey(new Date())) {
   return d.toISOString().slice(0, 10);
 }
 
-// Preserves the original assumptions:
-// - Date-only values mean midnight in Addis Ababa.
-// - Datetimes without an offset are interpreted as UTC.
-// Confirm those assumptions against the actual BSD response.
 function normalizeStartTime(value) {
   if (value === undefined || value === null || value === "") return null;
 
@@ -157,9 +151,7 @@ function normalizeStartTime(value) {
     let text = value.trim();
     if (!text) return null;
 
-    if (/^\d{10}(?:\.\d+)?$/.test(text)) {
-      date = new Date(Number(text) * 1000);
-    } else if (/^\d{13}$/.test(text)) {
+    if (/^\d{10}(?:\.\d+)?$/.test(text)) {       date = new Date(Number(text) * 1000);     } else if (/^\d{13}$/.test(text)) {
       date = new Date(Number(text));
     } else {
       text = text.replace(
@@ -176,7 +168,6 @@ function normalizeStartTime(value) {
       } else if (
         !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})$/i.test(text)
       ) {
-        // Do not guess ambiguous non-ISO formats.
         return null;
       }
 
@@ -305,8 +296,6 @@ async function fetchPages(initialUrl) {
     url = resolved.href;
   }
 
-  // A reported count larger than fetched rows may indicate an
-  // unsupported pagination format. Do not invent page parameters.
   if (
     !truncated &&
     reportedCount !== null &&
@@ -573,8 +562,21 @@ const knownEvents = new Map();
 const oddsCache = new Map();
 const oddsPending = new Map();
 
-async function getEvents(live = false) {
-  const url = live ? BSD_LIVE_URL : BSD_API_URL;
+async function getEvents(filter = "today", live = false) {
+  const baseUrl = live ? BSD_LIVE_URL : BSD_API_URL;
+  const todayKey = dateKey(new Date());
+  const tomKey = tomorrowKey(todayKey);
+
+  const urlObj = new URL(baseUrl);
+  if (!live) {
+    if (filter === "today") {
+      urlObj.searchParams.set("date", todayKey);
+    } else if (filter === "tomorrow") {
+      urlObj.set("date", tomKey);
+    }
+  }
+  const url = urlObj.href;
+
   const cached = feedCache.get(url);
   const ttl = live ? 15000 : 60000;
 
@@ -595,8 +597,8 @@ async function getEvents(live = false) {
     }
 
     const events = [...unique.values()];
-    const today = dateKey(new Date());
-    const tomorrow = tomorrowKey(today);
+    const today = todayKey;
+    const tomorrow = tomKey;
     const dateCounts = {};
 
     for (const event of events) {
@@ -661,8 +663,6 @@ async function getEventOdds(eventId) {
   if (oddsPending.has(id)) return oddsPending.get(id);
 
   const pending = (async () => {
-    // Retained from the supplied code; verify these query parameters
-    // against BSD documentation if the odds endpoint returns no rows.
     const params = new URLSearchParams({ event_id: id, limit: "100" });
     const data = await fetchBSD(`${BSD_BASE_URL}/odds/?${params}`);
     const odds = normalizeOddsFeed(asArray(data));
@@ -723,7 +723,7 @@ app.get("/api/events", async (req, res) => {
   }
 
   try {
-    const result = await getEvents(filter === "live");
+    const result = await getEvents(filter, filter === "live");
     const today = dateKey(new Date());
     const tomorrow = tomorrowKey(today);
 
@@ -775,7 +775,7 @@ app.get("/api/events", async (req, res) => {
 
 app.get("/api/live", async (req, res) => {
   try {
-    const result = await getEvents(true);
+    const result = await getEvents("live", true);
     const events = result.events.filter(e => e.live);
 
     res.json({
@@ -843,9 +843,6 @@ app.get("/api/leagues", async (req, res) => {
   }
 });
 
-// DEMO ONLY.
-// No authentication, persistent storage, real-money deposits,
-// settlement, or production betting guarantees are provided.
 const demoWallets = new Map();
 
 function getWallet(userId = "demo") {
