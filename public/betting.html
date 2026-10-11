@@ -1,453 +1,668 @@
-const HTML = String.raw`<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b1415">
-<title>Matchday · Football Demo</title>
-<script src="https://telegram.org/js/telegram-web-app.js" defer></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101817">
+<title>Matchday Football Demo</title>
+
 <style>
-:root{color-scheme:dark;--bg:#0b1415;--panel:#142122;--raised:#1c2d2e;--line:#2b4040;--text:#edf7f3;--muted:#9bb1aa;--green:#6de7a7;--red:#ffa3ad}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
-button,input,select{font:inherit;color:var(--text);background:var(--raised);border:1px solid var(--line);border-radius:10px}
-button{cursor:pointer;min-height:44px}button:hover:not(:disabled){border-color:var(--green)}
-button:disabled{opacity:.55;cursor:not-allowed}
-button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--green);outline-offset:3px}
-[hidden]{display:none!important}
-header{background:#123326;padding:calc(16px + env(safe-area-inset-top)) 20px 16px;border-bottom:1px solid #315942}
-.header-inner{max-width:1240px;margin:auto;display:flex;justify-content:space-between;align-items:center}
-.brand{font-size:25px;font-weight:900;letter-spacing:-1px}.brand span{color:var(--green)}
-.wallet{text-align:right}.wallet small{display:block;color:var(--muted)}.wallet strong{color:var(--green)}
-main{max-width:1240px;margin:auto;padding:24px 18px 40px}
-.hero{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:22px}
-h1{font-size:clamp(26px,4vw,37px);margin:0 0 7px;line-height:1.2}
-.subtitle{color:var(--muted);margin:0;font-size:13px}
-.refresh{background:transparent;padding:10px 15px}
-.tabs{display:flex;gap:7px;border-bottom:1px solid var(--line);padding-bottom:15px;margin-bottom:18px}
-.tab{flex:1;background:transparent;font-weight:750}.tab.active{background:var(--green);color:#09291a;border-color:var(--green)}
-.filters{display:grid;grid-template-columns:1fr 1.2fr;gap:12px}
-label{font-size:11px;color:var(--muted)}input,select{display:block;width:100%;padding:12px;margin-top:5px}
-.meta{display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:11px;margin:17px 0}
-.notice{padding:12px;border:1px solid #4b5738;border-radius:10px;background:#243021;color:#ead591;font-size:12px;margin-bottom:15px}
-.layout{display:grid;grid-template-columns:minmax(0,1fr) 335px;gap:20px;align-items:start}
-.league-heading{padding:13px 2px 9px;font-weight:750;font-size:13px;color:#c0d7cc}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:10px}
-.card-meta{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted);margin-bottom:12px}.live{color:var(--red);font-weight:800}
-.match-body{display:grid;grid-template-columns:minmax(0,1fr) 240px;align-items:center;gap:15px}
-.team{display:flex;gap:9px;align-items:center;margin:8px 0;font-weight:650;overflow-wrap:anywhere}
-.crest{display:grid;place-items:center;background:#294237;color:var(--green);width:27px;height:29px;border-radius:7px;font-size:10px;flex-shrink:0}
-.score{margin-left:auto;color:var(--green)}
-.prices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
-.odd{padding:8px 5px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:63px}
-.odd span{font-size:10px;color:var(--muted)}.odd strong{font-size:15px}.odd small{font-size:9px;color:var(--muted)}
-.odd.selected{background:#254d38;border-color:var(--green)}.odd.selected strong{color:var(--green)}
-details{margin-top:10px}summary{cursor:pointer;padding:7px 0;font-size:12px;color:var(--muted)}
-.market-title{font-size:11px;color:var(--muted);margin:12px 0 6px}
-.market-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
-.market-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
-.slip{position:sticky;top:18px;background:var(--panel);border:1px solid var(--line);border-radius:15px;overflow:hidden}
-.slip-head{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--line)}
-.slip-head h2{font-size:17px;margin:0}.badge{background:var(--green);color:#08291a;border-radius:5px;padding:3px 7px;font-size:11px;margin-left:6px}
-.slip-body{padding:17px}.mode{font-size:10px;color:var(--green);font-weight:800;letter-spacing:1px;margin-bottom:12px}
-.selection{position:relative;border-bottom:1px solid var(--line);padding:11px 25px 11px 0}
-.selection strong{font-size:12px;display:block}.selection p{font-size:11px;color:var(--muted);margin:4px 0}
-.selection .quote{color:var(--green)}.remove{position:absolute;right:0;top:6px;background:transparent;border:0;font-size:20px}
-#stake{font-size:18px;font-weight:700}.stake-label{display:block;margin-top:16px}
-.quick{display:flex;gap:6px;margin-top:8px}.quick button{flex:1;font-size:11px;min-height:34px}
-.totals{margin:17px 0}.total{display:flex;justify-content:space-between;align-items:center;margin:8px 0;font-size:12px;color:var(--muted)}
-.total.win strong{color:var(--green);font-size:24px}.place{width:100%;padding:12px;background:var(--green);color:#08291a;font-weight:850;border:0}
-.clear{width:100%;background:transparent;border:0;font-size:11px;color:var(--muted);margin-top:5px}
-.disclaimer{font-size:10px;color:var(--muted);margin-top:15px}
-#bet-message{font-size:12px}.error{color:var(--red)!important}
-.history{border-top:1px solid var(--line);margin-top:18px;padding-top:12px}.history h3{font-size:12px;margin:0 0 8px}
-.history-item{border-top:1px solid var(--line);padding:9px 0;font-size:11px;color:var(--muted)}.history-item strong{display:block;color:var(--text)}
-.empty{text-align:center;padding:50px 18px;border:1px dashed var(--line);border-radius:13px;color:var(--muted)}
-.close,.mobile-bar,.backdrop{display:none}footer{font-size:11px;color:var(--muted);margin-top:25px}
-@media(max-width:1000px){.layout{grid-template-columns:minmax(0,1fr) 300px;gap:13px}.match-body{grid-template-columns:1fr}}
-@media(max-width:760px){
- main{padding:20px 14px calc(95px + env(safe-area-inset-bottom))}.layout{display:block}.filters{grid-template-columns:1fr}
- .match-body{grid-template-columns:minmax(0,1fr) 165px;gap:10px}.team{font-size:12px}.card{padding:13px}
- .slip{display:none;position:fixed;inset:auto 0 0;z-index:30;max-height:88dvh;overflow:auto;border-radius:20px 20px 0 0;padding-bottom:env(safe-area-inset-bottom)}
- body.open .slip{display:block}body.open{overflow:hidden}.close{display:block;background:transparent;border:0;font-size:22px}
- .mobile-bar{display:flex;justify-content:space-between;align-items:center;position:fixed;inset:auto 0 0;z-index:20;width:100%;border-radius:0;background:#123326;padding:14px 18px calc(14px + env(safe-area-inset-bottom));font-weight:800}
- .mobile-bar small{color:var(--green)}.backdrop{position:fixed;inset:0;background:#0009;z-index:25}body.open .backdrop{display:block}
- .meta{font-size:10px}
+:root {
+  color-scheme: dark;
+  --bg: #101817;
+  --panel: #192523;
+  --raised: #233330;
+  --line: #354c45;
+  --text: #eff8f3;
+  --muted: #a4bbb0;
+  --green: #73edaa;
 }
-@media(max-width:390px){.match-body{grid-template-columns:1fr}}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 system-ui, sans-serif;
+}
+button, input, select { font: inherit; }
+button, input, select {
+  background: var(--raised);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 11px;
+}
+button { cursor: pointer; min-height: 44px; }
+button:hover:not(:disabled) { border-color: var(--green); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+[hidden] { display: none !important; }
+header {
+  background: #153b29;
+  padding: 18px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.brand { font-size: 23px; font-weight: 900; }
+.balance { color: var(--green); text-align: right; }
+.balance small { display: block; color: var(--muted); }
+main { max-width: 1200px; margin: auto; padding: 22px 16px; }
+h1 { margin: 0 0 7px; font-size: 29px; }
+.subtitle, .muted { color: var(--muted); }
+.subtitle { margin-top: 0; }
+.tabs { display: flex; gap: 8px; margin:20px 0; }
+.tabs button { flex: 1; }
+.tabs .active, .primary {
+  background: var(--green);
+  color: #123020;
+  font-weight: 800;
+}
+.filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+  align-items: end;
+}
+label { display: block; font-size: 12px; color: var(--muted); }
+input, select { width: 100%; margin-top: 5px; }
+.status { color: var(--muted); margin: 15px 0; }
+.notice {
+  background: #39341c;
+  border: 1px solid #746538;
+  padding: 12px;
+  border-radius: 9px;
+  margin-bottom: 15px;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 18px;
+  align-items: start;
+}
+.league-title { font-weight: 800; margin: 15px 0 9px; }
+.card, .slip {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 15px;
+}
+.card { margin-bottom: 11px; }
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.live { color: #ffadad; font-weight: 800; }
+.teams {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin: 15px 0;
+  font-weight: 700;
+}
+.score { color: var(--green); white-space: nowrap; }
+.odds-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+.odds-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.odd {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px;
+}
+.odd span, .odd small { font-size: 10px; color: var(--muted); }
+.odd strong { font-size: 16px; }
+.odd.selected { border-color: var(--green); background: #28523b; }
+.odd.selected strong { color: var(--green); }
+summary { cursor: pointer; color: var(--green); padding: 13px 0 3px; }
+.market-title { font-size: 12px; color: var(--muted); margin: 12px 0 6px; }
+.slip { position: sticky; top: 15px; }
+.slip h2 { font-size: 19px; margin: 0 0 14px; }
+.selection {
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+.selection strong { display: block; font-size: 12px; }
+.selection p { margin: 4px 0; color: var(--muted); font-size: 12px; }
+.selection button { padding: 5px 10px; font-size: 11px; }
+.totals { margin: 15px 0; }
+.totals div { display: flex; justify-content: space-between; margin: 7px 0; }
+.return { color: var(--green); font-size: 20px; }
+.primary, .clear { width: 100%; margin-top: 8px; }
+.disclaimer { color: var(--muted); font-size: 11px; margin-top: 18px; }
+.empty { padding: 35px 15px; text-align: center; color: var(--muted); }
+.error { color: #ffb2b2; }
+.history { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 12px; }
+.history-item { font-size: 12px; margin: 12px 0; }
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; }
+  .slip { position: static; }
+  .filters { grid-template-columns: 1fr; }
+  h1 { font-size: 25px; }
+}
 </style>
 </head>
+
 <body>
-<header><div class="header-inner">
- <div class="brand">matchday<span>.</span></div>
- <div class="wallet"><small>DEMO BALANCE</small><strong id="balance">Loading…</strong></div>
-</div></header>
-<main>
- <section class="hero"><div><h1>Football. All the action.</h1>
- <p class="subtitle">Live and pre-match demo markets · Addis Ababa time</p></div>
- <button class="refresh" id="refresh" type="button">↻ Refresh</button></section>
- <nav class="tabs" aria-label="Schedule">
- <button class="tab" data-tab="live" type="button">● Live</button>
- <button class="tab active" data-tab="today" type="button">Today</button>
- <button class="tab" data-tab="tomorrow" type="button">Tomorrow</button>
- <button class="tab" data-tab="all" type="button">All</button>
- </nav>
- <div class="filters">
- <label>LEAGUE<select id="league"><option value="">All Leagues</option></select></label>
- <label>SEARCH MATCHES<input id="search" type="search" placeholder="Team or league…"></label>
- </div>
- <div class="meta"><span id="count">Loading matches…</span><span id="timezone">Timezone: Africa/Addis_Ababa</span></div>
- <div id="notice" class="notice" hidden></div>
- <div class="layout">
-  <div id="feed">
-   <div class="empty">Loading schedule and live odds…</div>
+<header>
+  <div class="brand">Matchday.</div>
+  <div class="balance">
+    <small>DEMO BALANCE</small>
+    <strong id="balance">Loading…</strong>
   </div>
-  <aside>
-   <div class="slip" id="slip-box">
-    <div class="slip-head">
-     <h2>Bet Slip<span id="slip-count" class="badge">0</span></h2>
-     <button class="close" id="close-slip" type="button">✕</button>
-    </div>
-    <div class="slip-body">
-     <div class="mode">DEMO MODE · PLAY FOR FUN</div>
-     <div id="selections-list"><div class="empty" style="padding:20px 10px">Your slip is empty. Tap any odds button to add selections.</div></div>
-     <div id="slip-active" hidden>
-      <label class="stake-label">STAKE (DEMO)</label>
-      <input id="stake" type="number" min="1" max="1000" step="1" value="10">
-      <div class="quick">
-       <button type="button" data-val="10">10</button>
-       <button type="button" data-val="50">50</button>
-       <button type="button" data-val="100">100</button>
-       <button type="button" data-val="500">500</button>
+</header>
+
+<main>
+  <h1>Football markets</h1>
+  <p class="subtitle">Live and upcoming matches · Addis Ababa time</p>
+
+  <nav class="tabs" aria-label="Match schedule">
+    <button type="button" data-filter="live">● Live</button>
+    <button type="button" data-filter="today" class="active">Today</button>
+    <button type="button" data-filter="tomorrow">Tomorrow</button>
+    <button type="button" data-filter="all">All</button>
+  </nav>
+
+  <div class="filters">
+    <label>
+      League
+      <select id="league">
+        <option value="">All Leagues</option>
+      </select>
+    </label>
+    <label>
+      Search
+      <input id="search" type="search" placeholder="Team or league">
+    </label>
+    <button id="refresh" type="button">Refresh matches</button>
+  </div>
+
+  <p id="status" class="status">Loading matches…</p>
+  <div id="notice" class="notice" role="status" hidden></div>
+
+  <div class="layout">
+    <section id="matches" aria-label="Matches"></section>
+
+    <aside class="slip" aria-label="Bet slip">
+      <h2>Bet slip · <span id="selection-count">0</span></h2>
+      <p id="empty-slip" class="muted">Select odds from any match.</p>
+      <div id="selections"></div>
+
+      <form id="bet-form" hidden>
+        <p id="bet-type" class="muted"></p>
+        <label>
+          Stake · demo credits
+          <input id="stake" type="number"
+                 min="1" max="1000" step="0.01" value="10" required>
+        </label>
+        <div class="totals">
+          <div><span>Combined odds</span><strong id="combined">0.00</strong></div>
+          <div><span>Potential return</span><strong id="potential" class="return">0.00</strong></div>
+        </div>
+        <button id="place" class="primary" type="submit">Place demo bet</button>
+        <button id="clear" class="clear" type="button">Clear slip</button>
+      </form>
+
+      <p id="bet-message" role="status" aria-live="polite"></p>
+      <p class="disclaimer">
+        Demo credits only. “Demo” odds are illustrative fallback prices.
+        Live demo odds are selectable. One selection per match in a combo.
+        Wallets reset on server restart. Bets are not automatically settled.
+      </p>
+
+      <div class="history">
+        <strong>Recent demo bets</strong>
+        <div id="history"></div>
       </div>
-      <div class="totals">
-       <div class="total"><span>Total Odds</span><strong id="total-odds">1.00</strong></div>
-       <div class="total win"><span>Potential Return</span><strong id="total-return">0.00 DEMO</strong></div>
-      </div>
-      <div id="bet-message" style="margin-bottom:10px"></div>
-      <button class="place" id="place-bet" type="button">Place Bet</button>
-      <button class="clear" id="clear-slip" type="button">Clear All</button>
-     </div>
-     <div class="history">
-      <h3>Recent Demo Bets</h3>
-      <div id="history-list"><div class="empty" style="padding:10px">No demo bets placed yet.</div></div>
-     </div>
-    </div>
-   </div>
-  </aside>
- </div>
+    </aside>
+  </div>
 </main>
-<div class="backdrop" id="backdrop"></div>
-<div class="mobile-bar" id="mobile-bar">
- <div><span id="mobile-count">0 selections</span><small id="mobile-returns">0.00 DEMO</small></div>
- <button type="button" id="open-slip" style="background:var(--green);color:#08291a;border:0;padding:8px 16px;font-weight:850;border-radius:8px">View Bet Slip</button>
-</div>
+
 <script>
 "use strict";
-let state = { filter: "today", league: "", search: "", events: [], markets: {}, wallet: { balance: 0 }, csrfToken: "", bets: [], selections: new Map() };
-const tg = window.Telegram?.WebApp;
-if (tg) { tg.expand?.(); tg.setHeaderColor?.("#123326"); }
 
-async function api(path, options = {}) {
-  const res = await fetch(path, {
-   headers: { "Content-Type": "application/json", "X-CSRF-Token": state.csrfToken, ...(options.headers || {}) },
-   ...options
+const $ = id => document.getElementById(id);
+const state = {
+  filter: "today",
+  events: [],
+  markets: {},
+  slip: new Map(),
+  csrf: "",
+  bets: [],
+  loading: false,
+  submitting: false,
+  version: 0,
+  attempt: null
+};
+
+const timeFormatter = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Africa/Addis_Ababa",
+  hour: "2-digit",
+  minute: "2-digit"
+});
+
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function message(id, text, isError = false) {
+  $(id).textContent = text;
+  $(id).classList.toggle("error", isError);
+  if (id === "notice") $(id).hidden = !text;
+}
+
+async function api(url, options = {}) {
+  const response = await fetch(url, {
+    credentials: "same-origin",
+    ...options,
+    headers: { Accept: "application/json", ...options.headers }
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  const data = await response.json();
+  if (!response.ok || !data.success) {
+    throw new Error(data.error || "Request failed.");
+  }
   return data;
 }
 
-async function loadWallet() {
-  try {
-   const res = await api("/api/wallet");
-   state.wallet = res.wallet;
-   state.csrfToken = res.csrfToken;
-   state.bets = res.bets || [];
-   document.getElementById("balance").textContent = `${state.wallet.balance.toFixed(2)} DEMO`;
-   renderHistory();
-  } catch (err) {
-   console.error("Wallet error:", err);
-  }
-}
-
-async function loadEvents() {
-  try {
-   const params = new URLSearchParams({ filter: state.filter });
-   if (state.league) params.set("league", state.league);
-   const res = await api(`/api/events?${params}`);
-   state.events = res.events;
-   state.markets = res.markets;
-   
-   const select = document.getElementById("league");
-   const currentVal = select.value;
-   select.innerHTML = '<option value="">All Leagues</option>' + 
-    (res.availableLeagues || []).map(l => `<option value="${l}">${l}</option>`).join("");
-   select.value = currentVal;
-
-   const notice = document.getElementById("notice");
-   if (res.warning) { notice.textContent = res.warning; notice.hidden = false; }
-   else { notice.hidden = true; }
-
-   document.getElementById("count").textContent = `${res.count} matches found`;
-   renderFeed();
-  } catch (err) {
-   document.getElementById("feed").innerHTML = `<div class="empty error">Failed to load matches: ${err.message}</div>`;
-  }
-}
-
-function renderFeed() {
-  const feed = document.getElementById("feed");
-  const query = state.search.toLowerCase().trim();
-  const filtered = state.events.filter(e => {
-   if (!query) return true;
-   return e.home.toLowerCase().includes(query) || e.away.toLowerCase().includes(query) || e.league.toLowerCase().includes(query);
-  });
-
-  if (!filtered.length) {
-   feed.innerHTML = '<div class="empty">No matches found matching your filters.</div>';
-   return;
-  }
-
-  const groups = new Map();
-  for (const e of filtered) {
-   if (!groups.has(e.league)) groups.set(e.league, []);
-   groups.get(e.league).push(e);
-  }
-
-  let html = "";
-  for (const [league, matches] of groups.entries()) {
-   html += `<div class="league-heading">${league}</div>`;
-   for (const m of matches) {
-    const timeStr = new Date(m.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const isLive = m.live;
-    const statusBadge = isLive ? `<span class="live">● LIVE ${m.score.home ?? 0}-${m.score.away ?? 0}</span>` : timeStr;
-    
-    const getOddBtn = (marketKey) => {
-     const oddObj = m.odds[marketKey] || { value: 1.00 };
-     const marketMeta = state.markets[marketKey] || { label: marketKey };
-     const selKey = `${m.id}-${marketKey}`;
-     const isSel = state.selections.has(selKey);
-     return `<button class="odd ${isSel ? 'selected' : ''}" type="button" data-event="${m.id}" data-market="${marketKey}" data-odds="${oddObj.value}">
-      <span>${marketMeta.label}</span>
-      <strong>${oddObj.value.toFixed(2)}</strong>
-     </button>`;
-    };
-
-    html += `<div class="card" data-id="${m.id}">
-     <div class="card-meta">
-      <span>${statusBadge}</span>
-      <span>${m.status.toUpperCase()}</span>
-     </div>
-     <div class="match-body">
-      <div>
-       <div class="team"><div class="crest">${m.home.slice(0,2).toUpperCase()}</div><span>${m.home}</span>${isLive ? `<span class="score">${m.score.home ?? 0}</span>` : ''}</div>
-       <div class="team"><div class="crest">${m.away.slice(0,2).toUpperCase()}</div><span>${m.away}</span>${isLive ? `<span class="score">${m.score.away ?? 0}</span>` : ''}</div>
-      </div>
-      <div class="prices">
-       ${getOddBtn("1")}
-       ${getOddBtn("X")}
-       ${getOddBtn("2")}
-      </div>
-     </div>
-     <details>
-      <summary>More Markets (Goals, Corners, Double Chance)</summary>
-      <div class="market-title">Double Chance</div>
-      <div class="market-grid three">${getOddBtn("1X")}${getOddBtn("X2")}${getOddBtn("12")}</div>
-      <div class="market-title">Goals Over / Under 2.5</div>
-      <div class="market-grid">${getOddBtn("over25")}${getOddBtn("under25")}</div>
-      <div class="market-title">Both Teams To Score</div>
-      <div class="market-grid">${getOddBtn("bttsYes")}${getOddBtn("bttsNo")}</div>
-      <div class="market-title">Corners Over / Under 9.5</div>
-      <div class="market-grid">${getOddBtn("cornersOver95")}${getOddBtn("cornersUnder95")}</div>
-     </details>
-    </div>`;
-   }
-  }
-  feed.innerHTML = html;
+function combinedOdds() {
+  return [...state.slip.values()].reduce(
+    (total, selection) => total * selection.quote.value, 1
+  );
 }
 
 function renderSlip() {
-  const listEl = document.getElementById("selections-list");
-  const activeEl = document.getElementById("slip-active");
-  const countEl = document.getElementById("slip-count");
-  const mobileCount = document.getElementById("mobile-count");
-  const mobileReturns = document.getElementById("mobile-returns");
+  const count = state.slip.size;
+  $("selection-count").textContent = count;
+  $("empty-slip").hidden = count > 0;
+  $("bet-form").hidden = count === 0;
+  $("bet-type").textContent = count > 1
+    ? "COMBO · " + count + " matches"
+    : "SINGLE BET";
 
-  countEl.textContent = state.selections.size;
-  mobileCount.textContent = `${state.selections.size} selections`;
+  $("selections").replaceChildren();
 
-  if (state.selections.size === 0) {
-   listEl.innerHTML = '<div class="empty" style="padding:20px 10px">Your slip is empty. Tap any odds button to add selections.</div>';
-   activeEl.hidden = true;
-   mobileReturns.textContent = "0.00 DEMO";
-   return;
+  for (const [id, selection] of state.slip) {
+    const market = state.markets[selection.market];
+    const row = element("div", "selection");
+    const remove = element("button", "", "Remove");
+    remove.type = "button";
+    remove.disabled = state.submitting;
+    remove.onclick = () => {
+      state.slip.delete(id);
+      state.attempt = null;
+      renderSlip();
+      renderMatches();
+    };
+
+    row.append(
+      element("strong", "", selection.event.home + " vs " + selection.event.away),
+      element("p", "", market.group + " · " + market.label),
+      element("p", "",
+        selection.quote.value.toFixed(2) + " · " +
+        (selection.quote.source === "demo" ? "Demo price" : "Provider price")),
+      remove
+    );
+    $("selections").append(row);
   }
 
-  activeEl.hidden = false;
-  let html = "";
-  let totalOdds = 1;
+  const odds = count ? combinedOdds() : 0;
+  const stake = Number($("stake").value) || 0;
 
-  for (const [key, sel] of state.selections.entries()) {
-   totalOdds *= sel.quotedOdds;
-   html += `<div class="selection">
-    <strong>${sel.fixture}</strong>
-    <p>${sel.marketLabel} · <span class="quote">${sel.quotedOdds.toFixed(2)}</span></p>
-    <button class="remove" type="button" data-key="${key}">×</button>
-   </div>`;
+  $("combined").textContent = odds.toFixed(2);
+  $("potential").textContent =
+    (Math.round(stake * 100 * odds) / 100).toFixed(2);
+
+  $("place").disabled = state.submitting || !state.csrf;
+  $("place").textContent = state.submitting
+    ? "Validating…"
+    : count > 1 ? "Place demo combo" : "Place demo single";
+
+  $("clear").disabled = state.submitting;
+}
+
+function selectOdd(event, market) {
+  if (state.submitting) return;
+
+  if (state.slip.get(event.id)?.market === market) {
+    state.slip.delete(event.id);
+  } else {
+    if (!state.slip.has(event.id) && state.slip.size >= 12) {
+      message("notice", "Maximum twelve matches per combo.", true);
+      return;
+    }
+
+    // Replaces another selection from the same match.
+    state.slip.set(event.id, {
+      event,
+      market,
+      quote: { ...event.odds[market] }
+    });
   }
 
-  listEl.innerHTML = html;
-  document.getElementById("total-odds").textContent = totalOdds.toFixed(2);
-  const stake = Number(document.getElementById("stake").value) || 0;
-  const potential = stake * totalOdds;
-  document.getElementById("total-return").textContent = `${potential.toFixed(2)} DEMO`;
-  mobileReturns.textContent = `${potential.toFixed(2)} DEMO`;
+  state.attempt = null;
+  message("bet-message", "");
+  renderSlip();
+  renderMatches();
+}
+
+function oddsButton(event, key) {
+  const quote = event.odds[key];
+  const button = element("button", "odd");
+  button.type = "button";
+
+  const selected = state.slip.get(event.id)?.market === key;
+  button.classList.toggle("selected", selected);
+  button.setAttribute("aria-pressed", String(selected));
+
+  // A live match is NOT blocked because kickoff is already in the past.
+  // Only closed/unavailable matches and active submissions are blocked.
+  button.disabled =
+    state.submitting ||
+    !event.bettable ||
+    (!event.live && Date.parse(event.startTime) <= Date.now());
+
+  button.append(
+    element("span", "", state.markets[key].label),
+    element("strong", "", quote.value.toFixed(2)),
+    element("small", "", quote.source === "demo" ? "Demo" : "Provider")
+  );
+
+  button.onclick = () => selectOdd(event, key);
+  return button;
+}
+
+function renderMatches() {
+  const root = $("matches");
+  root.replaceChildren();
+
+  const query = $("search").value.trim().toLowerCase();
+  const events = state.events.filter(event =>
+    (event.home + " " + event.away + " " + event.league)
+      .toLowerCase().includes(query)
+  );
+
+  $("status").textContent =
+    events.length + " matches · " +
+    (state.filter === "all" ? "Today + tomorrow" : state.filter);
+
+  if (!events.length) {
+    root.append(element("div", "empty", "No matches found for this filter."));
+    return;
+  }
+
+  const leagues = new Map();
+  for (const event of events) {
+    if (!leagues.has(event.league)) leagues.set(event.league, []);
+    leagues.get(event.league).push(event);
+  }
+
+  for (const [league, matches] of leagues) {
+    root.append(element("div", "league-title", league));
+
+    for (const event of matches) {
+      const card = element("article", "card");
+      const top = element("div", "card-top");
+      top.append(
+        element("span", event.live ? "live" : "",
+          event.live ? "● LIVE · DEMO" :
+          event.status === "closed" ? "CLOSED" : "UPCOMING"),
+        element("span", "",
+          event.date + " · " +
+          timeFormatter.format(new Date(event.startTime)))
+      );
+
+      const teams = element("div", "teams");
+      const score = event.score.home !== null && event.score.away !== null
+        ? event.score.home + " – " + event.score.away
+        : "vs";
+
+      teams.append(
+        element("span", "", event.home),
+        element("span", "score", score),
+        element("span", "", event.away)
+      );
+
+      const mainOdds = element("div", "odds-grid");
+      for (const key of ["home", "draw", "away"]) {
+        mainOdds.append(oddsButton(event, key));
+      }
+
+      const details = element("details");
+      details.append(element("summary", "", "More Markets"));
+
+      const groups = new Map();
+      for (const [key, market] of Object.entries(state.markets)) {
+        if (["home", "draw", "away"].includes(key)) continue;
+        if (!groups.has(market.group)) groups.set(market.group, []);
+        groups.get(market.group).push(key);
+      }
+
+      for (const [group, keys] of groups) {
+        details.append(element("div", "market-title", group));
+        const grid = element(
+          "div", keys.length === 2 ? "odds-grid two" : "odds-grid"
+        );
+        for (const key of keys) grid.append(oddsButton(event, key));
+        details.append(grid);
+      }
+
+      card.append(top, teams, mainOdds, details);
+      root.append(card);
+    }
+  }
+}
+
+async function loadMatches() {
+  if (state.loading || state.submitting) return;
+
+  state.loading = true;
+  const version = state.version;
+  $("refresh").disabled = true;
+  $("matches").setAttribute("aria-busy", "true");
+
+  try {
+    const query = new URLSearchParams({ filter: state.filter });
+    const selectedLeague = $("league").value;
+    if (selectedLeague) query.set("league", selectedLeague);
+
+    const data = await api("/api/events?" + query);
+    if (version !== state.version) return;
+
+    state.events = data.events;
+    state.markets = data.markets;
+
+    $("league").replaceChildren();
+    const all = element("option", "", "All Leagues");
+    all.value = "";
+    $("league").append(all);
+
+    for (const league of data.availableLeagues) {
+      const option = element("option", "", league);
+      option.value = league;
+      $("league").append(option);
+    }
+
+    $("league").value = data.availableLeagues.includes(selectedLeague)
+      ? selectedLeague : "";
+
+    message("notice", data.warning || "");
+    renderMatches();
+  } catch (err) {
+    if (version === state.version) {
+      message("notice", err.message + " Displayed data may be outdated.", true);
+    }
+  } finally {
+    state.loading = false;
+    $("refresh").disabled = false;
+    $("matches").setAttribute("aria-busy", "false");
+
+    // If filters changed during a request, fetch the latest selection.
+    if (version !== state.version) loadMatches();
+  }
 }
 
 function renderHistory() {
-  const historyList = document.getElementById("history-list");
+  $("history").replaceChildren();
+
   if (!state.bets.length) {
-   historyList.innerHTML = '<div class="empty" style="padding:10px">No demo bets placed yet.</div>';
-   return;
+    $("history").append(element("p", "muted", "No bets yet."));
+    return;
   }
-  historyList.innerHTML = state.bets.slice(0, 5).map(b => `
-   <div class="history-item">
-    <strong>${b.type.toUpperCase()} · Stake: ${b.stake.toFixed(2)} DEMO</strong>
-    <span>Odds: ${b.odds.toFixed(2)} \vert{} Return:${b.potentialReturn.toFixed(2)} DEMO</span>
-   </div>
-  `).join("");
+
+  for (const bet of state.bets.slice(0, 5)) {
+    const item = element("div", "history-item");
+    item.append(
+      element("strong", "", bet.type.toUpperCase() + " · Pending"),
+      element("div", "",
+        "Stake " + bet.stake.toFixed(2) +
+        " · Potential return " + bet.potentialReturn.toFixed(2))
+    );
+    $("history").append(item);
+  }
 }
 
-document.querySelectorAll(".tab").forEach(btn => {
-  btn.addEventListener("click", () => {
-   document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
-   btn.classList.add("active");
-   state.filter = btn.dataset.tab;
-   loadEvents();
-  });
+document.querySelectorAll("[data-filter]").forEach(button => {
+  button.setAttribute(
+    "aria-pressed",
+    String(button.dataset.filter === state.filter)
+  );
+
+  button.onclick = () => {
+    if (state.submitting) return;
+
+    state.filter = button.dataset.filter;
+    state.version++;
+    state.events = [];
+    $("league").value = "";
+
+    document.querySelectorAll("[data-filter]").forEach(item => {
+      const active = item.dataset.filter === state.filter;
+      item.classList.toggle("active", active);
+      item.setAttribute("aria-pressed", String(active));
+    });
+
+    $("matches").replaceChildren(element("div", "empty", "Loading…"));
+    loadMatches();
+  };
 });
 
-document.getElementById("league").addEventListener("change", e => {
-  state.league = e.target.value;
-  loadEvents();
-});
+$("league").onchange = () => {
+  if (state.submitting) return;
+  state.version++;
+  state.events = [];
+  $("matches").replaceChildren(element("div", "empty", "Loading league…"));
+  loadMatches();
+};
 
-document.getElementById("search").addEventListener("input", e => {
-  state.search = e.target.value;
-  renderFeed();
-});
+$("search").oninput = renderMatches;
+$("refresh").onclick = loadMatches;
 
-document.getElementById("refresh").addEventListener("click", loadEvents);
+$("stake").oninput = () => {
+  state.attempt = null;
+  renderSlip();
+};
 
-document.getElementById("feed").addEventListener("click", e => {
-  const btn = e.target.closest("button.odd");
-  if (!btn) return;
-  const eventId = btn.dataset.event;
-  const market = btn.dataset.market;
-  const quotedOdds = Number(btn.dataset.odds);
-  const event = state.events.find(ev => ev.id === eventId);
-  if (!event) return;
+$("clear").onclick = () => {
+  if (state.submitting) return;
+  state.slip.clear();
+  state.attempt = null;
+  renderSlip();
+  renderMatches();
+};
 
-  const selKey = `${eventId}-${market}`;
-  for (const existingKey of state.selections.keys()) {
-   if (existingKey.startsWith(`${eventId}-`)) {
-    state.selections.delete(existingKey);
-   }
+$("bet-form").onsubmit = async event => {
+  event.preventDefault();
+  if (state.submitting || !state.slip.size || !state.csrf) return;
+
+  const payload = {
+    stake: Number($("stake").value),
+    selections: [...state.slip.values()].map(selection => ({
+      eventId: selection.event.id,
+      date: selection.event.date,
+      market: selection.market,
+      quotedOdds: selection.quote.value
+    }))
+  };
+
+  const fingerprint = JSON.stringify(payload);
+  if (state.attempt?.fingerprint !== fingerprint) {
+    state.attempt = { fingerprint, key: crypto.randomUUID() };
   }
 
-  if (!btn.classList.contains("selected")) {
-   const marketMeta = state.markets[market] || { group: "Market", label: market };
-   state.selections.set(selKey, {
-    eventId,
-    date: event.date,
-    market,
-    marketLabel: `${marketMeta.group}:${marketMeta.label}`,
-    fixture: `${event.home} vs${event.away}`,
-    quotedOdds
-   });
-  }
-  renderFeed();
+  state.submitting = true;
+  $("stake").disabled = true;
+  $("league").disabled = true;
   renderSlip();
-});
-
-document.getElementById("selections-list").addEventListener("click", e => {
-  const btn = e.target.closest("button.remove");
-  if (!btn) return;
-  state.selections.delete(btn.dataset.key);
-  renderFeed();
-  renderSlip();
-});
-
-document.getElementById("clear-slip").addEventListener("click", () => {
-  state.selections.clear();
-  renderFeed();
-  renderSlip();
-});
-
-document.getElementById("stake").addEventListener("input", renderSlip);
-document.querySelectorAll(".quick button").forEach(btn => {
-  btn.addEventListener("click", () => {
-   document.getElementById("stake").value = btn.dataset.val;
-   renderSlip();
-  });
-});
-
-const backdrop = document.getElementById("backdrop");
-document.getElementById("open-slip")?.addEventListener("click", () => {
-  document.body.classList.add("open");
-});
-document.getElementById("close-slip")?.addEventListener("click", () => {
-  document.body.classList.remove("open");
-});
-backdrop?.addEventListener("click", () => {
-  document.body.classList.remove("open");
-});
-
-document.getElementById("place-bet").addEventListener("click", async () => {
-  const msgEl = document.getElementById("bet-message");
-  msgEl.textContent = "Placing bet...";
-  msgEl.className = "";
+  renderMatches();
 
   try {
-   const selections = [...state.selections.values()];
-   const stake = Number(document.getElementById("stake").value);
-   const idempotencyKey = (typeof crypto !== 'undefined' && crypto.randomUUID) 
-     ? crypto.randomUUID() 
-     : 'idemp_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-   
-   const res = await api("/api/bet", {
-    method: "POST",
-    headers: { "Idempotency-Key": idempotencyKey },
-    body: JSON.stringify({ selections, stake })
-   });
+    const data = await api("/api/bet", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": state.csrf,
+        "Idempotency-Key": state.attempt.key
+      },
+      body: JSON.stringify(payload)
+    });
 
-   state.wallet = res.wallet;
-   state.bets.unshift(res.bet);
-   state.selections.clear();
-   document.getElementById("balance").textContent = `${state.wallet.balance.toFixed(2)} DEMO`;
-   renderFeed();
-   renderSlip();
-   renderHistory();
-   msgEl.textContent = "Bet placed successfully!";
-   msgEl.className = "";
-   document.body.classList.remove("open");
+    $("balance").textContent = data.balance.toFixed(2) + " credits";
+    if (!state.bets.some(bet => bet.id === data.bet.id)) {
+      state.bets.unshift(data.bet);
+    }
+
+    state.slip.clear();
+    state.attempt = null;
+    renderHistory();
+    message("bet-message", "Demo bet placed successfully.");
   } catch (err) {
-   msgEl.textContent = err.message;
-   msgEl.className = "error";
+    message("bet-message",
+      err.message +
+      " Retry the unchanged slip safely, or refresh and reselect changed odds.",
+      true);
+  } finally {
+    state.submitting = false;
+    $("stake").disabled = false;
+    $("league").disabled = false;
+    renderSlip();
+    renderMatches();
   }
-});
+};
 
-loadWallet();
-loadEvents();
+async function initialize() {
+  try {
+    const data = await api("/api/wallet");
+    state.csrf = data.csrfToken;
+    state.bets = data.bets;
+    $("balance").textContent = data.balance.toFixed(2) + " credits";
+    renderHistory();
+  } catch (err) {
+    message("bet-message", "Wallet unavailable: " + err.message, true);
+  }
+
+  renderSlip();
+  await loadMatches();
+}
+
+initialize();
+
+setInterval(() => {
+  if (!document.hidden && !state.submitting) loadMatches();
+}, 15000);
 </script>
 </body>
 </html>
-`;
-
-app.get("/", (req, res) => {
-  res.send(HTML);
-});
-
-app.listen(PORT, () => {
-  console.log(`Matchday demo server running on port ${PORT}`);
-});
