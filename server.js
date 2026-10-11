@@ -13,12 +13,9 @@ const BSD_BASE_URL = (
   process.env.BSD_BASE_URL || "https://sports.bzzoiro.com/api/v2"
 ).replace(/\/+$/, "");
 
-const BSD_API_URL =
-  process.env.BSD_API_URL || `${BSD_BASE_URL}/events/`;
-const BSD_LIVE_URL =
-  process.env.BSD_LIVE_URL || `${BSD_BASE_URL}/events/live/`;
-const BSD_LEAGUES_URL =
-  process.env.BSD_LEAGUES_URL || `${BSD_BASE_URL}/leagues/`;
+const BSD_API_URL = process.env.BSD_API_URL || `${BSD_BASE_URL}/events/`;
+const BSD_LIVE_URL = process.env.BSD_LIVE_URL || `${BSD_BASE_URL}/events/live/`;
+const BSD_LEAGUES_URL = process.env.BSD_LEAGUES_URL || `${BSD_BASE_URL}/leagues/`;
 
 function integerSetting(value, fallback, min, max) {
   const n = Number(value);
@@ -56,7 +53,7 @@ function textValue(...values) {
     if (typeof value === "object") {
       for (const key of [
         "name", "title", "label", "short_name",
-        "shortName", "display_name"
+        "shortName", "display_name", "category_name", "country_name"
       ]) {
         const nested = value[key];
         if (typeof nested === "string" || typeof nested === "number") {
@@ -239,14 +236,6 @@ async function fetchPages(initialUrl) {
         data?.data?.count,
         data?.response?.count
       ));
-
-      console.log("BSD FIRST PAGE:", JSON.stringify({
-        responseKeys: data && typeof data === "object" && !Array.isArray(data) ? Object.keys(data) : [],
-        count: reportedCount,
-        hasNext: Boolean(nextPageValue(data)),
-        returnedRows: pageRows.length,
-        sampleEvents: BSD_DEBUG ? pageRows.slice(0, 2) : undefined
-      }, null, 2));
     }
 
     rows.push(...pageRows);
@@ -270,11 +259,6 @@ async function fetchPages(initialUrl) {
 
     resolved.hash = "";
     url = resolved.href;
-  }
-
-  if (!truncated && reportedCount !== null && reportedCount > rows.length) {
-    truncated = true;
-    truncationReason = "reported_count_exceeds_fetched_rows";
   }
 
   return { rows, truncated, truncationReason, pagesFetched, reportedCount };
@@ -322,12 +306,12 @@ function normalizeStatus(event) {
 
 function emptyOdds() {
   return {
-    "1": 1.95, X: 3.20, "2": 3.80, // Default fallback odds (ባዶ በሚሆንበት ጊዜ የሚተካ)
-    doubleChance: { "1X": 1.25, X2: 1.75, "12": 1.30 },
-    over15: 1.35, under15: 2.90,
-    over25: 1.90, under25: 1.85,
-    over35: 3.10, under35: 1.30,
-    bttsYes: 1.80, bttsNo: 1.90
+    "1": null, X: null, "2": null,
+    doubleChance: { "1X": null, X2: null, "12": null },
+    over15: null, under15: null,
+    over25: null, under25: null,
+    over35: null, under35: null,
+    bttsYes: null, bttsNo: null
   };
 }
 
@@ -466,14 +450,18 @@ function normalizeEvent(event, index = 0) {
 
   const score = event.score || event.scores || {};
 
+  // የሊግ ስምን ከቅድመ-ቅደም ተከተል በጥንቃቄ መፈለግ
+  const rawLeagueName = textValue(
+    event.league_name, event.competition_name, event.tournament_name,
+    event.league?.name, event.competition?.name,
+    event.league, event.competition, event.tournament,
+    event.category_name, event.country_name
+  );
+
   return {
     id: String(providerId ?? `missing-${index}`),
     providerId: providerId == null ? null : String(providerId),
-    league: textValue(
-      event.league_name, event.competition_name, event.tournament_name,
-      event.league?.name, event.competition?.name,
-      event.league, event.competition, event.tournament
-    ) || "Premier League", // ነባሪ ሊግ
+    league: rawLeagueName || "Other Competitions", // 'Premier League' የሚለውን አስወግደን ለይተነዋል
     home,
     away,
     startTime,
@@ -545,6 +533,49 @@ async function getEvents(filter = "today", live = false) {
   }
 }
 
+async function getEventOdds(eventId) {
+  const id = String(eventId);
+  const cached = oddsCache.get(id);
+  if (cached && Date.now() - cached.time < 30000) return cached.odds;
+  if (oddsPending.has(id)) return oddsPending.get(id);
+
+  const pending = (async () => {
+    const params = new URLSearchParams({ event_id: id, limit: "100" });
+    const data = await fetchBSD(`${BSD_BASE_URL}/odds/?${params}`);
+    const odds = normalizeOddsFeed(asArray(data));
+    oddsCache.set(id, { time: Date.now(), odds });
+    return odds;
+  })();
+
+  oddsPending.set(id, pending);
+
+  try {
+    return await pending;
+  } finally {
+    oddsPending.delete(id);
+  }
+}
+
+function mergeOdds(base, extra) {
+  const result = {
+    ...base,
+    doubleChance: { ...base.doubleChance }
+  };
+
+  for (const key of Object.keys(extra)) {
+    if (key === "doubleChance") {
+      for (const dc of ["1X", "X2", "12"]) {
+        if (extra.doubleChance[dc] !== null) {
+          result.doubleChance[dc] = extra.doubleChance[dc];
+        }
+      }
+    } else if (extra[key] !== null) {
+      result[key] = extra[key];
+    }
+  }
+  return result;
+}
+
 // ---------------- API ENDPOINTS ----------------
 
 app.get("/api/events", async (req, res) => {
@@ -567,7 +598,7 @@ app.get("/api/events", async (req, res) => {
       return true;
     });
 
-    // ያሉትን ሊጎች ለይቶ ማውጫ (Available Leagues for selection)
+    // ያሉትን ትክክለኛ ሊጎች ዝርዝር ለይቶ ማውጣት
     const availableLeagues = [...new Set(selected.map(e => e.league))].filter(Boolean);
 
     // ተጠቃሚው መርጦ ከሆነ በሊግ ማጣራት
@@ -582,7 +613,7 @@ app.get("/api/events", async (req, res) => {
       source: "BSD",
       filter,
       selectedLeague,
-      availableLeagues, // ብራውዘሩ ለተጠቃሚው ማሳየት የሚችላቸው የሊግ ስሞች
+      availableLeagues,
       timeZone: TIME_ZONE,
       today,
       tomorrow,
@@ -593,6 +624,32 @@ app.get("/api/events", async (req, res) => {
   } catch (error) {
     console.error("ERROR:", error.message);
     res.status(502).json({ success: false, error: "Could not load football events." });
+  }
+});
+
+app.get("/api/events/:id/odds", async (req, res) => {
+  try {
+    const event = knownEvents.get(req.params.id);
+
+    if (!event || event.providerId === null) {
+      return res.status(404).json({
+        success: false,
+        error: "Event not found."
+      });
+    }
+
+    try {
+      event.odds = mergeOdds(
+        event.odds,
+        await getEventOdds(event.providerId)
+      );
+    } catch (error) {
+      console.error("BSD ODDS ERROR:", error.message);
+    }
+
+    res.json({ success: true, odds: event.odds });
+  } catch (error) {
+    res.status(502).json({ success: false, error: "Could not load odds." });
   }
 });
 
