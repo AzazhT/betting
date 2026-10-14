@@ -183,7 +183,6 @@
     .ticket-top { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); }
     .ticket-picks { display: flex; gap: 5px; flex-wrap: wrap; }
     
-    /* የተጫዋቾች ቲክኬት ላይ ቁጥሮች ከወጡ አረንጓዴ እንዲሆኑ */
     .pick-ball {
       width: 26px; height: 26px; border-radius: 6px; background: #2a3026;
       display: grid; place-items: center; font-size: 11px; font-weight: 800; color: var(--gold);
@@ -289,7 +288,7 @@
         minStake: 10,
         stakeStep: 10,
         maxStake: 1000,
-        drawIntervalMs: 500,
+        drawIntervalMs: 400,
         currency: "ETB"
       };
 
@@ -324,7 +323,8 @@
         myTickets: [],
         isDrawing: false,
         onlinePlayers: 1,
-        timeLeft: 60
+        timeLeft: 60,
+        pendingBet: null
       };
 
       function getIdentifier() {
@@ -387,7 +387,7 @@
         if (amountEl) amountEl.textContent = formatMoney(state.balance);
       }
 
-      // የ 60 ሰከንድ ቆጣሪ እና የኦንላይን ተጫዋቾች ብዛት
+      // የ 60 ሰከንድ ቆጣሪ እና አውቶማቲክ ዙር አስተዳደር
       function initTimers() {
         setInterval(() => {
           if (state.onlinePlayers < 2450) {
@@ -397,12 +397,16 @@
           }
           if (elements.onlineCount) elements.onlineCount.textContent = state.onlinePlayers;
 
-          state.timeLeft--;
-          if (state.timeLeft <= 0) {
-            state.timeLeft = 60;
-          }
-          if (elements.roundTimer) {
-            elements.roundTimer.textContent = `ቀጣይ ዙር: ${state.timeLeft}ሰ`;
+          if (!state.isDrawing) {
+            state.timeLeft--;
+            if (elements.roundTimer) {
+              elements.roundTimer.textContent = `ቀጣይ ዙር: ${state.timeLeft}ሰ`;
+            }
+
+            // ሰአቱ 0 ሲደርስ አውቶማቲክ ድራው ይጀምራል
+            if (state.timeLeft <= 0) {
+              triggerRoundDraw();
+            }
           }
         }, 1000);
       }
@@ -440,14 +444,16 @@
 
       // የሐሰት ተጫዋቾች በየሰኮንዱ በዝግታ ገቢ እየሆኑ እና በብር መጠን Top Sorting እየተደረጉ እንዲታዩ ማድረግ
       setInterval(() => {
-        fakeLeaderboardCache.forEach(item => {
-          if (Math.random() > 0.7) {
-            const step = Math.random() > 0.5 ? 50 : 100;
-            item.stake = Math.min(1000, Math.max(100, item.stake + (Math.random() > 0.5 ? step : -step)));
-          }
-        });
-        fakeLeaderboardCache.sort((a, b) => b.stake - a.stake);
-        renderTicketsList();
+        if (!state.isDrawing) {
+          fakeLeaderboardCache.forEach(item => {
+            if (Math.random() > 0.7) {
+              const step = Math.random() > 0.5 ? 50 : 100;
+              item.stake = Math.min(1000, Math.max(100, item.stake + (Math.random() > 0.5 ? step : -step)));
+            }
+          });
+          fakeLeaderboardCache.sort((a, b) => b.stake - a.stake);
+          renderTicketsList();
+        }
       }, 4000);
 
       function renderTicketsList() {
@@ -474,7 +480,6 @@
           ticket.picks.forEach(num => {
             const ball = document.createElement("div");
             ball.className = "pick-ball";
-            // ቁጥሩ ከወጡት አሸናፊ ቁጥሮች ጋር ከገጠመ አረንጓዴ ቀለም ይሰጠዋል
             if (state.winningNumbers.includes(num)) {
               ball.classList.add("matched");
             }
@@ -547,11 +552,12 @@
         }
       }
 
-      // ልክ እንደ ምስሉ የቁጥሮች መውጣት እና (12 / 20) የሂደት ማሳያ
+      // ቁጥሮች ተራ በተራ በዝግታ እንዲወጡ የሚያደርግ አኒሜሽን (ልክ እንደ ምስሉ)
       function revealDraw(draw) {
         return new Promise(resolve => {
           state.winningNumbers = [];
           if (elements.drawPlaceholder) elements.drawPlaceholder.style.display = "none";
+          if (elements.drawnBallsRow) elements.drawnBallsRow.innerHTML = "";
           if (elements.gameTitle) elements.gameTitle.textContent = "ቀጥታ ስርጭት (Live draw)";
 
           let index = 0;
@@ -559,17 +565,14 @@
             const currentNum = draw[index];
             state.winningNumbers.push(currentNum);
             
-            // የቁጥር ከፍ ያለ ኳስ ማሳያ
             if (elements.currentBallContainer) {
               elements.currentBallContainer.innerHTML = `<div class="draw-ball-large">${currentNum}</div>`;
             }
 
-            // የሂደት ካውንተር (ለምሳሌ: 12 / 20)
             if (elements.drawCounter) {
               elements.drawCounter.textContent = `${index + 1} / 20`;
             }
 
-            // የወጡት ትናንሽ ኳሶች ረድፍ
             if (elements.drawnBallsRow) {
               const smallBall = document.createElement("div");
               smallBall.className = "small-ball active";
@@ -589,8 +592,12 @@
         });
       }
 
-      async function placeBet() {
-        if (state.isDrawing) return;
+      // ተጫዋቹ ቁጥር መርጦ BET ሲጫን ቲኬቱ በ Waiting ይቀመጣል
+      function placeBetLocally() {
+        if (state.isDrawing) {
+          showNotice("ጨዋታው በሂደት ላይ ነው፣ እባክዎ ቀጣዩን ዙር ይጠብቁ።", true);
+          return;
+        }
         if (state.picks.size < 1) {
           showNotice("እባክዎ ቢያንስ 1 ቁጥር ይምረጡ።", true);
           return;
@@ -601,6 +608,8 @@
         }
 
         const picks = [...state.picks].sort((a, b) => a - b);
+        state.pendingBet = { picks, stake: state.stake };
+
         const userTicket = {
           name: state.name || "እርስዎ",
           picks,
@@ -608,49 +617,77 @@
           status: "Waiting"
         };
 
-        state.isDrawing = true;
-        elements.betButton.disabled = true;
-        elements.betButton.textContent = "ውርርድ በሂደት ላይ...";
-        
-        state.myTickets.unshift(userTicket);
+        state.myTickets = [userTicket]; // የዚህ ዙር ቲኬት
         renderTicketsList();
+
+        showNotice("ውርርዱ ተመዝግቧል! ዙሩ እስኪጀመር በመጠበቅ ላይ...");
+        elements.betButton.disabled = true;
+        elements.betButton.textContent = "ተመዝግቧል (Waiting)";
+      }
+
+      // ሰአቱ 0 ሲደርስ አውቶማቲክ ድራው የሚከናወንበት ዋናው ፈንክሽን
+      async function triggerRoundDraw() {
+        state.isDrawing = true;
+
+        let picksToPlay = state.pendingBet ? state.pendingBet.picks : [1, 5, 10]; // ካልመረጠ በነባሪ
+        let stakeToPlay = state.pendingBet ? state.pendingBet.stake : CONFIG.minStake;
 
         try {
           const response = await fetch(CONFIG.playEndpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              picks,
-              stake: state.stake,
+              picks: picksToPlay,
+              stake: stakeToPlay,
               identifier: state.identifier
             })
           });
 
           const data = await response.json();
-          if (!response.ok || !data.success) throw new Error(data.error || "ውርርዱን መፈጸም አልተቻለም።");
+          if (!response.ok || !data.success) throw new Error(data.error || "ሰርቨር ስህተት አጋጥሞታል።");
 
+          // አኒሜሽኑን ማስጀመር (ልክ እንደ ምስሉ 1/20 እያለ በዝግታ ማሳየት)
           await revealDraw(data.draw);
 
-          userTicket.status = data.payout > 0 ? "Won" : "Lost";
-          renderTicketsList();
+          if (state.myTickets.length > 0) {
+            state.myTickets[0].status = data.payout > 0 ? "Won" : "Lost";
+            renderTicketsList();
+          }
 
           updateWallet(data.balance);
           if (elements.gameTitle) elements.gameTitle.textContent = "ጨዋታው ተጠናቋል";
 
-          showNotice(data.payout > 0 ? `እንኳን ደስ አሎት! ${formatMoney(data.payout)} አሸንፈዋል!` : "አልተሳካም, መልካም እድል!");
+          if (data.payout > 0) {
+            showNotice(`እንኳን ደስ አሎት! ${formatMoney(data.payout)} አሸንፈዋል!`);
+          } else {
+            showNotice("አልተሳካም, ቀጣይ እድል መልካም እድል!");
+          }
+
         } catch (error) {
-          state.myTickets.shift();
-          renderTicketsList();
-          showNotice(error.message || "ስህተት ተፈጥሯል።", true);
+          console.error(error);
+          showNotice("የድራው ስህተት ተፈጥሯል", true);
         } finally {
-          state.isDrawing = false;
-          elements.betButton.disabled = false;
-          elements.betButton.textContent = `BET · ${formatMoney(state.stake)}`;
+          // ከጥቂት ሰከንዶች በኋላ ለቀጣይ ዙር ማዘጋጀት
+          setTimeout(() => {
+            state.isDrawing = false;
+            state.timeLeft = 60;
+            state.pendingBet = null;
+            state.winningNumbers = [];
+            state.myTickets = [];
+            if (elements.currentBallContainer) elements.currentBallContainer.innerHTML = "";
+            if (elements.drawCounter) elements.drawCounter.textContent = "";
+            if (elements.drawPlaceholder) elements.drawPlaceholder.style.display = "block";
+            if (elements.gameTitle) elements.gameTitle.textContent = "ቁጥሮችዎን ይምረጡ";
+            elements.betButton.disabled = false;
+            elements.betButton.textContent = `BET · ${formatMoney(state.stake)}`;
+            makeNumberGrid();
+            renderTicketsList();
+          }, 4000);
         }
       }
 
       function bindControls() {
-        elements.betButton?.addEventListener("click", placeBet);
+        elements.betButton?.addEventListener("click", placeBetLocally);
         $("#minus")?.addEventListener("click", () => setStake(state.stake - CONFIG.stakeStep));
         $("#plus")?.addEventListener("click", () => setStake(state.stake + CONFIG.stakeStep));
         $("#double")?.addEventListener("click", () => setStake(state.stake * 2));
