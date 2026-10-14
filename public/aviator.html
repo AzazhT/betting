@@ -1,0 +1,595 @@
+
+<!DOCTYPE html>
+<html lang="am">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10131e">
+  <title>Aviator Demo | Ethiopia Betting</title>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #10131e;
+      --panel: #191e2c;
+      --panel2: #222a3b;
+      --text: #f5f7ff;
+      --muted: #9da8bd;
+      --red: #ff455b;
+      --green: #26d99a;
+      --yellow: #ffd166;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, "Noto Sans Ethiopic", sans-serif;
+    }
+
+    button, input { font: inherit; }
+
+    .page {
+      width: min(100%, 900px);
+      margin: auto;
+      padding: 16px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .brand { font-size: 18px; font-weight: 800; }
+    .brand span { color: var(--red); }
+
+    .back {
+      color: var(--text);
+      text-decoration: none;
+      background: var(--panel2);
+      border-radius: 10px;
+      padding: 10px 13px;
+    }
+
+    .demo-tag {
+      color: var(--yellow);
+      font-size: 12px;
+      border: 1px solid #67552c;
+      border-radius: 20px;
+      padding: 6px 9px;
+    }
+
+    .wallet {
+      background: var(--panel);
+      border: 1px solid #2b3448;
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .muted { color: var(--muted); font-size: 12px; }
+    .balance { color: var(--green); font-size: 23px; font-weight: 800; }
+
+    .game {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #2b3448;
+      background:
+        radial-gradient(ellipse at 50% 110%, #263a5c 0%, #151d31 50%, #10131e 80%);
+      border-radius: 18px;
+      min-height: 310px;
+    }
+
+    .game-top {
+      position: relative;
+      z-index: 2;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .round-label { color: var(--muted); font-size: 12px; }
+
+    .status {
+      background: #292f40;
+      border-radius: 20px;
+      padding: 7px 10px;
+      font-size: 12px;
+    }
+
+    .sky {
+      height: 235px;
+      position: relative;
+      overflow: hidden;
+      background-image:
+        linear-gradient(#ffffff09 1px, transparent 1px),
+        linear-gradient(90deg, #ffffff09 1px, transparent 1px);
+      background-size: 38px 38px;
+      mask-image: linear-gradient(to bottom, black 30%, transparent 100%);
+    }
+
+    .multiplier {
+      position: absolute;
+      z-index: 2;
+      top: 35px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: clamp(42px, 11vw, 75px);
+      font-weight: 900;
+      letter-spacing: -2px;
+      text-shadow: 0 0 25px #ff455b44;
+    }
+
+    .multiplier.crashed { color: var(--red); }
+    .multiplier.flying { color: #fff; }
+
+    .plane {
+      position: absolute;
+      left: 12%;
+      top: 145px;
+      font-size: 44px;
+      transform: rotate(-12deg);
+      filter: drop-shadow(0 0 13px #ff455b77);
+      transition: left .12s linear, top .12s linear;
+    }
+
+    .trail {
+      position: absolute;
+      height: 3px;
+      width: 35%;
+      left: 0;
+      top: 190px;
+      background: linear-gradient(90deg, transparent, var(--red));
+      transform: rotate(-20deg);
+      transform-origin: left center;
+      opacity: .8;
+    }
+
+    .center-message {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 130px;
+      text-align: center;
+      font-weight: 800;
+      font-size: 20px;
+      z-index: 3;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid #2b3448;
+      border-radius: 15px;
+      padding: 14px;
+      min-width: 0;
+    }
+
+    .field-label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .amount-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    input {
+      min-width: 0;
+      width: 100%;
+      padding: 12px;
+      background: #101521;
+      color: white;
+      border: 1px solid #354057;
+      border-radius: 9px;
+      outline: none;
+    }
+
+    input:focus { border-color: #8293b7; }
+
+    .small-btn {
+      border: 0;
+      border-radius: 8px;
+      padding: 8px;
+      background: var(--panel2);
+      color: white;
+      cursor: pointer;
+    }
+
+    .main-btn {
+      width: 100%;
+      min-height: 48px;
+      border: 0;
+      border-radius: 10px;
+      color: #111722;
+      font-weight: 900;
+      cursor: pointer;
+      padding: 12px 8px;
+    }
+
+    .bet-btn { background: var(--green); }
+    .cash-btn { background: var(--yellow); }
+    .main-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    .notice {
+      margin-top: 12px;
+      min-height: 20px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .history {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 10px;
+    }
+
+    .history-chip {
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 12px;
+      background: #243a34;
+      color: var(--green);
+    }
+
+    .history-chip.low {
+      background: #412630;
+      color: #ff8c99;
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 800;
+      margin: 20px 0 8px;
+    }
+
+    .rules {
+      font-size: 13px;
+      line-height: 1.8;
+      color: var(--muted);
+      padding: 14px;
+      background: var(--panel);
+      border-radius: 12px;
+    }
+
+    .footnote {
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.6;
+      padding: 20px 0;
+    }
+
+    @media (max-width: 440px) {
+      .page { padding: 10px; }
+      .controls { gap: 8px; }
+      .card { padding: 10px; }
+      .small-btn { padding: 8px 5px; }
+      .game { min-height: 285px; }
+      .sky { height: 210px; }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="page">
+    <header class="topbar">
+      <a class="back" href="/">← Back</a>
+      <div class="brand">ETHIOPIA <span>BETTING</span></div>
+      <div class="demo-tag">DEMO</div>
+    </header>
+
+    <section class="wallet">
+      <div>
+        <div class="muted">Demo Balance · ETB</div>
+        <div id="balance" class="balance">1,000.00</div>
+      </div>
+      <div style="text-align:right">
+        <div class="muted">Round</div>
+        <strong id="roundId">--</strong>
+      </div>
+    </section>
+
+    <section class="game">
+      <div class="game-top">
+        <span class="round-label">✈ AVIATOR DEMO</span>
+        <span id="status" class="status">Connecting...</span>
+      </div>
+
+      <div class="sky">
+        <div id="multiplier" class="multiplier">1.00x</div>
+        <div id="trail" class="trail"></div>
+        <div id="plane" class="plane">✈️</div>
+        <div id="centerMessage" class="center-message"></div>
+      </div>
+    </section>
+
+    <section class="controls">
+      <div class="card">
+        <label class="field-label" for="betAmount">Bet Amount · ETB</label>
+        <div class="amount-row">
+          <input id="betAmount" type="number" min="1" max="10000"
+                 step="1" value="10" inputmode="decimal">
+        </div>
+        <div class="amount-row">
+          <button class="small-btn" data-amount="10">10</button>
+          <button class="small-btn" data-amount="50">50</button>
+          <button class="small-btn" data-amount="100">100</button>
+        </div>
+        <button id="betButton" class="main-btn bet-btn">PLACE BET</button>
+      </div>
+
+      <div class="card">
+        <div class="field-label">Your Bet</div>
+        <div id="myBet" style="font-size:22px;font-weight:800;margin:12px 0">0.00 ETB</div>
+        <div class="field-label">Potential Cash Out</div>
+        <div id="potential" style="font-size:16px;font-weight:800;margin:12px 0">0.00 ETB</div>
+        <button id="cashButton" class="main-btn cash-btn" disabled>CASH OUT</button>
+      </div>
+    </section>
+
+    <div id="notice" class="notice" role="status" aria-live="polite">
+      የDemo ጨዋታው እየተገናኘ ነው...
+    </div>
+
+    <h3 class="section-title">Recent Rounds</h3>
+    <div id="history" class="history">
+      <span class="muted">Loading...</span>
+    </div>
+
+    <h3 class="section-title">የጨዋታ መመሪያ</h3>
+    <div class="rules">
+      • Bet የምታደርገው ጨዋታው ከመጀመሩ በፊት ነው።<br>
+      • አውሮፕላኑ ሲነሳ multiplier እየጨመረ ይሄዳል።<br>
+      • ከመውደቁ በፊት Cash Out ካደረግህ የDemo ክፍያው ይመለሳል።<br>
+      • ከወደቀ በኋላ Cash Out ማድረግ አይቻልም።
+    </div>
+
+    <div class="footnote">
+      Demo only — የሙከራ ባላንስ ብቻ ነው። ከእውነተኛ የኪስ ቦርሳህ
+      ጋር አልተገናኘም።<br>
+      This is a demo simulation, not the official Aviator game or an external provider.
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      const tg = window.Telegram?.WebApp;
+      tg?.ready();
+      tg?.expand();
+
+      const telegramId = String(tg?.initDataUnsafe?.user?.id || '');
+      const $ = id => document.getElementById(id);
+
+      let currentRound = null;
+      let currentPhase = 'loading';
+      let currentMultiplier = 1;
+      let myBet = 0;
+      let hasBet = false;
+      let cashedOut = false;
+      let busy = false;
+      let lastRoundId = null;
+
+      function money(value) {
+        return Number(value || 0).toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+      }
+
+      function setNotice(message, isError = false) {
+        $('notice').textContent = message;
+        $('notice').style.color = isError ? '#ff8794' : '#9da8bd';
+      }
+
+      function setBalance(value) {
+        if (value !== null && value !== undefined) {
+          $('balance').textContent = money(value);
+        }
+      }
+
+      function setStatus(phase) {
+        const labels = {
+          waiting: '🟡 Betting Open',
+          flying: '🟢 Flying',
+          crashed: '🔴 Crashed',
+          loading: 'Connecting...'
+        };
+        $('status').textContent = labels[phase] || phase;
+      }
+
+      function renderHistory(history) {
+        if (!Array.isArray(history) || !history.length) {
+          $('history').innerHTML = '<span class="muted">No rounds yet</span>';
+          return;
+        }
+
+        $('history').replaceChildren(...history.map(item => {
+          const chip = document.createElement('span');
+          const value = Number(item.multiplier || 1);
+          chip.className = 'history-chip' + (value < 2 ? ' low' : '');
+          chip.textContent = value.toFixed(2) + 'x';
+          return chip;
+        }));
+      }
+
+      function renderRound(round) {
+        if (!round) return;
+
+        if (lastRoundId !== null && round.id !== lastRoundId) {
+          myBet = 0;
+          hasBet = false;
+          cashedOut = false;
+          $('myBet').textContent = '0.00 ETB';
+          $('potential').textContent = '0.00 ETB';
+        }
+
+        lastRoundId = round.id;
+        currentRound = round;
+        currentPhase = round.phase;
+        currentMultiplier = Number(round.multiplier || 1);
+
+        $('roundId').textContent = '#' + round.id;
+        setStatus(round.phase);
+        $('multiplier').textContent = currentMultiplier.toFixed(2) + 'x';
+        $('multiplier').className = 'multiplier' +
+          (round.phase === 'crashed' ? ' crashed' : round.phase === 'flying' ? ' flying' : '');
+
+        $('centerMessage').textContent =
+          round.phase === 'waiting' ? 'NEXT ROUND' :
+          round.phase === 'crashed' ? 'FLEW AWAY!' : '';
+
+        const progress = Math.max(0, Math.min(1, (currentMultiplier - 1) / 8));
+        $('plane').style.left = (12 + progress * 66) + '%';
+        $('plane').style.top = (145 - progress * 100) + 'px';
+        $('trail').style.width = (15 + progress * 65) + '%';
+        renderHistory(round.history);
+
+        $('betButton').disabled =
+          busy || round.phase !== 'waiting' || hasBet;
+        $('cashButton').disabled =
+          busy || round.phase !== 'flying' || !hasBet || cashedOut;
+
+        if (hasBet && !cashedOut) {
+          $('potential').textContent = money(myBet * currentMultiplier) + ' ETB';
+        }
+      }
+
+      async function api(path, body) {
+        const options = body === undefined
+          ? { method: 'GET' }
+          : {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body)
+            };
+
+        const response = await fetch('/api/aviator/' + path, options);
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || 'Request failed');
+        }
+
+        return data;
+      }
+
+      async function refresh() {
+        try {
+          const query = telegramId
+            ? '?telegram_id=' + encodeURIComponent(telegramId)
+            : '';
+
+          const data = await api('state' + query);
+          setBalance(data.balance);
+          renderRound(data.round);
+
+          if (!telegramId) {
+            setNotice('የTelegram ተጠቃሚ ID አልተገኘም። ጨዋታውን በTelegram Web App ውስጥ ክፈት።', true);
+          } else if (currentPhase === 'waiting') {
+            setNotice('Bet አድርግ፤ ጨዋታው ሲጀምር multiplier ይጨምራል።');
+          }
+        } catch (error) {
+          setStatus('Connection error');
+          setNotice('Server ጋር መገናኘት አልተቻለም። ' + error.message, true);
+        }
+      }
+
+      async function placeBet() {
+        if (!telegramId) {
+          setNotice('ይህን ጨዋታ ከTelegram Web App ውስጥ ክፈት።', true);
+          return;
+        }
+
+        const amount = Number($('betAmount').value);
+
+        if (!Number.isFinite(amount) || amount < 1 || amount > 10000 ||
+            Math.round(amount * 100) !== amount * 100) {
+          setNotice('Bet ከ1 እስከ 10,000 ETB መሆን አለበት።', true);
+          return;
+        }
+
+        busy = true;
+        renderRound(currentRound);
+
+        try {
+          const data = await api('bet', { telegram_id: telegramId, amount });
+          myBet = amount;
+          hasBet = true;
+          cashedOut = false;
+          $('myBet').textContent = money(amount) + ' ETB';
+          setBalance(data.balance);
+          renderRound(data.round);
+          setNotice('Bet ተቀብሏል። መልካም እድል!');
+        } catch (error) {
+          setNotice(error.message, true);
+        } finally {
+          busy = false;
+          await refresh();
+        }
+      }
+
+      async function cashOut() {
+        if (!telegramId || !hasBet || cashedOut) return;
+
+        busy = true;
+        renderRound(currentRound);
+
+        try {
+          const data = await api('cashout', { telegram_id: telegramId });
+          cashedOut = true;
+          hasBet = false;
+          setBalance(data.balance);
+          $('potential').textContent = money(data.payout) + ' ETB';
+          $('myBet').textContent = money(myBet) + ' ETB';
+          setNotice(
+            'Cash Out: ' + Number(data.multiplier).toFixed(2) +
+            'x — Demo payout: ' + money(data.payout) + ' ETB'
+          );
+        } catch (error) {
+          setNotice(error.message, true);
+        } finally {
+          busy = false;
+          await refresh();
+        }
+      }
+
+      $('betButton').addEventListener('click', placeBet);
+      $('cashButton').addEventListener('click', cashOut);
+
+      document.querySelectorAll('[data-amount]').forEach(button => {
+        button.addEventListener('click', () => {
+          $('betAmount').value = button.dataset.amount;
+        });
+      });
+
+      refresh();
+      setInterval(refresh, 500);
+    })();
+  </script>
+</body>
+</html>
