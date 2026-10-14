@@ -195,6 +195,8 @@ button{cursor:pointer}
 </div>
 
 <script>
+
+<script>
 (() => {
   const tg = window.Telegram?.WebApp;
   tg?.ready();
@@ -214,7 +216,18 @@ button{cursor:pointer}
   let state = null;
   let busy = false;
 
-  $('userId').textContent = telegramId ? `ID: ${telegramId}` : 'Telegram user not detected';
+  // Countdown and sequential draw display.
+  let secondsRemaining = 60;
+  let countdownRefreshPending = false;
+  let displayRoundId = null;
+  let drawQueue = [];
+  let drawTimer = null;
+  let lastAnimatedRoundId = null;
+  let stateRequestRunning = false;
+
+  $('userId').textContent = telegramId
+    ? `ID: ${telegramId}`
+    : 'Telegram user not detected';
 
   function money(value) {
     return Number(value || 0).toLocaleString('en-US', {
@@ -230,10 +243,15 @@ button{cursor:pointer}
         ...(options.headers || {})
       }
     });
+
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data.error || data.message || `Request failed (${response.status})`);
+
+    if (!response.ok || data.success === false) {
+      throw new Error(
+        data.error || data.message || `Request failed (${response.status})`
+      );
     }
+
     return data;
   }
 
@@ -257,9 +275,11 @@ button{cursor:pointer}
     for (let n = 1; n <= 80; n++) {
       const button = document.createElement('button');
       button.type = 'button';
+
       button.className = 'cell' +
         (selected.has(n) ? ' selected' : '') +
         (drawn.includes(n) ? ' hit' : '');
+
       button.textContent = n;
 
       button.onclick = () => {
@@ -293,13 +313,170 @@ button{cursor:pointer}
     } else {
       drawn.forEach((number, index) => {
         const ball = document.createElement('div');
-        ball.className = 'ball' + (index === drawn.length - 1 ? ' latest' : '');
+        ball.className = 'ball' +
+          (index === drawn.length - 1 ? ' latest' : '');
         ball.textContent = number;
         $('drawnBalls').appendChild(ball);
       });
     }
 
     renderGrid();
+  }
+
+  // Reveal the server's completed draw one number at a time.
+  function animateDraw(roundId, numbers) {
+    const validNumbers = Array.isArray(numbers)
+      ? numbers.map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 80)
+      : [];
+
+    if (!validNumbers.length || lastAnimatedRoundId === String(roundId)) {
+      return;
+    }
+
+    if (drawTimer) {
+      clearTimeout(drawTimer);
+      drawTimer = null;
+    }
+
+    lastAnimatedRoundId = String(roundId);
+    displayRoundId = roundId;
+    drawQueue = [...validNumbers];
+    drawn = [];
+
+    $('roundId').textContent = roundId;
+    renderDrawn();
+    $('statusText').textContent = 'Drawing numbers…';
+
+    function revealNext() {
+      if (!drawQueue.length) {
+        drawTimer = null;
+        $('statusText').textContent = 'Draw complete.';
+        renderDrawn();
+        return;
+      }
+
+      drawn.push(drawQueue.shift());
+      renderDrawn();
+
+      // Show one number every 800 milliseconds.
+      drawTimer = setTimeout(revealNext, 800);
+    }
+
+    revealNext();
+  }
+
+  async function loadBalance() {
+    if (!telegramId) {
+      $('balance').textContent = '--';
+      return;
+    }
+
+    const data = await api(
+      `/balance/${encodeURIComponent(telegramId)}`
+    );
+
+    const value = data.balance ??
+      data.user?.balance ??
+      data.wallet?.balance;
+
+    if (value !== undefined) {
+      balance = Number(value);
+      $('balance').textContent = money(balance);
+    }
+  }
+
+  async function loadState() {
+    if (stateRequestRunning) return;
+    stateRequestRunning = true;
+
+    try {
+      const data = await api('/state');
+      state = data.round || data.state || data;
+
+      const id = state.id ?? state.round_id ?? state.roundId;
+
+      if (id !== undefined) {
+        $('roundId').textContent = id;
+      }
+
+      secondsRemaining = Math.max(
+        0,
+        Number(state.seconds_remaining ?? 60)
+      );
+
+      $('timerBall').textContent = secondsRemaining;
+
+      // Current round can be open with no drawn numbers yet.
+      const currentNumbers =
+        state.drawn_numbers ??
+        state.drawnNumbers ??
+        state.results;
+
+      if (
+        Array.isArray(currentNumbers) &&
+        currentNumbers.length > 0
+      ) {
+        drawn = currentNumbers.map(Number);
+        renderDrawn();
+      }
+
+      // The backend returns completed rounds in recent_rounds.
+      // Animate only the newest completed round, not a fake random draw.
+      const recent = data.recent_rounds || data.recent || [];
+
+      if (Array.isArray(recent) && recent.length > 0) {
+        const completed = recent.find(round =>
+          Array.isArray(round.drawn_numbers) &&
+          round.drawn_numbers.length > 0
+        );
+
+        if (completed) {
+          const completedId = completed.id ?? completed.round_id;
+
+          if (completedId !== undefined) {
+            $('resultsList').innerHTML = '';
+
+            const title = document.createElement('div');
+            title.className = 'ticket';
+            title.innerHTML = '<strong>Latest completed round</strong>';
+
+            const chips = document.createElement('div');
+            chips.className = 'ticketnums';
+
+            completed.drawn_numbers.forEach(number => {
+              const chip = document.createElement('span');
+              chip.className = 'ticketnum';
+              chip.textContent = number;
+              chips.appendChild(chip);
+            });
+
+            title.appendChild(chips);
+            $('resultsList').appendChild(title);
+
+            // Start animation only when this completed round is new.
+            animateDraw(completedId, completed.drawn_numbers);
+          }
+        }
+      }
+
+      $('statusText').textContent = 'Connected to Keno server.';
+    } finally {
+      stateRequestRunning = false;
+    }
+  }
+
+  async function loadHistory() {
+    if (!telegramId) return;
+
+    const data = await api(
+      `/history/${encodeURIComponent(telegramId)}`
+    );
+
+    tickets = Array.isArray(data)
+      ? data
+      : (data.bets || data.tickets || data.history || []);
+
+    renderTickets();
   }
 
   function renderTickets() {
@@ -309,7 +486,10 @@ button{cursor:pointer}
     $('statTickets').textContent = tickets.length;
 
     if (!tickets.length) {
-      $('ticketList').innerHTML = '<div class="empty">No tickets yet.</div>';
+      $('ticketList').innerHTML =
+        '<div class="empty">No tickets yet.</div>';
+      $('statBets').textContent = '0 ETB';
+      $('statWins').textContent = '0 ETB';
       return;
     }
 
@@ -324,31 +504,42 @@ button{cursor:pointer}
       top.className = 'ticket-top';
 
       const label = document.createElement('span');
-      label.textContent = `Round ${ticket.round_id ?? ticket.roundId ?? '--'}`;
+      label.textContent =
+        `Round ${ticket.round_id ?? ticket.roundId ?? '--'}`;
 
       const status = document.createElement('span');
       status.className = 'waiting';
       status.textContent = ticket.status || 'Placed';
+
       top.append(label, status);
 
-      let numbers = ticket.numbers || ticket.selected_numbers || [];
+      let numbers =
+        ticket.numbers || ticket.selected_numbers || [];
+
       if (typeof numbers === 'string') {
-        try { numbers = JSON.parse(numbers); } catch { numbers = []; }
+        try {
+          numbers = JSON.parse(numbers);
+        } catch {
+          numbers = [];
+        }
       }
+
       if (!Array.isArray(numbers)) numbers = [];
 
       const numberBox = document.createElement('div');
       numberBox.className = 'ticketnums';
 
-      numbers.forEach(n => {
+      numbers.forEach(number => {
         const chip = document.createElement('span');
-        chip.className = 'ticketnum' + (drawn.includes(Number(n)) ? ' hit' : '');
-        chip.textContent = n;
+        chip.className = 'ticketnum' +
+          (drawn.includes(Number(number)) ? ' hit' : '');
+        chip.textContent = number;
         numberBox.appendChild(chip);
       });
 
       const stake = Number(ticket.stake ?? ticket.bet_amount ?? 0);
       const payout = Number(ticket.payout ?? ticket.win_amount ?? 0);
+
       totalStake += stake;
       totalWins += payout;
 
@@ -370,54 +561,22 @@ button{cursor:pointer}
     $('statWins').textContent = money(totalWins) + ' ETB';
   }
 
-  async function loadBalance() {
-    if (!telegramId) {
-      $('balance').textContent = '--';
-      return;
-    }
-
-    const data = await api(`/balance/${encodeURIComponent(telegramId)}`);
-    const value = data.balance ?? data.user?.balance ?? data.wallet?.balance;
-
-    if (value !== undefined) {
-      balance = Number(value);
-      $('balance').textContent = money(balance);
-    }
-  }
-
-  async function loadState() {
-    const data = await api('/state');
-    state = data.round || data.state || data;
-
-    const id = state.id ?? state.round_id ?? state.roundId;
-    if (id !== undefined) $('roundId').textContent = id;
-
-    const numbers = state.drawn_numbers ?? state.drawnNumbers ?? state.results;
-    if (Array.isArray(numbers)) {
-      drawn = numbers.map(Number);
-      renderDrawn();
-    }
-
-    $('statusText').textContent = 'Keno server responded.';
-  }
-
-  async function loadHistory() {
-    if (!telegramId) return;
-
-    const data = await api(`/history/${encodeURIComponent(telegramId)}`);
-    tickets = Array.isArray(data) ? data : (data.tickets || data.history || []);
-    renderTickets();
-  }
-
   async function refresh() {
     $('statusText').textContent = 'Refreshing…';
 
-    try {
-      await Promise.all([loadState(), loadBalance(), loadHistory()]);
+    const results = await Promise.allSettled([
+      loadState(),
+      loadBalance(),
+      loadHistory()
+    ]);
+
+    const failed = results.find(result => result.status === 'rejected');
+
+    if (failed) {
+      $('statusText').textContent = 'Some Keno data could not load.';
+      showMessage(failed.reason?.message || 'Could not refresh data.');
+    } else {
       $('statusText').textContent = 'Connected to Keno server.';
-    } catch (error) {
-      $('statusText').textContent = 'Check Keno API connection.';
-      showMessage(error.message, 'error');
     }
   }
 
@@ -463,12 +622,11 @@ button{cursor:pointer}
         $('balance').textContent = money(balance);
       }
 
-      if (Array.isArray(data.drawn_numbers)) {
-        drawn = data.drawn_numbers.map(Number);
-        renderDrawn();
-      }
+      showMessage(
+        data.message || 'Bet submitted successfully.',
+        'success'
+      );
 
-      showMessage(data.message || 'Bet submitted. Refreshing ticket…', 'success');
       await refresh();
     } catch (error) {
       showMessage(error.message || 'Could not place bet.');
@@ -481,9 +639,11 @@ button{cursor:pointer}
 
   function randomPick(count = 10) {
     selected.clear();
+
     while (selected.size < count) {
       selected.add(Math.floor(Math.random() * 80) + 1);
     }
+
     $('selectedCount').textContent = selected.size;
     renderGrid();
   }
@@ -498,7 +658,9 @@ button{cursor:pointer}
     button.onclick = () => setBet(button.dataset.stake);
   });
 
-  $('randomBtn').onclick = () => randomPick(Math.floor(Math.random() * 10) + 1);
+  $('randomBtn').onclick = () =>
+    randomPick(Math.floor(Math.random() * 10) + 1);
+
   $('pickTenBtn').onclick = () => randomPick(10);
 
   $('clearBtn').onclick = () => {
@@ -515,7 +677,10 @@ button{cursor:pointer}
   };
 
   $('profileBtn').onclick = () => {
-    showMessage('Your balance is shared with the main wallet.', 'success');
+    showMessage(
+      'Your balance is shared with the main wallet.',
+      'success'
+    );
   };
 
   document.querySelectorAll('[data-tab]').forEach(button => {
@@ -529,22 +694,6 @@ button{cursor:pointer}
       ['game', 'history', 'results', 'statistics'].forEach(name => {
         $(name + 'Panel').classList.toggle('hidden', name !== tab);
       });
-
-      if (tab === 'results') {
-        $('resultsList').innerHTML = drawn.length
-          ? `<div class="ticket"><strong>Round ${$('roundId').textContent}</strong><div class="ticketnums" id="resultNums"></div></div>`
-          : '<div class="empty">No results loaded yet.</div>';
-
-        const resultNums = $('resultNums');
-        if (resultNums) {
-          drawn.forEach(number => {
-            const chip = document.createElement('span');
-            chip.className = 'ticketnum';
-            chip.textContent = number;
-            resultNums.appendChild(chip);
-          });
-        }
-      }
     };
   });
 
@@ -552,12 +701,36 @@ button{cursor:pointer}
   setBet(2);
   refresh();
 
-  // Refresh the displayed server state periodically.
+  // Update the countdown every second.
+  setInterval(() => {
+    if (document.hidden || busy) return;
+
+    if (secondsRemaining > 0) {
+      secondsRemaining -= 1;
+      $('timerBall').textContent = secondsRemaining;
+    }
+
+    // At zero, ask the server to settle the expired round.
+    if (secondsRemaining <= 0 && !countdownRefreshPending) {
+      countdownRefreshPending = true;
+
+      refresh().finally(() => {
+        countdownRefreshPending = false;
+      });
+    }
+  }, 1000);
+
+  // Re-sync with the server when returning to the game.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refresh();
+  });
+
+  // Keep the server state synced without waiting for the countdown.
   setInterval(() => {
     if (!document.hidden && !busy) refresh();
   }, 10000);
 })();
 </script>
+
 </body>
 </html>
-```
