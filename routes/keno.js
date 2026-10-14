@@ -1,3 +1,4 @@
+
 const express = require('express');
 const crypto = require('crypto');
 
@@ -26,9 +27,10 @@ module.exports = function (pool) {
   };
 
   let schemaReady = null;
+  let backgroundStarted = false;
 
   // --------------------------------------------------
-  // DATABASE INITIALIZATION
+  // DATABASE TABLES
   // --------------------------------------------------
 
   async function initSchema() {
@@ -49,8 +51,7 @@ module.exports = function (pool) {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS keno_bets (
           id BIGSERIAL PRIMARY KEY,
-          round_id BIGINT NOT NULL
-            REFERENCES keno_rounds(id),
+          round_id BIGINT NOT NULL REFERENCES keno_rounds(id),
           telegram_id TEXT NOT NULL,
           numbers JSONB NOT NULL,
           stake NUMERIC(12,2) NOT NULL CHECK (stake > 0),
@@ -70,7 +71,12 @@ module.exports = function (pool) {
         CREATE INDEX IF NOT EXISTS idx_keno_bets_round
         ON keno_bets (round_id)
       `);
-    })().catch((err) => {
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_keno_rounds_status
+        ON keno_rounds (status, id DESC)
+      `);
+    })().catch(err => {
       schemaReady = null;
       throw err;
     });
@@ -112,11 +118,8 @@ module.exports = function (pool) {
     }
 
     if (
-      !numbers.every(
-        (number) =>
-          Number.isInteger(number) &&
-          number >= 1 &&
-          number <= 80
+      !numbers.every(number =>
+        Number.isInteger(number) && number >= 1 && number <= 80
       )
     ) {
       return 'Every number must be an integer from 1 to 80.';
@@ -129,13 +132,14 @@ module.exports = function (pool) {
     return null;
   }
 
+  // Generate a random draw order without duplicate numbers.
+  // IMPORTANT: Do not sort the result; its order is the draw order.
   function drawNumbers() {
     const numbers = Array.from(
       { length: 80 },
       (_, index) => index + 1
     );
 
-    // Fisher-Yates shuffle using Node's crypto module.
     for (let index = numbers.length - 1; index > 0; index--) {
       const otherIndex = crypto.randomInt(0, index + 1);
 
@@ -145,9 +149,7 @@ module.exports = function (pool) {
       ];
     }
 
-    return numbers
-      .slice(0, DRAW_COUNT)
-      .sort((a, b) => a - b);
+    return numbers.slice(0, DRAW_COUNT);
   }
 
   function getPayoutMultiplier(pickedCount, matchCount) {
@@ -172,7 +174,6 @@ module.exports = function (pool) {
       const result = await callback(client);
 
       await client.query('COMMIT');
-
       return result;
     } catch (err) {
       try {
@@ -215,12 +216,14 @@ module.exports = function (pool) {
         INSERT INTO keno_rounds (
           status,
           starts_at,
-          ends_at
+          ends_at,
+          drawn_numbers
         )
         VALUES (
           'open',
           NOW(),
-          NOW() + ($1 * INTERVAL '1 second')
+          NOW() + ($1 * INTERVAL '1 second'),
+          '[]'::jsonb
         )
         RETURNING *
       `,
@@ -255,15 +258,16 @@ module.exports = function (pool) {
       return round;
     }
 
+    // Generate and save one authoritative server-side result.
     const drawnNumbers = drawNumbers();
 
     await client.query(
       `
         UPDATE keno_rounds
-        SET
-          status = 'completed',
-          drawn_numbers = $1::jsonb
+        SET status = 'completed',
+            drawn_numbers = $1::jsonb
         WHERE id = $2
+          AND status = 'open'
       `,
       [JSON.stringify(drawnNumbers), round.id]
     );
@@ -281,12 +285,20 @@ module.exports = function (pool) {
     );
 
     for (const bet of bets.rows) {
-      const selected = Array.isArray(bet.numbers)
-        ? bet.numbers
-        : [];
+      let selected = bet.numbers;
 
-      const matches = selected.filter(
-        (number) => drawnNumbers.includes(number)
+      if (typeof selected === 'string') {
+        try {
+          selected = JSON.parse(selected);
+        } catch {
+          selected = [];
+        }
+      }
+
+      if (!Array.isArray(selected)) selected = [];
+
+      const matches = selected.filter(number =>
+        drawnNumbers.includes(Number(number))
       ).length;
 
       const multiplier = getPayoutMultiplier(
@@ -300,11 +312,11 @@ module.exports = function (pool) {
       await client.query(
         `
           UPDATE keno_bets
-          SET
-            matches = $1,
-            payout = $2,
-            status = 'settled'
+          SET matches = $1,
+              payout = $2,
+              status = 'settled'
           WHERE id = $3
+            AND status = 'pending'
         `,
         [matches, payout, bet.id]
       );
@@ -321,6 +333,10 @@ module.exports = function (pool) {
       }
     }
 
+    console.log(
+      `Keno round ${round.id} completed: ${drawnNumbers.join(', ')}`
+    );
+
     return {
       ...round,
       status: 'completed',
@@ -328,10 +344,44 @@ module.exports = function (pool) {
     };
   }
 
-  // Initialize database before handling requests.
+  // --------------------------------------------------
+  // AUTOMATIC SERVER ROUND LOOP
+  // Runs even when no player is refreshing the page.
+  // --------------------------------------------------
+
+  function startBackgroundLoop() {
+    if (backgroundStarted) return;
+    backgroundStarted = true;
+
+    const runRoundCheck = async () => {
+      try {
+        await initSchema();
+
+        await withTransaction(async client => {
+          await settleExpiredRound(client);
+          await getOrCreateRound(client);
+        });
+      } catch (err) {
+        console.error('Keno automatic round error:', err.message);
+      }
+    };
+
+    // Start a round promptly, then check expiry every second.
+    runRoundCheck();
+
+    const timer = setInterval(runRoundCheck, 1000);
+
+    // Do not prevent Node from shutting down because of this timer.
+    if (typeof timer.unref === 'function') {
+      timer.unref();
+    }
+  }
+
+  // Initialize schema before handling requests.
   router.use(async (req, res, next) => {
     try {
       await initSchema();
+      startBackgroundLoop();
       next();
     } catch (err) {
       console.error('Keno database setup error:', err.message);
@@ -349,28 +399,19 @@ module.exports = function (pool) {
 
   router.get('/state', async (req, res) => {
     try {
-      const data = await withTransaction(async (client) => {
+      const data = await withTransaction(async client => {
         await settleExpiredRound(client);
-
         const round = await getOrCreateRound(client);
 
         const recent = await client.query(`
-          SELECT
-            id,
-            status,
-            starts_at,
-            ends_at,
-            drawn_numbers
+          SELECT id, status, starts_at, ends_at, drawn_numbers
           FROM keno_rounds
           WHERE status = 'completed'
           ORDER BY id DESC
           LIMIT 5
         `);
 
-        return {
-          round,
-          recent: recent.rows
-        };
+        return { round, recent: recent.rows };
       });
 
       res.json({
@@ -443,7 +484,6 @@ module.exports = function (pool) {
 
   // --------------------------------------------------
   // POST /api/keno/bet
-  // Body: { telegram_id, numbers: [3, 12, 25], stake: 10 }
   // --------------------------------------------------
 
   router.post('/bet', async (req, res) => {
@@ -487,9 +527,9 @@ module.exports = function (pool) {
     }
 
     try {
-      const result = await withTransaction(async (client) => {
+      const result = await withTransaction(async client => {
+        // Ensure expired rounds settle before accepting a new bet.
         await settleExpiredRound(client);
-
         const round = await getOrCreateRound(client);
 
         if (getRemainingSeconds(round) <= 0) {
@@ -539,20 +579,10 @@ module.exports = function (pool) {
         const betResult = await client.query(
           `
             INSERT INTO keno_bets (
-              round_id,
-              telegram_id,
-              numbers,
-              stake,
-              status
+              round_id, telegram_id, numbers, stake, status
             )
             VALUES ($1, $2, $3::jsonb, $4, 'pending')
-            RETURNING
-              id,
-              round_id,
-              numbers,
-              stake,
-              status,
-              created_at
+            RETURNING id, round_id, numbers, stake, status, created_at
           `,
           [
             round.id,
@@ -632,8 +662,7 @@ module.exports = function (pool) {
             b.created_at,
             r.drawn_numbers
           FROM keno_bets b
-          JOIN keno_rounds r
-            ON r.id = b.round_id
+          JOIN keno_rounds r ON r.id = b.round_id
           WHERE b.telegram_id = $1
           ORDER BY b.id DESC
           LIMIT 50
