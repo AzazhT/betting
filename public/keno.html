@@ -36,7 +36,7 @@
     .bet-btn{width:100%;border:0;border-radius:12px;padding:13px;color:#1b170b;background:var(--gold);font-weight:950;letter-spacing:.04em;cursor:pointer}.bet-btn:disabled{opacity:.55;cursor:not-allowed}
     .subnote{color:var(--muted);font-size:11px;margin-top:8px;text-align:center}
     .tabs{display:flex;gap:5px;padding:5px;background:var(--panel);border:1px solid var(--line);border-radius:13px;margin-bottom:12px}.tab{flex:1;border:0;border-radius:9px;padding:9px 2px;color:var(--muted);background:transparent;font-size:11px;font-weight:800;cursor:pointer}.tab.active{color:#1b170b;background:var(--gold)}
-    .ticket-item{background:#151814;border:1px solid #2b3028;border-radius:10px;padding:10px;margin-bottom:8px;display:flex;flex-direction:column;gap:6px}.ticket-top{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted)}.ticket-picks{display:flex;gap:4px;flex-wrap:wrap}.pick-ball{width:25px;height:25px;border-radius:6px;background:#2a3026;display:grid;place-items:center;font-size:10px;font-weight:800;color:var(--gold);border:1px solid #3b4233}.pick-ball.matched{background:var(--green);color:#fff;border-color:#8ce264}.ticket-bottom{display:flex;justify-content:space-between;align-items:center;margin-top:3px}.ticket-stake{font-weight:800;font-size:12px}.status{font-weight:800;font-size:11px}.status.waiting{color:var(--gold)}.status.won{color:var(--green)}.status.lost{color:var(--red)}.empty-list{padding:15px 0;text-align:center;color:var(--muted);font-size:12px}
+    .ticket-item{background:#151814;border:1px solid #2b3028;border-radius:10px;padding:10px;margin-bottom:8px;display:flex;flex-direction:column;gap:6px}.ticket-top{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted)}.ticket-picks{display:flex;gap:4px;flex-wrap:wrap}.pick-ball{width:25px;height:25px;border-radius:6px;background:#2a3026;display:grid;place-items:center;font-size:10px;font-weight:800;color:var(--gold);border:1px solid #3b4233}.pick-ball.matched{background:var(--green);color:#fff;border-color:#8ce264;box-shadow:0 0 6px #6ea54e88;font-weight:900}.ticket-bottom{display:flex;justify-content:space-between;align-items:center;margin-top:3px}.ticket-stake{font-weight:800;font-size:12px}.status{font-weight:800;font-size:11px}.status.waiting{color:var(--gold)}.status.won{color:var(--green)}.status.lost{color:var(--red)}.empty-list{padding:15px 0;text-align:center;color:var(--muted);font-size:12px}
     .notice{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);width:max-content;max-width:calc(100% - 28px);background:#f4f1e7;color:#1b1d18;border-radius:10px;padding:10px 14px;box-shadow:0 6px 25px #0008;opacity:0;pointer-events:none;transition:opacity .2s;z-index:1000;font-weight:750;font-size:12px;text-align:center}.notice.show{opacity:1}.notice.error{background:#e5484d;color:#fff}
     .hidden{display:none!important}
     @media(min-width:480px){.app{padding-top:16px}.grid{gap:6px}.number{border-radius:9px}}
@@ -104,7 +104,7 @@
 <script>
 (() => {
   "use strict";
-  const CONFIG = { maxPicks:10, minStake:10, stakeStep:10, maxStake:1000, currency:"ETB", pollMs:1000, revealMs:400 };
+  const CONFIG = { maxPicks:10, minStake:10, stakeStep:10, maxStake:1000, currency:"ETB", pollMs:1000, revealMs:650 };
   const $ = (s, r=document) => r.querySelector(s); const $$ = (s, r=document) => [...r.querySelectorAll(s)];
   const el = {
     grid:$("#numberGrid"), timer:$("#roundTimer"), title:$("#gameTitle"), drawStatus:$("#drawStatus"),
@@ -181,6 +181,7 @@
       if(state.roundStatus==="open") el.placeholder.classList.remove("hidden");
     }
     syncGrid();
+    renderTickets();
   }
   function updateStatus(){
     const open=canChoose();
@@ -231,7 +232,10 @@
     if(!revealTimer){
       revealTimer=setInterval(()=>{
         if(token!==revealToken)return;
-        if(state.shownDraw.length>=target.length){clearInterval(revealTimer);revealTimer=null;return;}
+        if(state.shownDraw.length>=target.length){
+          clearInterval(revealTimer); revealTimer=null;
+          return;
+        }
         state.shownDraw.push(target[state.shownDraw.length]);
         renderDraw();
       },CONFIG.revealMs);
@@ -256,6 +260,9 @@
         if(next.draw.length){ animateToDraw(next.draw); }
       } else if(next.status==="open" && state.shownDraw.length===0){
         if(el.placeholder)el.placeholder.classList.remove("hidden");
+        el.currentBall.replaceChildren();
+        el.drawn.replaceChildren();
+        el.drawCounter.textContent="0 / 20";
       }
       renderDraw(); updateStatus();
     }catch(e){
@@ -308,7 +315,14 @@
       const badge=document.createElement("span");badge.className=`status ${status.toLowerCase()}`;badge.textContent=status==="Won"?"አሸንፈዋል":status==="Lost"?"አልተሳካም":"በመጠበቅ ላይ";
       const roundLabel=document.createElement("span");roundLabel.textContent=`ዙር ${round}`;top.append(roundLabel,badge);
       const pickRow=document.createElement("div");pickRow.className="ticket-picks";
-      picks.forEach(n=>{const b=document.createElement("div");b.className="pick-ball"+(state.shownDraw.includes(Number(n))?" matched":"");b.textContent=String(n).padStart(2,"0");pickRow.appendChild(b);});
+      picks.forEach(n=>{
+        const numVal = Number(n);
+        const isMatched = state.shownDraw.includes(numVal);
+        const b=document.createElement("div");
+        b.className="pick-ball"+(isMatched?" matched":"");
+        b.textContent=String(numVal).padStart(2,"0");
+        pickRow.appendChild(b);
+      });
       const bottom=document.createElement("div");bottom.className="ticket-bottom";
       const st=document.createElement("span");st.className="ticket-stake";st.textContent=`ውርርድ ${money(stake)}`;
       const win=document.createElement("span");win.className="ticket-stake";win.style.color=payout>0?"var(--green)":"var(--muted)";win.textContent=`ክፍያ ${money(payout)}`;
