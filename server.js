@@ -27,7 +27,9 @@ const pool = new Pool({
 // የ Routes ፋይሎችን ማያያዝ
 const walletRoutes = require('./routes/wallet')(pool);
 const bettingRoutes = require('./routes/betting')(pool);
-
+// የ Bingo ሩትን ከ Socket.io እና Pool ጋር ማያያዝ
+const bingoRoutes = require('./routes/bingo')(pool, io);
+app.use('/api/bingo', bingoRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/betting', bettingRoutes);
 
