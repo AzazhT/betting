@@ -161,13 +161,19 @@
     }
     .filter.active { color: var(--gold); border-color: #8c7132; }
 
-    .ticket {
-      display: flex; justify-content: space-between; gap: 10px;
-      padding: 11px 0; border-top: 1px solid var(--line);
+    .ticket-item {
+      background: #151814; border: 1px solid #2b3028; border-radius: 10px;
+      padding: 10px 12px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 6px;
     }
-    .ticket:first-of-type { border-top: 0; }
-    .ticket strong { display: block; font-size: 13px; }
-    .ticket small { color: var(--muted); font-size: 11px; }
+    .ticket-top { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); }
+    .ticket-picks { display: flex; gap: 5px; flex-wrap: wrap; }
+    .pick-ball {
+      width: 26px; height: 26px; border-radius: 6px; background: #2a3026;
+      display: grid; place-items: center; font-size: 11px; font-weight: 800; color: var(--gold);
+      border: 1px solid #3b4233;
+    }
+    .ticket-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+    .ticket-stake { font-weight: 800; font-size: 13px; color: var(--text); }
     .status { font-weight: 800; font-size: 11px; }
     .status.waiting { color: var(--gold); }
     .status.won { color: var(--green); }
@@ -197,7 +203,7 @@
 
     <section class="wallet">
       <div><small id="playerInfo">PLAYER · Loading...</small><strong class="wallet-balance">0.00 ETB</strong></div>
-      <button class="add" id="addFunds">＋ ሐዌት</button>
+      <button class="add" id="addFunds">＋ ዋሌት</button>
     </section>
 
     <section class="game-card">
@@ -237,11 +243,9 @@
     </nav>
 
     <section class="tickets-card">
-      <div class="section-head"><h2>የእርስዎ ቲክኬቶች</h2><span class="pill" id="ticketCount">0</span></div>
-      <div class="filter-row">
-        <button class="filter active">ሁሉም (<span id="allCount">0</span>)</button>
-        <button class="filter">በመጠበቅ ላይ (<span id="myTicketsCount">0</span>)</button>
-        <button class="filter">የተጠናቀቁ (<span id="myBetsCount">0</span>)</button>
+      <div class="section-head">
+        <h2>የተጫዋቾች ዝርዝር</h2>
+        <span class="pill">All <span id="onlineCount">1</span></span>
       </div>
       <div id="ticketList"><div class="empty-list">ኦዶогоር ቲክኬቶች የሉም</div></div>
     </section>
@@ -249,20 +253,17 @@
 
   <div class="notice" id="notice"></div>
 
-  <!-- እዚህ በታች የ JavaScript ኮድ ይካተታል -->
   <script>
     (() => {
       "use strict";
 
       const CONFIG = {
-        meEndpoints: ["/api/get-user", "/api/me"],
         playEndpoint: "/api/keno/play",
         maxPicks: 10,
         minStake: 10,
         stakeStep: 10,
         maxStake: 1000,
         drawIntervalMs: 400,
-        requestTimeoutMs: 15000,
         currency: "ETB"
       };
 
@@ -278,10 +279,7 @@
         drawMessage: $("#drawMessage"),
         drawHint: $("#drawHint"),
         ticketList: $("#ticketList"),
-        ticketCount: $("#ticketCount"),
-        allCount: $("#allCount"),
-        myTicketsCount: $("#myTicketsCount"),
-        myBetsCount: $("#myBetsCount"),
+        onlineCount: $("#onlineCount"),
         wallet: $(".wallet"),
         notice: $("#notice"),
         playerInfo: $("#playerInfo")
@@ -294,12 +292,9 @@
         balance: 0.00,
         identifier: getIdentifier(),
         name: "Player",
-        tickets: [],
+        myTickets: [],
         isDrawing: false,
-        activeFilter: "all",
-        activeTab: "GAME",
-        drawTimer: null,
-        noticeTimer: null
+        onlinePlayers: 1
       };
 
       function getIdentifier() {
@@ -317,11 +312,10 @@
 
       function showNotice(message, isError = false) {
         if (!elements.notice) return;
-        clearTimeout(state.noticeTimer);
         elements.notice.textContent = message;
         elements.notice.classList.toggle("error", isError);
         elements.notice.classList.add("show");
-        state.noticeTimer = setTimeout(() => {
+        setTimeout(() => {
           elements.notice.classList.remove("show", "error");
         }, 2600);
       }
@@ -363,6 +357,93 @@
         if (amountEl) amountEl.textContent = formatMoney(state.balance);
       }
 
+      // የተጫዋቾች ብዛት (All) ከ 1 ጀምሮ እስከ 1500-3000 በሰዓት ሂደት እንዲጨምር ማድረግ
+      function initOnlineCounter() {
+        // ከ 1 ጀምሮ በየሰኮንዱ እየጨመረ እንዲሄድ
+        setInterval(() => {
+          if (state.onlinePlayers < 2450) {
+            state.onlinePlayers += Math.floor(Math.random() * 15) + 5;
+          } else {
+            state.onlinePlayers = Math.floor(Math.random() * 500) + 1800; // በ 1500 እና 3000 መካከል እንዲመላለስ
+          }
+          if (elements.onlineCount) elements.onlineCount.textContent = state.onlinePlayers;
+        }, 2000);
+      }
+
+      // እስከ 20 የሚደርሱ የሐሰት ተጫዋቾች (Fake Players) ከ 500 በላይ ብር ያላቸውን ማመንጨት
+      function generateFakeLeaderboard() {
+        const fakes = [];
+        const maskedNames = ["1***7", "9***2", "4***8", "3***5", "7***1", "2***9", "8***4", "6***3", "5***6", "0***2", "3***8", "7***4", "1***9", "5***2", "4***6", "8***1", "2***5", "9***3", "6***7", "0***4"];
+        
+        for (let i = 0; i < 20; i++) {
+          const fakePicksCount = Math.floor(Math.random() * 5) + 3;
+          const fakePicks = [];
+          while (fakePicks.length < fakePicksCount) {
+            const r = Math.floor(Math.random() * 80) + 1;
+            if (!fakePicks.includes(r)) fakePicks.push(r);
+          }
+          fakePicks.sort((a, b) => a - b);
+
+          fakes.push({
+            name: maskedNames[i % maskedNames.length],
+            picks: fakePicks,
+            stake: Math.floor(Math.random() * 700) + 500, // ከ 500 ብር በላይ
+            status: "Waiting"
+          });
+        }
+        return fakes;
+      }
+
+      let fakeLeaderboardCache = generateFakeLeaderboard();
+
+      // በየሰኮንዱ የ Fake ጫዋቾቹን ብር እና ቅደም ተከተል መቀያየር (Top sorting)
+      setInterval(() => {
+        fakeLeaderboardCache.forEach(item => {
+          item.stake = Math.floor(Math.random() * 800) + 500;
+        });
+        // እንደ ብሩ መጠን ከፍ ያለውን ከላይ በማድረግ መደርደር (Top sorting)
+        fakeLeaderboardCache.sort((a, b) => b.stake - a.stake);
+        renderTicketsList();
+      }, 4000);
+
+      function renderTicketsList() {
+        if (!elements.ticketList) return;
+
+        // የተጠቃሚው ቲኬቶች ሁልጊዜ ከላይ (Top) እንዲቀመጡ ይደረጋል
+        const combinedList = [...state.myTickets, ...fakeLeaderboardCache];
+
+        if (combinedList.length === 0) {
+          elements.ticketList.innerHTML = '<div class="empty-list">ኦዶогоር ቲክኬቶች የሉም</div>';
+          return;
+        }
+
+        elements.ticketList.replaceChildren();
+        combinedList.forEach(ticket => {
+          const row = document.createElement("div");
+          row.className = "ticket-item";
+
+          const topDiv = document.createElement("div");
+          topDiv.className = "ticket-top";
+          topDiv.innerHTML = `<span>${ticket.name || 'እርስዎ'}</span><span class="status ${ticket.status.toLowerCase()}">${ticket.status === 'Waiting' ? 'Waiting' : ticket.status === 'Won' ? 'Won' : 'Lost'}</span>`;
+
+          const picksDiv = document.createElement("div");
+          picksDiv.className = "ticket-picks";
+          ticket.picks.forEach(num => {
+            const ball = document.createElement("div");
+            ball.className = "pick-ball";
+            ball.textContent = String(num).padStart(2, "0");
+            picksDiv.appendChild(ball);
+          });
+
+          const bottomDiv = document.createElement("div");
+          bottomDiv.className = "ticket-bottom";
+          bottomDiv.innerHTML = `<span class="ticket-stake">Bet ${ticket.stake}</span>`;
+
+          row.append(topDiv, picksDiv, bottomDiv);
+          elements.ticketList.appendChild(row);
+        });
+      }
+
       function makeNumberGrid() {
         if (!elements.grid) return;
         elements.grid.replaceChildren();
@@ -384,7 +465,7 @@
           state.picks.delete(number);
         } else {
           if (state.picks.size >= CONFIG.maxPicks) {
-            showNotice(`አንተ ከ 10 ቁጥሮች በላይ መምረጥ አይችሉም።`);
+            showNotice(`እስከ 10 ቁጥሮች ብቻ መምረጥ ይችላሉ።`);
             return;
           }
           state.picks.add(number);
@@ -441,51 +522,17 @@
           if (elements.drawHint) elements.drawHint.textContent = "ኳሶቹ በቅደም ተከተል ይታያሉ";
 
           let index = 0;
-          state.drawTimer = setInterval(() => {
+          const drawTimer = setInterval(() => {
             state.winningNumbers.push(draw[index]);
             renderDrawArea();
             syncGrid();
             index++;
 
             if (index >= draw.length) {
-              clearInterval(state.drawTimer);
-              state.drawTimer = null;
+              clearInterval(drawTimer);
               resolve();
             }
           }, CONFIG.drawIntervalMs);
-        });
-      }
-
-      function addTicket(ticket) {
-        state.tickets.unshift(ticket);
-        renderTickets();
-      }
-
-      function renderTickets() {
-        if (!elements.ticketList) return;
-        const count = state.tickets.length;
-        if(elements.ticketCount) elements.ticketCount.textContent = count;
-        if(elements.allCount) elements.allCount.textContent = count;
-
-        if (!state.tickets.length) {
-          elements.ticketList.innerHTML = '<div class="empty-list">ኦዶогоር ቲክኬቶች የሉም</div>';
-          return;
-        }
-
-        elements.ticketList.replaceChildren();
-        state.tickets.forEach(ticket => {
-          const row = document.createElement("div");
-          row.className = "ticket";
-
-          const info = document.createElement("div");
-          info.innerHTML = `<strong>ዙር #${ticket.round}</strong><small>${ticket.picks.join(" · ")}</small>`;
-
-          const detail = document.createElement("div");
-          detail.style.textAlign = "right";
-          detail.innerHTML = `<strong>${formatMoney(ticket.stake)}</strong><br><span class="status ${ticket.status.toLowerCase()}">${ticket.status === 'Waiting' ? 'በመጠበቅ ላይ' : ticket.status === 'Won' ? 'አሸንፈዋል 🎉' : 'ተሸንፈዋል'}</span>`;
-
-          row.append(info, detail);
-          elements.ticketList.appendChild(row);
         });
       }
 
@@ -501,14 +548,20 @@
         }
 
         const picks = [...state.picks].sort((a, b) => a - b);
-        const ticket = {
-          round: "—", picks, stake: state.stake, status: "Waiting"
+        const userTicket = {
+          name: state.name || "እርስዎ",
+          picks,
+          stake: state.stake,
+          status: "Waiting"
         };
 
         state.isDrawing = true;
         elements.betButton.disabled = true;
         elements.betButton.textContent = "ውርርድ በሂደት ላይ...";
-        addTicket(ticket);
+        
+        // የተጠቃሚው ቲክኬት ሁልጊዜ ከላይ (Top) እንዲቀመጥ ይደረጋል
+        state.myTickets.unshift(userTicket);
+        renderTicketsList();
 
         try {
           const response = await fetch(CONFIG.playEndpoint, {
@@ -526,18 +579,17 @@
 
           await revealDraw(data.draw);
 
-          ticket.round = "2842";
-          ticket.status = data.payout > 0 ? "Won" : "Lost";
-          renderTickets();
+          userTicket.status = data.payout > 0 ? "Won" : "Lost";
+          renderTicketsList();
 
           updateWallet(data.balance);
-          if (elements.gameTitle) elements.gameTitle.textContent = "সুጋላው ተጠናቋል";
+          if (elements.gameTitle) elements.gameTitle.textContent = "ሱጋላው ተጠናቋል";
           if (elements.drawHint) elements.drawHint.textContent = `${data.matched} ቁጥሮች ገጥመዋል · ሽልማት: ${formatMoney(data.payout)}`;
 
           showNotice(data.payout > 0 ? `እንኳን ደስ አሎት! ${formatMoney(data.payout)} አሸንፈዋል!` : "አልተሳካም, መልካም እድል!");
         } catch (error) {
-          state.tickets.shift();
-          renderTickets();
+          state.myTickets.shift();
+          renderTicketsList();
           showNotice(error.message || "ስህተት ተፈጥሯል።", true);
         } finally {
           state.isDrawing = false;
@@ -553,19 +605,14 @@
         $("#double")?.addEventListener("click", () => setStake(state.stake * 2));
         $("#max")?.addEventListener("click", () => setStake(Math.min(CONFIG.maxStake, state.balance)));
         $("#addFunds")?.addEventListener("click", () => showNotice("እባክዎ ከዋሌት ክፍል ገቢ ያድርጉ።"));
-
-        $$(".tab").forEach(tab => { tab.addEventListener("click", () => { $$
-(".tab").forEach(t => t.classList.remove("active"));
-            tab.classList.add("active");
-          });
-        });
       }
 
       function init() {
         makeNumberGrid();
         bindControls();
         setStake(state.stake);
-        renderTickets();
+        initOnlineCounter();
+        renderTicketsList();
         loadUser();
       }
 
