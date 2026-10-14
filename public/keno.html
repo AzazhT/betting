@@ -209,7 +209,7 @@
     <section class="game-card">
       <div class="section-head">
         <h2 id="gameTitle">ቁጥሮችዎን ይምረጡ</h2>
-        <span class="pill" id="roundLabel">KENO FAST</span>
+        <span class="pill" id="roundTimer">ዙር: 60ሰ</span>
       </div>
 
       <div class="draw-area" id="drawArea">
@@ -282,7 +282,8 @@
         onlineCount: $("#onlineCount"),
         wallet: $(".wallet"),
         notice: $("#notice"),
-        playerInfo: $("#playerInfo")
+        playerInfo: $("#playerInfo"),
+        roundTimer: $("#roundTimer")
       };
 
       const state = {
@@ -294,7 +295,8 @@
         name: "Player",
         myTickets: [],
         isDrawing: false,
-        onlinePlayers: 1
+        onlinePlayers: 1,
+        timeLeft: 60
       };
 
       function getIdentifier() {
@@ -357,24 +359,36 @@
         if (amountEl) amountEl.textContent = formatMoney(state.balance);
       }
 
-      // የተጫዋቾች ብዛት (All) ከ 1 ጀምሮ እስከ 1500-3000 በሰዓት ሂደት እንዲጨምር ማድረግ
-      function initOnlineCounter() {
-        // ከ 1 ጀምሮ በየሰኮንዱ እየጨመረ እንዲሄድ
+      // የ 60 ሰከንድ ቆጣሪ እና የኦንላይን ተጫዋቾች ብዛት (ከ 1 ጀምሮ እስከ 1500-3000)
+      function initTimers() {
         setInterval(() => {
+          // ተጫዋቾች በሰዓት ሂደት እንዲጨምሩ
           if (state.onlinePlayers < 2450) {
             state.onlinePlayers += Math.floor(Math.random() * 15) + 5;
           } else {
-            state.onlinePlayers = Math.floor(Math.random() * 500) + 1800; // በ 1500 እና 3000 መካከል እንዲመላለስ
+            state.onlinePlayers = Math.floor(Math.random() * 500) + 1800;
           }
           if (elements.onlineCount) elements.onlineCount.textContent = state.onlinePlayers;
-        }, 2000);
+
+          // የ 60 ሰከንድ ቆጣሪ
+          state.timeLeft--;
+          if (state.timeLeft <= 0) {
+            state.timeLeft = 60;
+          }
+          if (elements.roundTimer) {
+            elements.roundTimer.textContent = `ቀጣይ ዙር: ${state.timeLeft}ሰ`;
+          }
+        }, 1000);
       }
 
-      // እስከ 20 የሚደርሱ የሐሰት ተጫዋቾች (Fake Players) ከ 500 በላይ ብር ያላቸውን ማመንጨት
+      // የሐሰት ተጫዋቾች (Fake Players) የብር መጠን ማመንጨት (ከፍተኛ 5-8 ከ 500-1000, የተቀሩት ከ 100-500 በ 50/100 ልዩነት)
       function generateFakeLeaderboard() {
         const fakes = [];
         const maskedNames = ["1***7", "9***2", "4***8", "3***5", "7***1", "2***9", "8***4", "6***3", "5***6", "0***2", "3***8", "7***4", "1***9", "5***2", "4***6", "8***1", "2***5", "9***3", "6***7", "0***4"];
         
+        const eliteStakes = [1000, 900, 800, 750, 700, 650, 600, 550, 500];
+        const normalStakes = [100, 150, 200, 250, 300, 350, 400, 450, 500];
+
         for (let i = 0; i < 20; i++) {
           const fakePicksCount = Math.floor(Math.random() * 5) + 3;
           const fakePicks = [];
@@ -384,10 +398,18 @@
           }
           fakePicks.sort((a, b) => a - b);
 
+          // ከመጀመሪያዎቹ 8 ሰዎች ውስጥ ያሉት ከ 500 - 1000 እንዲሆኑ, የተቀሩት ከ 100 - 500
+          let stakeVal;
+          if (i < 8) {
+            stakeVal = eliteStakes[Math.floor(Math.random() * eliteStakes.length)];
+          } else {
+            stakeVal = normalStakes[Math.floor(Math.random() * normalStakes.length)];
+          }
+
           fakes.push({
             name: maskedNames[i % maskedNames.length],
             picks: fakePicks,
-            stake: Math.floor(Math.random() * 700) + 500, // ከ 500 ብር በላይ
+            stake: stakeVal,
             status: "Waiting"
           });
         }
@@ -396,20 +418,24 @@
 
       let fakeLeaderboardCache = generateFakeLeaderboard();
 
-      // በየሰኮንዱ የ Fake ጫዋቾቹን ብር እና ቅደም ተከተል መቀያየር (Top sorting)
+      // በየሰኮንዱ የ Fake ተጫዋቾቹን ብር በትንሹ በማቀያየር እና እንደ ብር መጠናቸው ከፍ ያለውን ከላይ በማድረግ መደርደር (Top Sorting)
       setInterval(() => {
         fakeLeaderboardCache.forEach(item => {
-          item.stake = Math.floor(Math.random() * 800) + 500;
+          if (Math.random() > 0.6) {
+            const variantSteps = [50, 100];
+            const step = variantSteps[Math.floor(Math.random() * variantSteps.length)];
+            item.stake = Math.min(1000, Math.max(100, item.stake + (Math.random() > 0.5 ? step : -step)));
+          }
         });
         // እንደ ብሩ መጠን ከፍ ያለውን ከላይ በማድረግ መደርደር (Top sorting)
         fakeLeaderboardCache.sort((a, b) => b.stake - a.stake);
         renderTicketsList();
-      }, 4000);
+      }, 5000);
 
       function renderTicketsList() {
         if (!elements.ticketList) return;
 
-        // የተጠቃሚው ቲኬቶች ሁልጊዜ ከላይ (Top) እንዲቀመጡ ይደረጋል
+        // የተጠቃሚው ቲኬቶች ሁልጊዜ ከላይ (Top) እንዲቀመጡ ይደረጋል, ከእነሱ በታች የ Fake ተጫዋቾች በቅደም ተከተል ይደረደራሉ
         const combinedList = [...state.myTickets, ...fakeLeaderboardCache];
 
         if (combinedList.length === 0) {
@@ -583,7 +609,7 @@
           renderTicketsList();
 
           updateWallet(data.balance);
-          if (elements.gameTitle) elements.gameTitle.textContent = "ሱጋላው ተጠናቋል";
+          if (elements.gameTitle) elements.gameTitle.textContent = "ጨዋታው ተጠናቋል";
           if (elements.drawHint) elements.drawHint.textContent = `${data.matched} ቁጥሮች ገጥመዋል · ሽልማት: ${formatMoney(data.payout)}`;
 
           showNotice(data.payout > 0 ? `እንኳን ደስ አሎት! ${formatMoney(data.payout)} አሸንፈዋል!` : "አልተሳካም, መልካም እድል!");
@@ -611,7 +637,7 @@
         makeNumberGrid();
         bindControls();
         setStake(state.stake);
-        initOnlineCounter();
+        initTimers();
         renderTicketsList();
         loadUser();
       }
