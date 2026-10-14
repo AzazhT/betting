@@ -3,7 +3,7 @@ const express = require('express');
 module.exports = function(pool) {
     const router = express.Router();
 
-    // 1. ተጠቃሚውን ከቴሌግራም ሲመዘገብ/ሲገባ ማስተካከል (Sync User & Wallet)
+    // ተጠቃሚውን ከቴሌግራም ሲገባ ማስተካከል (Sync User & Wallet)
     router.post('/sync', async (req, res) => {
         const { telegram_id, name, username, phone } = req.body;
 
@@ -12,15 +12,12 @@ module.exports = function(pool) {
         }
 
         try {
-            // ተጠቃሚው ዳታቤዝ ውስጥ መኖሩን ማረጋገጥ
             let userCheck = await pool.query('SELECT * FROM users WHERE telegram_id = $1', [telegram_id]);
 
             if (userCheck.rows.length === 0) {
-                // የሲግነፕ ቦነስ (Signup Bonus) ከ settings ቴብል ማምጣት
                 const bonusRes = await pool.query("SELECT value FROM settings WHERE key = 'signup_bonus'");
                 const bonusAmount = bonusRes.rows.length > 0 ? parseFloat(bonusRes.rows.value) : 0.00;
 
-                // አዲስ ተጠቃሚ መመዝገብ
                 const newUser = await pool.query(
                     `INSERT INTO users (telegram_id, name, username, phone, balance, bonus_balance) 
                      VALUES ($1, $2, $3, $4, 0.00, $5) RETURNING *`,
@@ -36,7 +33,7 @@ module.exports = function(pool) {
         }
     });
 
-    // 2. የኪስ ቦርሳ ባላንስ ማየት
+    // የኪስ ቦርሳ ባላንስ ማየት
     router.get('/balance/:telegram_id', async (req, res) => {
         const { telegram_id } = req.params;
 
