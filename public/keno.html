@@ -36,7 +36,7 @@
       padding: 14px 14px calc(24px + env(safe-area-inset-bottom));
     }
 
-    .topbar, .wallet, .section-head, .stake-row, .tabs, .filter-row {
+    .topbar, .wallet, .section-head, .stake-row, .tabs {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -77,33 +77,56 @@
       background: #292e25; color: var(--gold); font-size: 11px; font-weight: 700;
     }
 
+    /* የቁጥር ማውጫ ቦታ (Draw Area) ከምስሉ ጋር እንዲመሳሰል ተስተካክሏል */
     .draw-area {
-      min-height: 120px; border-radius: 14px;
-      background: radial-gradient(ellipse at center, #333a2c 0%, #20241d 58%, #191c17 100%);
+      position: relative;
+      min-height: 140px; border-radius: 14px;
+      background: radial-gradient(ellipse at center, #263022 0%, #171c15 70%, #10120f 100%);
       border: 1px solid #343a2e; padding: 12px;
-      display: flex; flex-wrap: wrap; align-content: center;
-      justify-content: center; gap: 8px; margin-bottom: 14px;
+      display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px;
+      margin-bottom: 14px; overflow: hidden;
     }
 
-    .draw-ball {
-      width: 36px; height: 36px; border-radius: 50%;
-      display: grid; place-items: center; color: #211b0d;
-      font-weight: 900; font-size: 13px;
+    .draw-counter {
+      position: absolute; top: 10px; right: 14px;
+      color: var(--gold); font-size: 12px; font-weight: 800;
+    }
+
+    .current-ball-container {
+      display: flex; justify-content: center; align-items: center; min-height: 50px;
+    }
+
+    .draw-ball-large {
+      width: 48px; height: 48px; border-radius: 50%;
+      display: grid; place-items: center; color: #17150e;
+      font-weight: 900; font-size: 16px;
       background: radial-gradient(circle at 30% 25%, #fff1ab, #e6b947 62%, #aa7720);
-      box-shadow: 0 3px 14px #e6b94755;
-      animation: pop .32s ease-out both;
+      box-shadow: 0 4px 18px #e6b94777;
+      animation: pop .3s ease-out both;
     }
-    .draw-ball.matched {
-      background: radial-gradient(circle at 30% 25%, #8cf0b5, #6ea54e 62%, #2d5a1e);
-      color: #fff;
+
+    .drawn-balls-row {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; max-width: 100%;
     }
+
+    .small-ball {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: grid; place-items: center; color: #fff;
+      font-weight: 700; font-size: 11px;
+      background: #252c20; border: 1px solid #3d4734;
+    }
+    .small-ball.active {
+      background: radial-gradient(circle at 30% 25%, #fff1ab, #e6b947 62%, #aa7720);
+      color: #17150e; font-weight: 900;
+    }
+
     @keyframes pop {
-      from { transform: scale(.25) translateY(-18px); opacity: 0; }
+      from { transform: scale(.2) translateY(-10px); opacity: 0; }
       to { transform: scale(1) translateY(0); opacity: 1; }
     }
 
     .empty-draw { text-align: center; color: var(--muted); }
-    .empty-draw b { color: var(--gold); display: block; font-size: 18px; margin-bottom: 4px; }
+    .empty-draw b { color: var(--gold); display: block; font-size: 16px; margin-bottom: 2px; }
 
     .grid {
       display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px;
@@ -122,7 +145,7 @@
       color: #fff; background: var(--green); border-color: #a5d480;
     }
 
-    .stake-row { gap: 8px; margin-bottom: 12px; }
+    .stake-row { gap: 8px; margin-bottom: 12px; display: flex; align-items: center; }
     .stake-label { color: var(--muted); margin-right: auto; }
     .stake-control {
       display: flex; align-items: center; gap: 7px;
@@ -153,25 +176,23 @@
     }
     .tab.active { color: #1b170b; background: var(--gold); }
 
-    .filter-row { gap: 8px; margin-bottom: 12px; }
-    .filter {
-      flex: 1; border: 1px solid var(--line); background: #22261f;
-      color: var(--muted); border-radius: 9px; padding: 8px 4px;
-      font-size: 11px; cursor: pointer;
-    }
-    .filter.active { color: var(--gold); border-color: #8c7132; }
-
     .ticket-item {
       background: #151814; border: 1px solid #2b3028; border-radius: 10px;
       padding: 10px 12px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 6px;
     }
     .ticket-top { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); }
     .ticket-picks { display: flex; gap: 5px; flex-wrap: wrap; }
+    
+    /* የተጫዋቾች ቲክኬት ላይ ቁጥሮች ከወጡ አረንጓዴ እንዲሆኑ */
     .pick-ball {
       width: 26px; height: 26px; border-radius: 6px; background: #2a3026;
       display: grid; place-items: center; font-size: 11px; font-weight: 800; color: var(--gold);
       border: 1px solid #3b4233;
     }
+    .pick-ball.matched {
+      background: var(--green) !important; color: #fff !important; border-color: #8ce264 !important;
+    }
+
     .ticket-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
     .ticket-stake { font-weight: 800; font-size: 13px; color: var(--text); }
     .status { font-weight: 800; font-size: 11px; }
@@ -213,7 +234,12 @@
       </div>
 
       <div class="draw-area" id="drawArea">
-        <div class="empty-draw"><b id="drawMessage">Fast Keno</b><span id="drawHint">እስከ 10 ቁጥሮች ይምረጡ</span></div>
+        <div class="draw-counter" id="drawCounter"></div>
+        <div class="empty-draw" id="drawPlaceholder">
+          <b>Fast Keno</b><span>እስከ 10 ቁጥሮች ይምረጡ</span>
+        </div>
+        <div class="current-ball-container" id="currentBallContainer"></div>
+        <div class="drawn-balls-row" id="drawnBallsRow"></div>
       </div>
 
       <div class="section-head">
@@ -263,7 +289,7 @@
         minStake: 10,
         stakeStep: 10,
         maxStake: 1000,
-        drawIntervalMs: 400,
+        drawIntervalMs: 500,
         currency: "ETB"
       };
 
@@ -272,12 +298,14 @@
       const elements = {
         grid: $("#numberGrid"),
         drawArea: $("#drawArea"),
+        drawCounter: $("#drawCounter"),
+        drawPlaceholder: $("#drawPlaceholder"),
+        currentBallContainer: $("#currentBallContainer"),
+        drawnBallsRow: $("#drawnBallsRow"),
         selectedCount: $("#selectedCount"),
         stakeAmount: $("#stakeAmount"),
         betButton: $("#betButton"),
         gameTitle: $("#gameTitle"),
-        drawMessage: $("#drawMessage"),
-        drawHint: $("#drawHint"),
         ticketList: $("#ticketList"),
         onlineCount: $("#onlineCount"),
         wallet: $(".wallet"),
@@ -359,10 +387,9 @@
         if (amountEl) amountEl.textContent = formatMoney(state.balance);
       }
 
-      // የ 60 ሰከንድ ቆጣሪ እና የኦንላይን ተጫዋቾች ብዛት (ከ 1 ጀምሮ እስከ 1500-3000)
+      // የ 60 ሰከንድ ቆጣሪ እና የኦንላይን ተጫዋቾች ብዛት
       function initTimers() {
         setInterval(() => {
-          // ተጫዋቾች በሰዓት ሂደት እንዲጨምሩ
           if (state.onlinePlayers < 2450) {
             state.onlinePlayers += Math.floor(Math.random() * 15) + 5;
           } else {
@@ -370,7 +397,6 @@
           }
           if (elements.onlineCount) elements.onlineCount.textContent = state.onlinePlayers;
 
-          // የ 60 ሰከንድ ቆጣሪ
           state.timeLeft--;
           if (state.timeLeft <= 0) {
             state.timeLeft = 60;
@@ -381,7 +407,7 @@
         }, 1000);
       }
 
-      // የሐሰት ተጫዋቾች (Fake Players) የብር መጠን ማመንጨት (ከፍተኛ 5-8 ከ 500-1000, የተቀሩት ከ 100-500 በ 50/100 ልዩነት)
+      // የሐሰት ተጫዋቾች (Fake Players) ፖርትፎሊዮ (ከፍተኛ 5-8 ከ 500-1000, የተቀሩት ከ 100-500)
       function generateFakeLeaderboard() {
         const fakes = [];
         const maskedNames = ["1***7", "9***2", "4***8", "3***5", "7***1", "2***9", "8***4", "6***3", "5***6", "0***2", "3***8", "7***4", "1***9", "5***2", "4***6", "8***1", "2***5", "9***3", "6***7", "0***4"];
@@ -398,13 +424,7 @@
           }
           fakePicks.sort((a, b) => a - b);
 
-          // ከመጀመሪያዎቹ 8 ሰዎች ውስጥ ያሉት ከ 500 - 1000 እንዲሆኑ, የተቀሩት ከ 100 - 500
-          let stakeVal;
-          if (i < 8) {
-            stakeVal = eliteStakes[Math.floor(Math.random() * eliteStakes.length)];
-          } else {
-            stakeVal = normalStakes[Math.floor(Math.random() * normalStakes.length)];
-          }
+          let stakeVal = (i < 8) ? eliteStakes[Math.floor(Math.random() * eliteStakes.length)] : normalStakes[Math.floor(Math.random() * normalStakes.length)];
 
           fakes.push({
             name: maskedNames[i % maskedNames.length],
@@ -418,24 +438,21 @@
 
       let fakeLeaderboardCache = generateFakeLeaderboard();
 
-      // በየሰኮንዱ የ Fake ተጫዋቾቹን ብር በትንሹ በማቀያየር እና እንደ ብር መጠናቸው ከፍ ያለውን ከላይ በማድረግ መደርደር (Top Sorting)
+      // የሐሰት ተጫዋቾች በየሰኮንዱ በዝግታ ገቢ እየሆኑ እና በብር መጠን Top Sorting እየተደረጉ እንዲታዩ ማድረግ
       setInterval(() => {
         fakeLeaderboardCache.forEach(item => {
-          if (Math.random() > 0.6) {
-            const variantSteps = [50, 100];
-            const step = variantSteps[Math.floor(Math.random() * variantSteps.length)];
+          if (Math.random() > 0.7) {
+            const step = Math.random() > 0.5 ? 50 : 100;
             item.stake = Math.min(1000, Math.max(100, item.stake + (Math.random() > 0.5 ? step : -step)));
           }
         });
-        // እንደ ብሩ መጠን ከፍ ያለውን ከላይ በማድረግ መደርደር (Top sorting)
         fakeLeaderboardCache.sort((a, b) => b.stake - a.stake);
         renderTicketsList();
-      }, 5000);
+      }, 4000);
 
       function renderTicketsList() {
         if (!elements.ticketList) return;
 
-        // የተጠቃሚው ቲኬቶች ሁልጊዜ ከላይ (Top) እንዲቀመጡ ይደረጋል, ከእነሱ በታች የ Fake ተጫዋቾች በቅደም ተከተል ይደረደራሉ
         const combinedList = [...state.myTickets, ...fakeLeaderboardCache];
 
         if (combinedList.length === 0) {
@@ -457,6 +474,10 @@
           ticket.picks.forEach(num => {
             const ball = document.createElement("div");
             ball.className = "pick-ball";
+            // ቁጥሩ ከወጡት አሸናፊ ቁጥሮች ጋር ከገጠመ አረንጓዴ ቀለም ይሰጠዋል
+            if (state.winningNumbers.includes(num)) {
+              ball.classList.add("matched");
+            }
             ball.textContent = String(num).padStart(2, "0");
             picksDiv.appendChild(ball);
           });
@@ -526,32 +547,38 @@
         }
       }
 
-      function renderDrawArea() {
-        if (!elements.drawArea) return;
-        elements.drawArea.replaceChildren();
-
-        state.winningNumbers.forEach((number) => {
-          const ball = document.createElement("div");
-          ball.className = "draw-ball";
-          ball.textContent = String(number);
-          if (state.picks.has(number)) ball.classList.add("matched");
-          elements.drawArea.appendChild(ball);
-        });
-      }
-
+      // ልክ እንደ ምስሉ የቁጥሮች መውጣት እና (12 / 20) የሂደት ማሳያ
       function revealDraw(draw) {
         return new Promise(resolve => {
           state.winningNumbers = [];
-          syncGrid();
+          if (elements.drawPlaceholder) elements.drawPlaceholder.style.display = "none";
           if (elements.gameTitle) elements.gameTitle.textContent = "ቀጥታ ስርጭት (Live draw)";
-          if (elements.drawMessage) elements.drawMessage.textContent = "ቁጥሮች እየወጡ ነው…";
-          if (elements.drawHint) elements.drawHint.textContent = "ኳሶቹ በቅደም ተከተል ይታያሉ";
 
           let index = 0;
           const drawTimer = setInterval(() => {
-            state.winningNumbers.push(draw[index]);
-            renderDrawArea();
+            const currentNum = draw[index];
+            state.winningNumbers.push(currentNum);
+            
+            // የቁጥር ከፍ ያለ ኳስ ማሳያ
+            if (elements.currentBallContainer) {
+              elements.currentBallContainer.innerHTML = `<div class="draw-ball-large">${currentNum}</div>`;
+            }
+
+            // የሂደት ካውንተር (ለምሳሌ: 12 / 20)
+            if (elements.drawCounter) {
+              elements.drawCounter.textContent = `${index + 1} / 20`;
+            }
+
+            // የወጡት ትናንሽ ኳሶች ረድፍ
+            if (elements.drawnBallsRow) {
+              const smallBall = document.createElement("div");
+              smallBall.className = "small-ball active";
+              smallBall.textContent = currentNum;
+              elements.drawnBallsRow.appendChild(smallBall);
+            }
+
             syncGrid();
+            renderTicketsList();
             index++;
 
             if (index >= draw.length) {
@@ -585,7 +612,6 @@
         elements.betButton.disabled = true;
         elements.betButton.textContent = "ውርርድ በሂደት ላይ...";
         
-        // የተጠቃሚው ቲክኬት ሁልጊዜ ከላይ (Top) እንዲቀመጥ ይደረጋል
         state.myTickets.unshift(userTicket);
         renderTicketsList();
 
@@ -610,7 +636,6 @@
 
           updateWallet(data.balance);
           if (elements.gameTitle) elements.gameTitle.textContent = "ጨዋታው ተጠናቋል";
-          if (elements.drawHint) elements.drawHint.textContent = `${data.matched} ቁጥሮች ገጥመዋል · ሽልማት: ${formatMoney(data.payout)}`;
 
           showNotice(data.payout > 0 ? `እንኳን ደስ አሎት! ${formatMoney(data.payout)} አሸንፈዋል!` : "አልተሳካም, መልካም እድል!");
         } catch (error) {
