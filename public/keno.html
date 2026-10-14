@@ -104,9 +104,8 @@
 <script>
 (() => {
   "use strict";
-  const CONFIG = { maxPicks:10, minStake:10, stakeStep:10, maxStake:1000, currency:"ETB", pollMs:1200, revealMs:650 };
-  const $ = (s, r=document) => r.querySelector(s);
-  const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+  const CONFIG = { maxPicks:10, minStake:10, stakeStep:10, maxStake:1000, currency:"ETB", pollMs:1000, revealMs:400 };
+  const $ = (s, r=document) => r.querySelector(s); const $$ = (s, r=document) => [...r.querySelectorAll(s)];
   const el = {
     grid:$("#numberGrid"), timer:$("#roundTimer"), title:$("#gameTitle"), drawStatus:$("#drawStatus"),
     drawCounter:$("#drawCounter"), placeholder:$("#drawPlaceholder"), currentBall:$("#currentBallContainer"),
@@ -121,7 +120,7 @@
   const state = {
     telegramId, name:tgUser?.first_name || "Player", balance:0, picks:new Set(), stake:10,
     roundId:null, roundNumber:null, roundStatus:"open", remaining:60, draw:[], shownDraw:[],
-    ticketThisRound:null, tickets:[], hasBet:false, busy:false, tab:"GAME", lastRoundStatus:null
+    ticketThisRound:null, tickets:[], hasBet:false, busy:false, tab:"GAME"
   };
   let noticeTimer = null, pollTimer = null, revealTimer = null, revealToken = 0;
 
@@ -210,7 +209,6 @@
       if(u.name)state.name=u.name;
       el.playerInfo.textContent=`PLAYER · ${state.name}`;
     }catch(e){
-      console.warn("Wallet load:",e.message);
       el.playerInfo.textContent=`PLAYER · ${state.name}`;
     }
   }
@@ -227,18 +225,17 @@
     return {id:s.id??s.round_id??null,number:s.round_number??s.number??null,status,remaining:Math.max(0,Number(remaining)||0),draw:Array.isArray(draw)?draw.map(Number).filter(n=>n>=1&&n<=80).slice(0,20):[]};
   }
   function animateToDraw(draw){
-    clearInterval(revealTimer);
     const token=++revealToken;
     const target=draw.slice(0,20);
-    // Keep already displayed balls; add newly reported server results in their server order.
-    let index=state.shownDraw.length;
-    const step=()=>{
-      if(token!==revealToken)return;
-      if(index>=target.length){clearInterval(revealTimer);revealTimer=null;return;}
-      state.shownDraw.push(target[index]); index++; renderDraw();
-    };
-    step();
-    if(index<target.length) revealTimer=setInterval(step,CONFIG.revealMs);
+    if(revealTimer && state.shownDraw.length>=target.length) return;
+    if(!revealTimer){
+      revealTimer=setInterval(()=>{
+        if(token!==revealToken)return;
+        if(state.shownDraw.length>=target.length){clearInterval(revealTimer);revealTimer=null;return;}
+        state.shownDraw.push(target[state.shownDraw.length]);
+        renderDraw();
+      },CONFIG.revealMs);
+    }
   }
   async function refreshState(){
     try{
@@ -255,17 +252,13 @@
       if(next.status==="open" && previousStatus!=="open" && !changed){
         state.picks.clear(); state.hasBet=false; state.ticketThisRound=null; state.shownDraw=[]; state.draw=[];
       }
-      if(next.status==="drawing"){
-        if(el.placeholder)el.placeholder.classList.add("hidden");
-        if(next.draw.length && (state.shownDraw.length<next.draw.length)) animateToDraw(next.draw);
-      }else if(next.status==="settled"){
-        if(next.draw.length && state.shownDraw.length<next.draw.length) animateToDraw(next.draw);
-      }else if(next.status==="open" && state.shownDraw.length===0){
-        el.placeholder.classList.remove("hidden");
+      if(next.status==="drawing" || next.status==="settled"){
+        if(next.draw.length){ animateToDraw(next.draw); }
+      } else if(next.status==="open" && state.shownDraw.length===0){
+        if(el.placeholder)el.placeholder.classList.remove("hidden");
       }
       renderDraw(); updateStatus();
     }catch(e){
-      console.warn("Keno state error:",e.message);
       el.drawStatus.textContent="SERVER CONNECTION";
       el.note.textContent="ሰርቨሩን ማግኘት አልተቻለም፤ እንደገና እየሞከርን ነው።";
     }
@@ -278,7 +271,7 @@
     if(state.stake>state.balance){notice("በዋሌትዎ ውስጥ በቂ ብር የለም።",true);return;}
     state.busy=true; updateStatus();
     try{
-      const data=await api("/api/keno/bet",{method:"POST",body:JSON.stringify({picks:[...state.picks].sort((a,b)=>a-b),stake:state.stake,telegram_id:state.telegramId,identifier:state.telegramId,round_id:state.roundId})});
+      const data=await api("/api/keno/bet",{method:"POST",body:JSON.stringify({picks:[...state.picks].sort((a,b)=>a-b),stake:state.stake,telegram_id:state.telegramId,round_id:state.roundId})});
       state.hasBet=true;
       const result=data.ticket||data.bet||data;
       state.ticketThisRound={picks:[...state.picks].sort((a,b)=>a-b),stake:state.stake,status:"Waiting",round_number:state.roundNumber,id:result.id||result.bet_id};
@@ -295,7 +288,7 @@
       const list=Array.isArray(data)?data:(data.history||data.tickets||data.bets||[]);
       state.tickets=list;
       renderTickets();
-    }catch(e){console.warn("History load:",e.message);}
+    }catch(e){}
   }
   function renderTickets(){
     const items=state.tickets.slice(0,15);
@@ -329,8 +322,8 @@
     $("#double").addEventListener("click",()=>setStake(state.stake*2));
     $("#max").addEventListener("click",()=>setStake(Math.min(CONFIG.maxStake,Math.floor(state.balance/CONFIG.stakeStep)*CONFIG.stakeStep)));
     $("#addFunds").addEventListener("click",()=>{location.href="/";});
-    $$(".tab").forEach(b=>b.addEventListener("click",()=>{
-      state.tab=b.dataset.tab; $$(".tab").forEach(x=>x.classList.toggle("active",x===b));
+    $$(".tab").forEach(b=>b.addEventListener("click",()=>{ state.tab=b.dataset.tab; $$
+(".tab").forEach(x=>x.classList.toggle("active",x===b));
       el.listTitle.textContent=state.tab==="HISTORY"?"የውርርድ ታሪክ":state.tab==="RESULTS"?"የዙር ውጤቶች":"የእኔ ቲኬቶች";
       loadHistory();
     }));
