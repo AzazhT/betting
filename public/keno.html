@@ -1,715 +1,974 @@
+
 <!DOCTYPE html>
 <html lang="am">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#10120f" />
-  <title>Fast Keno - እድል ኬኖ</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#071c16">
+  <title>Keno | Ethiopia Games</title>
+
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
   <style>
     :root {
-      --bg: #10120f;
-      --panel: #1b1e19;
-      --panel-2: #242821;
-      --muted: #92988d;
-      --text: #f7f8f4;
-      --gold: #e6b947;
-      --green: #6ea54e;
-      --line: #30352c;
+      --bg: #071c16;
+      --panel: #102b22;
+      --panel2: #16372b;
+      --gold: #f4c44e;
+      --green: #1fc77a;
+      --text: #f5f7f4;
+      --muted: #a9bdb2;
+      --red: #ff6666;
+      --border: #2a4a3c;
     }
 
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
+      padding: 14px;
       background: var(--bg);
       color: var(--text);
-      font: 14px/1.4 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      padding-bottom: 70px;
+      font-family: Arial, sans-serif;
     }
-
-    button { font: inherit; }
 
     .app {
-      width: min(100%, 480px);
-      margin: auto;
-      padding: 14px 14px calc(24px + env(safe-area-inset-bottom));
+      max-width: 620px;
+      margin: 0 auto;
     }
 
-    .topbar, .wallet, .section-head, .stake-row, .tabs {
+    .header {
       display: flex;
-      align-items: center;
       justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
     }
 
-    .topbar { margin-bottom: 14px; }
-
-    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
-    .logo {
-      width: 38px; height: 38px; border-radius: 12px;
-      display: grid; place-items: center;
-      background: var(--gold); color: #17150e; font-weight: 900;
+    .brand {
+      font-size: 23px;
+      font-weight: 900;
+      color: var(--gold);
     }
-    .brand strong { display: block; font-size: 15px; }
-    .brand small { color: var(--muted); font-size: 11px; }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 4px;
+    }
 
     .wallet {
-      background: linear-gradient(115deg, #252a20, #1a1d18);
-      border: 1px solid #34392f; border-radius: 16px;
-      padding: 13px 15px; margin-bottom: 14px;
-    }
-    .wallet small { color: var(--muted); display: block; }
-    .wallet strong { font-size: 20px; color: var(--gold); }
-    .wallet .add {
-      border: 0; border-radius: 10px; padding: 9px 13px;
-      background: var(--gold); font-weight: 800; color: #1a170e; cursor: pointer;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      text-align: right;
+      min-width: 125px;
     }
 
-    .game-card, .tickets-card {
-      border: 1px solid var(--line); background: var(--panel);
-      border-radius: 17px; padding: 14px; margin-bottom: 14px;
+    .wallet small {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
     }
 
-    .section-head { margin-bottom: 12px; }
-    .section-head h2 { margin: 0; font-size: 16px; }
-    .pill {
-      border-radius: 20px; padding: 5px 9px;
-      background: #292e25; color: var(--gold); font-size: 11px; font-weight: 700;
+    .wallet strong {
+      display: block;
+      margin-top: 4px;
+      color: var(--gold);
+      font-size: 17px;
     }
 
-    /* የቁጥር ማውጫ ቦታ (Draw Area) ከምስሉ ጋር እንዲመሳሰል ተስተካክሏል */
-    .draw-area {
-      position: relative;
-      min-height: 140px; border-radius: 14px;
-      background: radial-gradient(ellipse at center, #263022 0%, #171c15 70%, #10120f 100%);
-      border: 1px solid #343a2e; padding: 12px;
-      display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px;
-      margin-bottom: 14px; overflow: hidden;
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      padding: 14px;
+      margin-bottom: 13px;
     }
 
-    .draw-counter {
-      position: absolute; top: 10px; right: 14px;
-      color: var(--gold); font-size: 12px; font-weight: 800;
+    .round-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
     }
 
-    .current-ball-container {
-      display: flex; justify-content: center; align-items: center; min-height: 50px;
+    .round-label {
+      font-size: 13px;
+      color: var(--muted);
     }
 
-    .draw-ball-large {
-      width: 48px; height: 48px; border-radius: 50%;
-      display: grid; place-items: center; color: #17150e;
-      font-weight: 900; font-size: 16px;
-      background: radial-gradient(circle at 30% 25%, #fff1ab, #e6b947 62%, #aa7720);
-      box-shadow: 0 4px 18px #e6b94777;
-      animation: pop .3s ease-out both;
+    .round-number {
+      font-weight: 700;
+      font-size: 12px;
+      margin-top: 5px;
+      overflow-wrap: anywhere;
     }
 
-    .drawn-balls-row {
-      display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; max-width: 100%;
+    .timer {
+      background: #203b2e;
+      border: 1px solid #47644f;
+      border-radius: 12px;
+      padding: 9px 14px;
+      text-align: center;
+      min-width: 100px;
     }
 
-    .small-ball {
-      width: 28px; height: 28px; border-radius: 50%;
-      display: grid; place-items: center; color: #fff;
-      font-weight: 700; font-size: 11px;
-      background: #252c20; border: 1px solid #3d4734;
+    .timer strong {
+      font-size: 27px;
+      color: var(--gold);
+      font-variant-numeric: tabular-nums;
     }
-    .small-ball.active {
-      background: radial-gradient(circle at 30% 25%, #fff1ab, #e6b947 62%, #aa7720);
-      color: #17150e; font-weight: 900;
+
+    .timer small {
+      display: block;
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .timer.drawing strong { color: var(--green); }
+
+    .status {
+      margin-top: 12px;
+      padding: 10px;
+      border-radius: 9px;
+      text-align: center;
+      background: #173c2c;
+      color: #b5f7d2;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .status.error {
+      color: #ffd0d0;
+      background: #472323;
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 800;
+      margin: 0 0 12px;
+    }
+
+    .number-grid {
+      display: grid;
+      grid-template-columns: repeat(10, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .number {
+      aspect-ratio: 1;
+      border: 1px solid #355746;
+      border-radius: 8px;
+      background: #193b2d;
+      color: #e8f1eb;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      padding: 0;
+      min-width: 0;
+    }
+
+    .number.selected {
+      background: var(--gold);
+      color: #182116;
+      border-color: #ffe89b;
+      transform: scale(.96);
+    }
+
+    .number.winner {
+      background: var(--green);
+      color: #032a19;
+      border-color: #8df5bd;
+      animation: pop .25s ease-out;
+    }
+
+    .number.selected.winner {
+      background: #fff0a3;
+      border: 2px solid var(--green);
+    }
+
+    .number:disabled {
+      cursor: not-allowed;
+      opacity: .8;
     }
 
     @keyframes pop {
-      from { transform: scale(.2) translateY(-10px); opacity: 0; }
-      to { transform: scale(1) translateY(0); opacity: 1; }
+      from { transform: scale(.72); }
+      to { transform: scale(1); }
     }
 
-    .empty-draw { text-align: center; color: var(--muted); }
-    .empty-draw b { color: var(--gold); display: block; font-size: 16px; margin-bottom: 2px; }
-
-    .grid {
-      display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px;
-      margin: 12px 0 14px;
-    }
-    .number {
-      aspect-ratio: 1; border-radius: 9px; border: 1px solid #363b32;
-      color: #d6d9d1; background: #252922; font-weight: 700;
-      cursor: pointer; padding: 0; font-size: 13px;
-    }
-    .number.selected {
-      color: #17150e; background: var(--gold); border-color: #f2ce6e;
-      box-shadow: 0 0 10px #e6b94744;
-    }
-    .number.winning {
-      color: #fff; background: var(--green); border-color: #a5d480;
+    .helper {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      margin-top: 10px;
     }
 
-    .stake-row { gap: 8px; margin-bottom: 12px; display: flex; align-items: center; }
-    .stake-label { color: var(--muted); margin-right: auto; }
-    .stake-control {
-      display: flex; align-items: center; gap: 7px;
-      background: var(--panel-2); border-radius: 11px; padding: 5px;
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
     }
-    .stake-control button, .quick-btn {
-      border: 0; color: var(--text); background: #34392f;
-      border-radius: 8px; padding: 7px 10px; cursor: pointer;
-    }
-    .stake-control strong { min-width: 48px; text-align: center; color: var(--gold); }
-    .quick-btn { color: var(--gold); font-weight: 800; }
 
-    .bet-btn {
-      width: 100%; border: 0; border-radius: 12px; padding: 14px;
-      color: #1b170b; background: var(--gold); font-weight: 900;
-      letter-spacing: .08em; cursor: pointer;
+    label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 7px;
     }
-    .bet-btn:disabled { opacity: .55; cursor: not-allowed; }
 
-    .tabs {
-      gap: 5px; padding: 5px; background: var(--panel);
-      border: 1px solid var(--line); border-radius: 13px; margin-bottom: 14px;
+    input {
+      width: 100%;
+      background: #071c16;
+      color: white;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 12px;
+      font-size: 16px;
+      outline: none;
     }
-    .tab {
-      flex: 1; border: 0; border-radius: 9px; padding: 10px 2px;
-      color: var(--muted); background: transparent; font-size: 11px; font-weight: 800;
+
+    input:focus { border-color: var(--gold); }
+
+    .button {
+      border: 0;
+      border-radius: 10px;
+      padding: 13px;
+      font-size: 14px;
+      font-weight: 900;
       cursor: pointer;
     }
-    .tab.active { color: #1b170b; background: var(--gold); }
 
-    .ticket-item {
-      background: #151814; border: 1px solid #2b3028; border-radius: 10px;
-      padding: 10px 12px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 6px;
-    }
-    .ticket-top { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); }
-    .ticket-picks { display: flex; gap: 5px; flex-wrap: wrap; }
-    
-    .pick-ball {
-      width: 26px; height: 26px; border-radius: 6px; background: #2a3026;
-      display: grid; place-items: center; font-size: 11px; font-weight: 800; color: var(--gold);
-      border: 1px solid #3b4233;
-    }
-    .pick-ball.matched {
-      background: var(--green) !important; color: #fff !important; border-color: #8ce264 !important;
+    .button:disabled {
+      cursor: not-allowed;
+      opacity: .45;
     }
 
-    .ticket-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
-    .ticket-stake { font-weight: 800; font-size: 13px; color: var(--text); }
-    .status { font-weight: 800; font-size: 11px; }
-    .status.waiting { color: var(--gold); }
-    .status.won { color: var(--green); }
-    .status.lost { color: #e5484d; }
-    .empty-list { padding: 16px 0; text-align: center; color: var(--muted); }
+    .primary {
+      width: 100%;
+      background: var(--gold);
+      color: #182116;
+      margin-top: 12px;
+    }
 
-    .notice {
-      position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
-      background: #f4f1e7; color: #1b1d18; border-radius: 10px;
-      padding: 10px 14px; box-shadow: 0 6px 25px #0008;
-      opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 1000;
+    .secondary {
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      color: white;
+    }
+
+    .draw-grid {
+      display: grid;
+      grid-template-columns: repeat(10, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .draw-number {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: #0a2119;
+      border: 1px dashed #355746;
+      color: #6f9280;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .draw-number.active {
+      background: var(--green);
+      color: #032a19;
+      border: 1px solid #a2ffcb;
+      animation: pop .25s ease-out;
+    }
+
+    .draw-progress {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 10px;
+      text-align: right;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .tab {
+      background: var(--panel);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 11px 6px;
       font-weight: 700;
+      cursor: pointer;
     }
-    .notice.show { opacity: 1; }
-    .notice.error { background: #e5484d; color: #fff; }
+
+    .tab.active {
+      background: var(--gold);
+      color: #182116;
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .ticket, .history-item {
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      line-height: 1.7;
+      overflow-wrap: anywhere;
+    }
+
+    .ticket:last-child, .history-item:last-child {
+      border-bottom: 0;
+    }
+
+    .muted { color: var(--muted); }
+    .gold { color: var(--gold); }
+    .green { color: var(--green); }
+    .red { color: var(--red); }
+
+    .empty {
+      color: var(--muted);
+      text-align: center;
+      font-size: 13px;
+      padding: 18px 5px;
+    }
+
+    .footer {
+      text-align: center;
+      color: #7d9989;
+      font-size: 11px;
+      padding: 10px 0 20px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 360px) {
+      body { padding: 8px; }
+      .panel { padding: 10px; }
+      .number-grid, .draw-grid { gap: 4px; }
+      .number, .draw-number { font-size: 11px; border-radius: 5px; }
+      .brand { font-size: 19px; }
+    }
   </style>
 </head>
+
 <body>
-  <main class="app">
-    <header class="topbar">
-      <a href="/" class="brand">
-        <div class="logo">K</div>
-        <div><strong>FAST KENO</strong><small>Ethio Lottery Style</small></div>
-      </a>
-      <a href="/" style="color: var(--gold); text-decoration: none; font-weight: 800; font-size: 12px;">🏠 መነሻ</a>
-    </header>
+<div class="app">
+  <header class="header">
+    <div>
+      <div class="brand">🎯 FAST KENO</div>
+      <div class="subtitle">የኬኖ ጨዋታ · 1–80</div>
+    </div>
+    <div class="wallet">
+      <small>የእርስዎ ባላንስ</small>
+      <strong id="balance">— ETB</strong>
+    </div>
+  </header>
 
-    <section class="wallet">
-      <div><small id="playerInfo">PLAYER · Loading...</small><strong class="wallet-balance">0.00 ETB</strong></div>
-      <button class="add" id="addFunds">＋ ዋሌት</button>
-    </section>
-
-    <section class="game-card">
-      <div class="section-head">
-        <h2 id="gameTitle">ቁጥሮችዎን ይምረጡ</h2>
-        <span class="pill" id="roundTimer">ዙር: 60ሰ</span>
+  <section class="panel">
+    <div class="round-top">
+      <div>
+        <div class="round-label">የዙር ቁጥር</div>
+        <div class="round-number" id="roundNumber">በመጫን ላይ...</div>
       </div>
-
-      <div class="draw-area" id="drawArea">
-        <div class="draw-counter" id="drawCounter"></div>
-        <div class="empty-draw" id="drawPlaceholder">
-          <b>Fast Keno</b><span>እስከ 10 ቁጥሮች ይምረጡ</span>
-        </div>
-        <div class="current-ball-container" id="currentBallContainer"></div>
-        <div class="drawn-balls-row" id="drawnBallsRow"></div>
+      <div class="timer" id="timerBox">
+        <strong id="timer">60</strong>
+        <small id="timerLabel">ሰከንድ ቀርቷል</small>
       </div>
+    </div>
+    <div class="status" id="status">የጨዋታውን ሁኔታ በማግኘት ላይ...</div>
+  </section>
 
-      <div class="section-head">
-        <h2>ቁጥር መምረጫ</h2>
-        <span class="pill"><span id="selectedCount">0</span> / 10 ተመርጠዋል</span>
+  <section class="panel">
+    <h2 class="section-title">🔢 ቁጥሮችህን ምረጥ</h2>
+    <div class="number-grid" id="numberGrid"></div>
+    <div class="helper">
+      ከ1 እስከ 80 ያሉ ቁጥሮች ምረጥ።
+      በአንድ ዙር ከ1 እስከ 10 ቁጥሮች መምረጥ ትችላለህ።
+    </div>
+
+    <div class="controls">
+      <div>
+        <label for="stake">የውርርድ መጠን (ETB)</label>
+        <input id="stake" type="number" min="10" max="1000" step="10" value="10">
       </div>
-      <div class="grid" id="numberGrid"></div>
-
-      <div class="stake-row">
-        <span class="stake-label">ውርርድ (Stake)</span>
-        <div class="stake-control">
-          <button id="minus">−</button>
-          <strong id="stakeAmount">10.00 ETB</strong>
-          <button id="plus">＋</button>
-        </div>
-        <button class="quick-btn" id="double">×2</button>
-        <button class="quick-btn" id="max">MAX</button>
+      <div>
+        <label>የተመረጡ ቁጥሮች</label>
+        <input id="pickCount" value="0 / 10" readonly>
       </div>
+    </div>
 
-      <button class="bet-btn" id="betButton">BET · 10.00 ETB</button>
-    </section>
+    <button class="button secondary" id="clearButton" style="width:100%;margin-top:10px">
+      እንደገና ምረጥ
+    </button>
+    <button class="button primary" id="betButton">
+      ውርርድ አስገባ
+    </button>
+  </section>
 
-    <nav class="tabs" aria-label="Main navigation">
-      <button class="tab active" data-tab="GAME">ጨዋታ</button>
-      <button class="tab" data-tab="HISTORY">ታሪክ</button>
-      <button class="tab" data-tab="RESULTS">ውጤቶች</button>
-    </nav>
+  <section class="panel">
+    <div class="round-top">
+      <h2 class="section-title" style="margin:0">🎱 የወጡ ቁጥሮች</h2>
+      <strong class="gold" id="drawCount">0 / 20</strong>
+    </div>
+    <div class="draw-grid" id="drawGrid" style="margin-top:13px"></div>
+    <div class="draw-progress" id="drawMessage">የዙሩን ውጤት በመጠባበቅ ላይ...</div>
+  </section>
 
-    <section class="tickets-card">
-      <div class="section-head">
-        <h2>የተጫዋቾች ዝርዝር</h2>
-        <span class="pill">All <span id="onlineCount">1</span></span>
-      </div>
-      <div id="ticketList"><div class="empty-list">ኦዶогоር ቲክኬቶች የሉም</div></div>
-    </section>
-  </main>
+  <div class="tabs">
+    <button class="tab active" data-tab="myTicket">ውርርድ</button>
+    <button class="tab" data-tab="history">ታሪክ</button>
+  </div>
 
-  <div class="notice" id="notice"></div>
+  <section class="panel tab-content active" id="myTicket">
+    <h2 class="section-title">🎟️ የዚህ ዙር ውርርድ</h2>
+    <div id="ticketContent" class="empty">እስካሁን ውርርድ አልገባህም።</div>
+  </section>
 
-  <script>
-    (() => {
-      "use strict";
+  <section class="panel tab-content" id="history">
+    <h2 class="section-title">📜 የቀድሞ ውጤቶች</h2>
+    <div id="historyContent" class="empty">ታሪክ በመጫን ላይ...</div>
+    <button class="button secondary" id="refreshHistory" style="width:100%">
+      ታሪክ አድስ
+    </button>
+  </section>
 
-      const CONFIG = {
-        playEndpoint: "/api/keno/play",
-        maxPicks: 10,
-        minStake: 10,
-        stakeStep: 10,
-        maxStake: 1000,
-        drawIntervalMs: 400,
-        currency: "ETB"
-      };
+  <div class="footer">
+    Keno · ውጤቱ በServer ይወሰናል።<br>
+    የክፍያ ስሌቱ እስኪረጋገጥ ድረስ በሙከራ ሁኔታ ይጠቀሙ።
+  </div>
+</div>
 
-      const $ = (selector, root = document) => root.querySelector(selector); const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+<script>
+(() => {
+  'use strict';
 
-      const elements = {
-        grid: $("#numberGrid"),
-        drawArea: $("#drawArea"),
-        drawCounter: $("#drawCounter"),
-        drawPlaceholder: $("#drawPlaceholder"),
-        currentBallContainer: $("#currentBallContainer"),
-        drawnBallsRow: $("#drawnBallsRow"),
-        selectedCount: $("#selectedCount"),
-        stakeAmount: $("#stakeAmount"),
-        betButton: $("#betButton"),
-        gameTitle: $("#gameTitle"),
-        ticketList: $("#ticketList"),
-        onlineCount: $("#onlineCount"),
-        wallet: $(".wallet"),
-        notice: $("#notice"),
-        playerInfo: $("#playerInfo"),
-        roundTimer: $("#roundTimer")
-      };
+  const tg = window.Telegram?.WebApp;
+  if (tg) {
+    tg.ready();
+    tg.expand();
+  }
 
-      const state = {
-        picks: new Set(),
-        winningNumbers: [],
-        stake: CONFIG.minStake,
-        balance: 0.00,
-        identifier: getIdentifier(),
-        name: "Player",
-        myTickets: [],
-        isDrawing: false,
-        onlinePlayers: 1,
-        timeLeft: 60,
-        pendingBet: null
-      };
+  const $ = id => document.getElementById(id);
 
-      function getIdentifier() {
-        const tg = window.Telegram?.WebApp;
-        const telegramId = tg?.initDataUnsafe?.user?.id;
-        if (telegramId != null) return String(telegramId);
-        return localStorage.getItem("kenoUserId") || "123456789";
+  const state = {
+    telegramId: null,
+    selected: new Set(),
+    roundId: null,
+    roundNumber: null,
+    roundStatus: null,
+    remaining: 60,
+    balance: null,
+    ticketSubmitted: false,
+    currentTicket: null,
+    draw: [],
+    shownCount: 0,
+    lastDrawKey: '',
+    animating: false,
+    polling: false
+  };
+
+  let pollTimer = null;
+  let drawTimer = null;
+
+  function getTelegramId() {
+    const id = tg?.initDataUnsafe?.user?.id;
+    if (id) return String(id);
+
+    const params = new URLSearchParams(location.search);
+    const queryId = params.get('telegram_id');
+    if (queryId) return queryId;
+
+    return localStorage.getItem('keno_telegram_id');
+  }
+
+  function money(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '0.00';
+    return n.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  function setStatus(message, error = false) {
+    const el = $('status');
+    el.textContent = message;
+    el.classList.toggle('error', error);
+  }
+
+  async function api(url, options = {}) {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers || {})
       }
+    });
 
-      function formatMoney(value) {
-        const amount = Number(value);
-        if (!Number.isFinite(amount)) return "0.00 ETB";
-        return `${amount.toFixed(2)} ${CONFIG.currency}`;
-      }
+    const data = await response.json().catch(() => ({}));
 
-      function showNotice(message, isError = false) {
-        if (!elements.notice) return;
-        elements.notice.textContent = message;
-        elements.notice.classList.toggle("error", isError);
-        elements.notice.classList.add("show");
-        setTimeout(() => {
-          elements.notice.classList.remove("show", "error");
-        }, 2600);
-      }
+    if (!response.ok || data.success === false) {
+      throw new Error(data.error || `Server error (${response.status})`);
+    }
 
-      async function loadUser() {
-        const tg = window.Telegram?.WebApp;
-        if(tg) { tg.ready(); tg.expand(); }
-        
-        const userUnsafe = tg?.initDataUnsafe?.user;
-        const bodyData = {
-          identifier: state.identifier,
-          name: userUnsafe?.first_name || "Keno Player",
-          username: userUnsafe?.username || "keno_user"
-        };
+    return data;
+  }
 
-        try {
-          const res = await fetch('/api/get-user', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(bodyData)
-          });
-          const data = await res.json();
-          if(data.success && data.user) {
-            state.balance = parseFloat(data.user.balance);
-            state.identifier = String(data.user.identifier || data.user.telegram_id);
-            state.name = data.user.name || "Player";
-            updateWallet(state.balance);
-            if(elements.playerInfo) elements.playerInfo.textContent = `PLAYER · ${state.name}`;
-          }
-        } catch (e) {
-          console.error("User load error:", e);
-        }
-      }
+  function renderNumberGrid() {
+    const grid = $('numberGrid');
+    grid.innerHTML = '';
 
-      function updateWallet(balance) {
-        state.balance = Number(balance);
-        if (!elements.wallet) return;
-        const amountEl = $(".wallet-balance", elements.wallet);
-        if (amountEl) amountEl.textContent = formatMoney(state.balance);
-      }
+    for (let n = 1; n <= 80; n++) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'number';
+      button.textContent = n;
+      button.dataset.number = n;
+      button.setAttribute('aria-label', `ቁጥር ${n}`);
 
-      // የ 60 ሰከንድ ቆጣሪ እና አውቶማቲክ ዙር አስተዳደር
-      function initTimers() {
-        setInterval(() => {
-          if (state.onlinePlayers < 2450) {
-            state.onlinePlayers += Math.floor(Math.random() * 15) + 5;
-          } else {
-            state.onlinePlayers = Math.floor(Math.random() * 500) + 1800;
-          }
-          if (elements.onlineCount) elements.onlineCount.textContent = state.onlinePlayers;
+      button.addEventListener('click', () => {
+        if (state.roundStatus !== 'open' || state.ticketSubmitted) return;
 
-          if (!state.isDrawing) {
-            state.timeLeft--;
-            if (elements.roundTimer) {
-              elements.roundTimer.textContent = `ቀጣይ ዙር: ${state.timeLeft}ሰ`;
-            }
-
-            // ሰአቱ 0 ሲደርስ አውቶማቲክ ድራው ይጀምራል
-            if (state.timeLeft <= 0) {
-              triggerRoundDraw();
-            }
-          }
-        }, 1000);
-      }
-
-      // የሐሰት ተጫዋቾች (Fake Players) ፖርትፎሊዮ (ከፍተኛ 5-8 ከ 500-1000, የተቀሩት ከ 100-500)
-      function generateFakeLeaderboard() {
-        const fakes = [];
-        const maskedNames = ["1***7", "9***2", "4***8", "3***5", "7***1", "2***9", "8***4", "6***3", "5***6", "0***2", "3***8", "7***4", "1***9", "5***2", "4***6", "8***1", "2***5", "9***3", "6***7", "0***4"];
-        
-        const eliteStakes = [1000, 900, 800, 750, 700, 650, 600, 550, 500];
-        const normalStakes = [100, 150, 200, 250, 300, 350, 400, 450, 500];
-
-        for (let i = 0; i < 20; i++) {
-          const fakePicksCount = Math.floor(Math.random() * 5) + 3;
-          const fakePicks = [];
-          while (fakePicks.length < fakePicksCount) {
-            const r = Math.floor(Math.random() * 80) + 1;
-            if (!fakePicks.includes(r)) fakePicks.push(r);
-          }
-          fakePicks.sort((a, b) => a - b);
-
-          let stakeVal = (i < 8) ? eliteStakes[Math.floor(Math.random() * eliteStakes.length)] : normalStakes[Math.floor(Math.random() * normalStakes.length)];
-
-          fakes.push({
-            name: maskedNames[i % maskedNames.length],
-            picks: fakePicks,
-            stake: stakeVal,
-            status: "Waiting"
-          });
-        }
-        return fakes;
-      }
-
-      let fakeLeaderboardCache = generateFakeLeaderboard();
-
-      // የሐሰት ተጫዋቾች በየሰኮንዱ በዝግታ ገቢ እየሆኑ እና በብር መጠን Top Sorting እየተደረጉ እንዲታዩ ማድረግ
-      setInterval(() => {
-        if (!state.isDrawing) {
-          fakeLeaderboardCache.forEach(item => {
-            if (Math.random() > 0.7) {
-              const step = Math.random() > 0.5 ? 50 : 100;
-              item.stake = Math.min(1000, Math.max(100, item.stake + (Math.random() > 0.5 ? step : -step)));
-            }
-          });
-          fakeLeaderboardCache.sort((a, b) => b.stake - a.stake);
-          renderTicketsList();
-        }
-      }, 4000);
-
-      function renderTicketsList() {
-        if (!elements.ticketList) return;
-
-        const combinedList = [...state.myTickets, ...fakeLeaderboardCache];
-
-        if (combinedList.length === 0) {
-          elements.ticketList.innerHTML = '<div class="empty-list">ኦዶогоር ቲክኬቶች የሉም</div>';
-          return;
-        }
-
-        elements.ticketList.replaceChildren();
-        combinedList.forEach(ticket => {
-          const row = document.createElement("div");
-          row.className = "ticket-item";
-
-          const topDiv = document.createElement("div");
-          topDiv.className = "ticket-top";
-          topDiv.innerHTML = `<span>${ticket.name || 'እርስዎ'}</span><span class="status ${ticket.status.toLowerCase()}">${ticket.status === 'Waiting' ? 'Waiting' : ticket.status === 'Won' ? 'Won' : 'Lost'}</span>`;
-
-          const picksDiv = document.createElement("div");
-          picksDiv.className = "ticket-picks";
-          ticket.picks.forEach(num => {
-            const ball = document.createElement("div");
-            ball.className = "pick-ball";
-            if (state.winningNumbers.includes(num)) {
-              ball.classList.add("matched");
-            }
-            ball.textContent = String(num).padStart(2, "0");
-            picksDiv.appendChild(ball);
-          });
-
-          const bottomDiv = document.createElement("div");
-          bottomDiv.className = "ticket-bottom";
-          bottomDiv.innerHTML = `<span class="ticket-stake">Bet ${ticket.stake}</span>`;
-
-          row.append(topDiv, picksDiv, bottomDiv);
-          elements.ticketList.appendChild(row);
-        });
-      }
-
-      function makeNumberGrid() {
-        if (!elements.grid) return;
-        elements.grid.replaceChildren();
-        for (let number = 1; number <= 80; number++) {
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className = "number";
-          button.textContent = String(number);
-          button.dataset.number = String(number);
-          button.addEventListener("click", () => togglePick(number));
-          elements.grid.appendChild(button);
-        }
-        syncGrid();
-      }
-
-      function togglePick(number) {
-        if (state.isDrawing) return;
-        if (state.picks.has(number)) {
-          state.picks.delete(number);
+        if (state.selected.has(n)) {
+          state.selected.delete(n);
         } else {
-          if (state.picks.size >= CONFIG.maxPicks) {
-            showNotice(`እስከ 10 ቁጥሮች ብቻ መምረጥ ይችላሉ።`);
+          if (state.selected.size >= 10) {
+            setStatus('ከ10 በላይ ቁጥሮች መምረጥ አትችልም።', true);
             return;
           }
-          state.picks.add(number);
-        }
-        syncGrid();
-      }
-
-      function syncGrid() {
-        if (!elements.grid) return;
-        $$(".number", elements.grid).forEach(button => {
-          const number = Number(button.dataset.number);
-          const selected = state.picks.has(number);
-          const matched = state.winningNumbers.includes(number) && selected;
-
-          button.classList.toggle("selected", selected);
-          button.classList.toggle("winning", matched);
-        });
-
-        if (elements.selectedCount) {
-          elements.selectedCount.textContent = String(state.picks.size);
-        }
-      }
-
-      function setStake(value) {
-        if (state.isDrawing) return;
-        const amount = Math.floor(Number(value) || CONFIG.minStake);
-        state.stake = Math.min(CONFIG.maxStake, Math.max(CONFIG.minStake, amount));
-
-        if (elements.stakeAmount) elements.stakeAmount.textContent = formatMoney(state.stake);
-        if (elements.betButton && !state.isDrawing) {
-          elements.betButton.textContent = `BET · ${formatMoney(state.stake)}`;
-        }
-      }
-
-      // ቁጥሮች ተራ በተራ በዝግታ እንዲወጡ የሚያደርግ አኒሜሽን (ልክ እንደ ምስሉ)
-      function revealDraw(draw) {
-        return new Promise(resolve => {
-          state.winningNumbers = [];
-          if (elements.drawPlaceholder) elements.drawPlaceholder.style.display = "none";
-          if (elements.drawnBallsRow) elements.drawnBallsRow.innerHTML = "";
-          if (elements.gameTitle) elements.gameTitle.textContent = "ቀጥታ ስርጭት (Live draw)";
-
-          let index = 0;
-          const drawTimer = setInterval(() => {
-            const currentNum = draw[index];
-            state.winningNumbers.push(currentNum);
-            
-            if (elements.currentBallContainer) {
-              elements.currentBallContainer.innerHTML = `<div class="draw-ball-large">${currentNum}</div>`;
-            }
-
-            if (elements.drawCounter) {
-              elements.drawCounter.textContent = `${index + 1} / 20`;
-            }
-
-            if (elements.drawnBallsRow) {
-              const smallBall = document.createElement("div");
-              smallBall.className = "small-ball active";
-              smallBall.textContent = currentNum;
-              elements.drawnBallsRow.appendChild(smallBall);
-            }
-
-            syncGrid();
-            renderTicketsList();
-            index++;
-
-            if (index >= draw.length) {
-              clearInterval(drawTimer);
-              resolve();
-            }
-          }, CONFIG.drawIntervalMs);
-        });
-      }
-
-      // ተጫዋቹ ቁጥር መርጦ BET ሲጫን ቲኬቱ በ Waiting ይቀመጣል
-      function placeBetLocally() {
-        if (state.isDrawing) {
-          showNotice("ጨዋታው በሂደት ላይ ነው፣ እባክዎ ቀጣዩን ዙር ይጠብቁ።", true);
-          return;
-        }
-        if (state.picks.size < 1) {
-          showNotice("እባክዎ ቢያንስ 1 ቁጥር ይምረጡ።", true);
-          return;
-        }
-        if (state.stake > state.balance) {
-          showNotice("በዋሌትዎ ውስጥ በቂ ብር የለም።", true);
-          return;
+          state.selected.add(n);
         }
 
-        const picks = [...state.picks].sort((a, b) => a - b);
-        state.pendingBet = { picks, stake: state.stake };
+        renderSelections();
+      });
 
-        const userTicket = {
-          name: state.name || "እርስዎ",
-          picks,
-          stake: state.stake,
-          status: "Waiting"
-        };
+      grid.appendChild(button);
+    }
+  }
 
-        state.myTickets = [userTicket]; // የዚህ ዙር ቲኬት
-        renderTicketsList();
+  function renderSelections() {
+    document.querySelectorAll('.number').forEach(button => {
+      const n = Number(button.dataset.number);
+      button.classList.toggle('selected', state.selected.has(n));
+      button.disabled = state.roundStatus !== 'open' || state.ticketSubmitted;
+    });
 
-        showNotice("ውርርዱ ተመዝግቧል! ዙሩ እስኪጀመር በመጠበቅ ላይ...");
-        elements.betButton.disabled = true;
-        elements.betButton.textContent = "ተመዝግቧል (Waiting)";
-      }
+    $('pickCount').value = `${state.selected.size} / 10`;
+    $('betButton').disabled =
+      state.roundStatus !== 'open' ||
+      state.ticketSubmitted ||
+      state.selected.size < 1 ||
+      !state.telegramId;
+  }
 
-      // ሰአቱ 0 ሲደርስ አውቶማቲክ ድራው የሚከናወንበት ዋናው ፈንክሽን
-      async function triggerRoundDraw() {
-        state.isDrawing = true;
+  function renderDraw(numbers, count) {
+    const grid = $('drawGrid');
+    grid.innerHTML = '';
 
-        let picksToPlay = state.pendingBet ? state.pendingBet.picks : [1, 5, 10]; // ካልመረጠ በነባሪ
-        let stakeToPlay = state.pendingBet ? state.pendingBet.stake : CONFIG.minStake;
+    for (let i = 0; i < 20; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'draw-number';
 
-        try {
-          const response = await fetch(CONFIG.playEndpoint, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              picks: picksToPlay,
-              stake: stakeToPlay,
-              identifier: state.identifier
-            })
-          });
-
-          const data = await response.json();
-          if (!response.ok || !data.success) throw new Error(data.error || "ሰርቨር ስህተት አጋጥሞታል።");
-
-          // አኒሜሽኑን ማስጀመር (ልክ እንደ ምስሉ 1/20 እያለ በዝግታ ማሳየት)
-          await revealDraw(data.draw);
-
-          if (state.myTickets.length > 0) {
-            state.myTickets[0].status = data.payout > 0 ? "Won" : "Lost";
-            renderTicketsList();
-          }
-
-          updateWallet(data.balance);
-          if (elements.gameTitle) elements.gameTitle.textContent = "ጨዋታው ተጠናቋል";
-
-          if (data.payout > 0) {
-            showNotice(`እንኳን ደስ አሎት! ${formatMoney(data.payout)} አሸንፈዋል!`);
-          } else {
-            showNotice("አልተሳካም, ቀጣይ እድል መልካም እድል!");
-          }
-
-        } catch (error) {
-          console.error(error);
-          showNotice("የድራው ስህተት ተፈጥሯል", true);
-        } finally {
-          // ከጥቂት ሰከንዶች በኋላ ለቀጣይ ዙር ማዘጋጀት
-          setTimeout(() => {
-            state.isDrawing = false;
-            state.timeLeft = 60;
-            state.pendingBet = null;
-            state.winningNumbers = [];
-            state.myTickets = [];
-            if (elements.currentBallContainer) elements.currentBallContainer.innerHTML = "";
-            if (elements.drawCounter) elements.drawCounter.textContent = "";
-            if (elements.drawPlaceholder) elements.drawPlaceholder.style.display = "block";
-            if (elements.gameTitle) elements.gameTitle.textContent = "ቁጥሮችዎን ይምረጡ";
-            elements.betButton.disabled = false;
-            elements.betButton.textContent = `BET · ${formatMoney(state.stake)}`;
-            makeNumberGrid();
-            renderTicketsList();
-          }, 4000);
-        }
-      }
-
-      function bindControls() {
-        elements.betButton?.addEventListener("click", placeBetLocally);
-        $("#minus")?.addEventListener("click", () => setStake(state.stake - CONFIG.stakeStep));
-        $("#plus")?.addEventListener("click", () => setStake(state.stake + CONFIG.stakeStep));
-        $("#double")?.addEventListener("click", () => setStake(state.stake * 2));
-        $("#max")?.addEventListener("click", () => setStake(Math.min(CONFIG.maxStake, state.balance)));
-        $("#addFunds")?.addEventListener("click", () => showNotice("እባክዎ ከዋሌት ክፍል ገቢ ያድርጉ።"));
-      }
-
-      function init() {
-        makeNumberGrid();
-        bindControls();
-        setStake(state.stake);
-        initTimers();
-        renderTicketsList();
-        loadUser();
-      }
-
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", init, { once: true });
+      if (i < count && numbers[i] != null) {
+        cell.textContent = numbers[i];
+        cell.classList.add('active');
       } else {
-        init();
+        cell.textContent = '·';
       }
-    })();
-  </script>
+
+      grid.appendChild(cell);
+    }
+
+    $('drawCount').textContent = `${Math.min(count, 20)} / 20`;
+  }
+
+  function updateTimer() {
+    const value = Math.max(0, Number(state.remaining) || 0);
+    $('timer').textContent = value;
+    $('timerLabel').textContent =
+      state.roundStatus === 'open' ? 'ሰከንድ ቀርቷል' :
+      state.roundStatus === 'drawing' ? 'ቁጥሮች እየወጡ ነው' :
+      'ዙር ተዘግቷል';
+
+    $('timerBox').classList.toggle('drawing', state.roundStatus === 'drawing');
+  }
+
+  async function loadBalance() {
+    if (!state.telegramId) return;
+
+    try {
+      const data = await api(
+        `/api/wallet/balance/${encodeURIComponent(state.telegramId)}`
+      );
+      state.balance = Number(data.balance);
+      $('balance').textContent = `${money(state.balance)} ETB`;
+    } catch (error) {
+      console.error('Balance:', error);
+      $('balance').textContent = '— ETB';
+    }
+  }
+
+  function drawKey(round) {
+    return `${round.id || round.number || ''}:${(round.draw || []).join(',')}`;
+  }
+
+  function animateDraw(numbers, key) {
+    if (state.animating || !numbers.length || state.lastDrawKey === key) return;
+
+    state.lastDrawKey = key;
+    state.animating = true;
+    state.draw = numbers.slice(0, 20);
+    state.shownCount = 0;
+
+    if (drawTimer) clearInterval(drawTimer);
+
+    renderDraw(state.draw, 0);
+    $('drawMessage').textContent = 'ቁጥሮች በተራ እየወጡ ነው...';
+
+    drawTimer = setInterval(() => {
+      state.shownCount++;
+      renderDraw(state.draw, state.shownCount);
+
+      if (state.shownCount >= state.draw.length) {
+        clearInterval(drawTimer);
+        drawTimer = null;
+        state.animating = false;
+        $('drawMessage').textContent = 'የዙሩ ውጤት ተጠናቋል።';
+        highlightWinningSelections();
+        loadBalance();
+        loadHistory();
+        renderTicketResult();
+      }
+    }, 1000);
+  }
+
+  function highlightWinningSelections() {
+    const winners = new Set(state.draw);
+
+    document.querySelectorAll('.number').forEach(button => {
+      const n = Number(button.dataset.number);
+      button.classList.toggle('winner', winners.has(n));
+    });
+  }
+
+  function renderTicketResult() {
+    const el = $('ticketContent');
+
+    if (!state.currentTicket) return;
+
+    const ticket = state.currentTicket;
+    const winning = new Set(state.draw);
+    const matched = ticket.picks.filter(n => winning.has(n));
+
+    el.innerHTML = '';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'ticket';
+
+    const title = document.createElement('strong');
+    title.textContent = 'የውርርድ ውጤት';
+
+    const picks = document.createElement('div');
+    picks.textContent = `የመረጥካቸው: ${ticket.picks.join(', ')}`;
+
+    const matches = document.createElement('div');
+    matches.textContent = `የተዛመዱ ቁጥሮች: ${matched.length}`;
+
+    const stake = document.createElement('div');
+    stake.textContent = `ውርርድ: ${money(ticket.stake)} ETB`;
+
+    const message = document.createElement('div');
+    message.className = Number(ticket.payout) > 0 ? 'green' : 'muted';
+    message.textContent = ticket.payout != null
+      ? `የተከፈለ ሽልማት: ${money(ticket.payout)} ETB`
+      : 'የሽልማት ውጤቱ በታሪክ ሲመጣ ይታያል።';
+
+    wrapper.append(title, picks, matches, stake, message);
+    el.appendChild(wrapper);
+  }
+
+  function showTicketPending(picks, stake) {
+    state.currentTicket = {
+      picks: picks.slice(),
+      stake: Number(stake),
+      payout: null
+    };
+
+    const el = $('ticketContent');
+    el.innerHTML = '';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'ticket';
+
+    const title = document.createElement('strong');
+    title.className = 'gold';
+    title.textContent = 'ውርርድ ተመዝግቧል';
+
+    const picksEl = document.createElement('div');
+    picksEl.textContent = `ቁጥሮች: ${picks.join(', ')}`;
+
+    const stakeEl = document.createElement('div');
+    stakeEl.textContent = `ውርርድ: ${money(stake)} ETB`;
+
+    const wait = document.createElement('div');
+    wait.className = 'muted';
+    wait.textContent = 'የዙሩን ውጤት በመጠባበቅ ላይ...';
+
+    wrapper.append(title, picksEl, stakeEl, wait);
+    el.appendChild(wrapper);
+  }
+
+  async function placeBet() {
+    if (!state.telegramId) {
+      setStatus('የTelegram መለያ አልተገኘም። ጨዋታውን ከTelegram ይክፈቱ።', true);
+      return;
+    }
+
+    if (state.roundStatus !== 'open') {
+      setStatus('የውርርድ ጊዜ አልተከፈተም።', true);
+      return;
+    }
+
+    if (state.ticketSubmitted) {
+      setStatus('በዚህ ዙር ውርርድ አስገብተሃል።', true);
+      return;
+    }
+
+    const picks = [...state.selected].sort((a, b) => a - b);
+    const stake = Number($('stake').value);
+
+    if (picks.length < 1 || picks.length > 10) {
+      setStatus('ከ1 እስከ 10 ቁጥሮች ምረጥ።', true);
+      return;
+    }
+
+    if (!Number.isInteger(stake) || stake < 10 || stake > 1000 || stake % 10 !== 0) {
+      setStatus('ውርርድ ከ10 እስከ 1000 ብር በ10 ብር እርምጃ ይሁን።', true);
+      return;
+    }
+
+    $('betButton').disabled = true;
+    $('betButton').textContent = 'በመላክ ላይ...';
+
+    try {
+      const data = await api('/api/keno/bet', {
+        method: 'POST',
+        body: JSON.stringify({
+          picks,
+          stake,
+          telegram_id: state.telegramId
+        })
+      });
+
+      state.ticketSubmitted = true;
+      state.currentTicket = { picks, stake, payout: null };
+
+      if (data.balance != null) {
+        state.balance = Number(data.balance);
+        $('balance').textContent = `${money(state.balance)} ETB`;
+      } else {
+        await loadBalance();
+      }
+
+      showTicketPending(picks, stake);
+      setStatus('ውርርድህ ተመዝግቧል። የዙሩን ውጤት ጠብቅ።');
+      renderSelections();
+      await loadHistory();
+    } catch (error) {
+      setStatus(error.message || 'ውርርድ አልተሳካም።', true);
+    } finally {
+      $('betButton').textContent = 'ውርርድ አስገባ';
+      renderSelections();
+    }
+  }
+
+  async function loadHistory() {
+    if (!state.telegramId) {
+      $('historyContent').textContent = 'የTelegram መለያ አልተገኘም።';
+      return;
+    }
+
+    try {
+      const data = await api(
+        `/api/keno/history/${encodeURIComponent(state.telegramId)}`
+      );
+
+      const container = $('historyContent');
+      container.innerHTML = '';
+
+      if (!data.history || !data.history.length) {
+        container.className = 'empty';
+        container.textContent = 'ገና የቀድሞ ውርርድ የለም።';
+        return;
+      }
+
+      container.className = '';
+
+      data.history.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'history-item';
+
+        const round = document.createElement('strong');
+        round.textContent = item.round_number || `ዙር ${item.id}`;
+
+        const details = document.createElement('div');
+        const picks = Array.isArray(item.picks)
+          ? item.picks
+          : JSON.parse(item.picks || '[]');
+
+        details.textContent =
+          `ቁጥሮች: ${picks.join(', ')} · ውርርድ: ${money(item.stake)} ETB`;
+
+        const result = document.createElement('div');
+        result.className = Number(item.payout) > 0 ? 'green' : 'muted';
+        result.textContent =
+          `ተዛማጅ: ${item.matched} · ሽልማት: ${money(item.payout)} ETB`;
+
+        const date = document.createElement('small');
+        date.className = 'muted';
+        date.textContent = item.created_at
+          ? new Date(item.created_at).toLocaleString()
+          : '';
+
+        row.append(round, details, result, date);
+        container.appendChild(row);
+
+        // አሁን ያለው ውርርድ ታሪክ ከመጣ የሽልማት መረጃውን አዘምን።
+        if (
+          state.currentTicket &&
+          state.roundId != null &&
+          String(item.id) &&
+          item.status === 'settled' &&
+          item.round_number === state.roundNumber
+        ) {
+          state.currentTicket.payout = Number(item.payout);
+          state.currentTicket.matched = Number(item.matched);
+        }
+      });
+
+      renderTicketResult();
+    } catch (error) {
+      $('historyContent').textContent = error.message || 'ታሪክን ማግኘት አልተቻለም።';
+    }
+  }
+
+  async function pollState() {
+    if (state.polling) return;
+    state.polling = true;
+
+    try {
+      const data = await api('/api/keno/state');
+      const round = data.round;
+
+      if (!round) throw new Error('የዙር መረጃ አልተገኘም።');
+
+      const newRound = String(round.id) !== String(state.roundId);
+
+      if (newRound) {
+        state.roundId = round.id;
+        state.roundNumber = round.number;
+        state.roundStatus = round.status;
+        state.remaining = Number(round.remaining) || 0;
+        state.selected.clear();
+        state.ticketSubmitted = false;
+        state.currentTicket = null;
+        state.draw = [];
+        state.shownCount = 0;
+        state.lastDrawKey = '';
+        state.animating = false;
+
+        if (drawTimer) clearInterval(drawTimer);
+
+        renderDraw([], 0);
+        $('drawMessage').textContent = 'የዙሩን ውጤት በመጠባበቅ ላይ...';
+        $('ticketContent').textContent = 'በዚህ ዙር ውርርድ አላስገባህም።';
+        renderSelections();
+      } else {
+        state.roundStatus = round.status;
+        state.remaining = Number(round.remaining) || 0;
+      }
+
+      $('roundNumber').textContent = round.number || `#${round.id}`;
+      updateTimer();
+      renderSelections();
+
+      if (round.status === 'open') {
+        setStatus('🟢 ውርርድ ክፍት ነው።');
+      } else if (round.status === 'drawing') {
+        setStatus('🎱 የዙሩ ውጤት በመታየት ላይ ነው።');
+        if (Array.isArray(round.draw) && round.draw.length) {
+          animateDraw(round.draw, drawKey(round));
+        }
+      } else {
+        setStatus('ዙሩ ተዘግቷል። አዲስ ዙር በመጠበቅ ላይ።');
+      }
+    } catch (error) {
+      setStatus(error.message || 'ከServer ጋር መገናኘት አልተቻለም።', true);
+    } finally {
+      state.polling = false;
+    }
+  }
+
+  $('betButton').addEventListener('click', placeBet);
+
+  $('clearButton').addEventListener('click', () => {
+    if (state.ticketSubmitted || state.roundStatus !== 'open') return;
+    state.selected.clear();
+    renderSelections();
+  });
+
+  $('refreshHistory').addEventListener('click', loadHistory);
+
+  document.querySelectorAll('.tab').forEach(button => {
+    button.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(tab =>
+        tab.classList.toggle('active', tab === button)
+      );
+
+      document.querySelectorAll('.tab-content').forEach(content =>
+        content.classList.toggle('active', content.id === button.dataset.tab)
+      );
+
+      if (button.dataset.tab === 'history') loadHistory();
+    });
+  });
+
+  async function init() {
+    state.telegramId = getTelegramId();
+
+    renderNumberGrid();
+    renderDraw([], 0);
+    renderSelections();
+
+    if (!state.telegramId) {
+      setStatus(
+        'Telegram ID አልተገኘም። ከTelegram Mini App ይክፈቱ።',
+        true
+      );
+    } else {
+      await loadBalance();
+      await loadHistory();
+    }
+
+    await pollState();
+    pollTimer = setInterval(pollState, 1000);
+  }
+
+  window.addEventListener('beforeunload', () => {
+    if (pollTimer) clearInterval(pollTimer);
+    if (drawTimer) clearInterval(drawTimer);
+  });
+
+  init();
+})();
+</script>
 </body>
 </html>
