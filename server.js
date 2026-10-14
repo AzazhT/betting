@@ -32,7 +32,8 @@ const pool = new Pool({
 const walletRoutes = require('./routes/wallet')(pool);
 const bettingRoutes = require('./routes/betting')(pool);
 const bingoRoutes = require('./routes/bingo')(pool, io);
-
+const kenoRoutes = require('./routes/keno')(pool);
+app.use('/api/keno', kenoRoutes);
 app.use('/api/bingo', bingoRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/betting', bettingRoutes);
