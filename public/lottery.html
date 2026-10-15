@@ -1,202 +1,501 @@
-const express = require('express');
-const http = require('http');
-const path = require('path');
-const { Server } = require('socket.io');
-const { Pool } = require('pg');
-const cors = require('cors');
-const crypto = require('crypto');
-require('dotenv').config();
+<!DOCTYPE html>
+<html lang="am">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>BYD Car Lottery | Ethiopia Games</title>
+  <meta name="theme-color" content="#10251d">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: '*', methods: ['GET', 'POST'] }
-});
+  <style>
+    :root {
+      --bg: #0b1512;
+      --panel: #14241d;
+      --panel2: #1c3228;
+      --gold: #f6c453;
+      --gold-light: #ffe9a6;
+      --gold-dark: #c89a32;
+      --muted: #b4c0b8;
+      --border: #344b3d;
+      --red: #e5484d;
+      --text: #fff;
+    }
 
-app.disable('x-powered-by');
-app.use(express.json({ limit: '32kb' }));
-app.use(cors());
-app.use(express.static(path.join(__dirname, 'public')));
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background:
+        radial-gradient(ellipse at top, #274a34 0%, transparent 48%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 50px;
+    }
 
-const walletRoutes = require('./routes/wallet')(pool);
-const bettingRoutes = require('./routes/betting')(pool);
-const bingoRoutes = require('./routes/bingo')(pool, io);
-const kenoRoutes = require('./routes/keno')(pool, io); // Keno receives Socket.IO.
-const aviatorRoutes = require('./routes/aviator')(pool);
+    /* Top Marquee Banner */
+    .marquee-container {
+      background: linear-gradient(90deg, #382905, #634b0a, #382905);
+      border-bottom: 1px solid var(--gold);
+      overflow: hidden;
+      padding: 9px 0;
+      white-space: nowrap;
+      box-shadow: 0 4px 15px rgba(246, 196, 83, 0.15);
+      margin-bottom: 18px;
+    }
+    .marquee-text {
+      display: inline-block;
+      animation: marquee 20s linear infinite;
+      color: var(--gold-light);
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+    }
+    @keyframes marquee {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
 
-app.use('/api/aviator', aviatorRoutes);
-app.use('/api/keno', kenoRoutes);
-app.use('/api/bingo', bingoRoutes);
-app.use('/api/wallet', walletRoutes);
-app.use('/api/betting', bettingRoutes);
+    .container {
+      width: min(100% - 24px, 800px);
+      margin: auto;
+    }
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
 
-io.on('connection', (socket) => {
-  console.log(`ተጫዋች ተገናኝቷል: ${socket.id}`);
+    .brand {
+      font-size: 19px;
+      font-weight: 900;
+      color: var(--gold-light);
+    }
 
-  socket.on('join_bingo_room', (data = {}) => {
-    const { room_id, telegram_id } = data;
-    if (!room_id) return;
-    socket.join(room_id);
-    console.log(`ተጫዋች ${telegram_id || 'unknown'} ወደ ክፍሉ ${room_id} ገብቷል`);
-    io.to(room_id).emit('player_joined', {
-      telegram_id,
-      message: 'አዲስ ተጫዋች ተቀላቅሏል!'
-    });
-  });
+    .back {
+      border: 1px solid var(--border);
+      background: #15271e;
+      padding: 9px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      color: var(--gold);
+      text-decoration: none;
+      font-weight: 700;
+    }
 
-  socket.on('start_game_room', (room_id) => {
-    if (!room_id) return;
-    console.log(`የቢንጎ ጨዋታ በክፍል ${room_id} ተጀምሯል!`);
-    const calledNumbers = [];
-    const gameInterval = setInterval(() => {
-      if (calledNumbers.length >= 75) {
-        clearInterval(gameInterval);
-        io.to(room_id).emit('game_over', { message: 'ጨዋታው አልቋል!' });
-        return;
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      padding: 26px 16px;
+      border: 1px solid #b98c3d;
+      border-radius: 22px;
+      background:
+        radial-gradient(ellipse at top, #f6c45320, transparent 55%),
+        linear-gradient(145deg, #1d3326, #101b16);
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+
+    .eyebrow {
+      display: inline-block;
+      padding: 6px 14px;
+      border: 1px solid #80642d;
+      border-radius: 30px;
+      color: var(--gold-light);
+      background: #f6c45315;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: clamp(26px, 5vw, 42px);
+      margin: 6px 0 10px;
+      line-height: 1.1;
+    }
+
+    h1 span {
+      color: var(--gold);
+    }
+
+    .subtitle {
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 540px;
+      margin: 0 auto 18px;
+      font-size: 13px;
+    }
+
+    .car-scene {
+      margin: 16px auto;
+      max-width: 100%;
+      height: 200px;
+      border-radius: 16px;
+      background: #08120d;
+      border: 1px solid #3b503b;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .car-scene img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      animation: zoomEffect 10s ease-in-out infinite alternate;
+    }
+    @keyframes zoomEffect {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.06); }
+    }
+    .car-badge {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.75);
+      border: 1px solid var(--gold);
+      padding: 6px 12px;
+      border-radius: 8px;
+      color: var(--gold-light);
+      font-weight: 800;
+      font-size: 12px;
+      backdrop-filter: blur(4px);
+    }
+
+    .meta-badges {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+    .meta-tag {
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+
+    /* Main Grid Panel */
+    .panel {
+      background: linear-gradient(145deg, #172920, #111e17);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .panel h2 {
+      font-size: 18px;
+      margin-bottom: 6px;
+      color: var(--gold-light);
+    }
+
+    .description {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+
+    /* Number Picker Grid (1 to 3000) */
+    .filter-box {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .search-input {
+      flex: 1;
+      padding: 11px 14px;
+      border-radius: 10px;
+      border: 1px solid #435849;
+      background: #0c1912;
+      color: #fff;
+      outline: none;
+      font-size: 14px;
+    }
+    .search-input:focus { border-color: var(--gold); }
+
+    .numbers-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+      gap: 6px;
+      max-height: 280px;
+      overflow-y: auto;
+      padding: 4px;
+      background: #0c1711;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .num-btn {
+      aspect-ratio: 1.3;
+      background: #14241d;
+      border: 1px solid #283d31;
+      border-radius: 8px;
+      color: #e2ede5;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: all 0.1s ease;
+    }
+    .num-btn:hover:not(.taken) {
+      border-color: var(--gold);
+      background: #1f382c;
+    }
+    .num-btn.taken {
+      background: #2a1515;
+      border-color: #5c2626;
+      color: var(--red);
+      cursor: not-allowed;
+      opacity: 0.75;
+      font-size: 10px;
+    }
+    .num-btn.selected {
+      background: var(--gold);
+      color: #171203;
+      border-color: var(--gold-light);
+      box-shadow: 0 0 12px rgba(246, 196, 83, 0.4);
+    }
+
+    /* Checkout / Action Box */
+    .checkout-box {
+      margin-top: 18px;
+      background: #0f1c16;
+      border: 1px solid #4d3d19;
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .selected-summary small { color: var(--muted); display: block; font-size: 11px; }
+    .selected-summary strong { color: var(--gold); font-size: 16px; }
+
+    .buy-btn {
+      padding: 13px 22px;
+      border: 0;
+      border-radius: 11px;
+      background: linear-gradient(100deg, #ffe8a0, #f0b832);
+      color: #2a2008;
+      font-weight: 900;
+      font-size: 14px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(240, 184, 50, 0.3);
+      white-space: nowrap;
+    }
+    .buy-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Notice popup / Toast */
+    .toast {
+      position: fixed;
+      bottom: 25px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #f6c453;
+      color: #171203;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 13px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+      transition: transform 0.3s ease;
+      z-index: 1000;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+    .toast.error {
+      background: var(--red);
+      color: #fff;
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px 10px;
+      color: #87988c;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- የማስታወቂያ የሚንቀሳቀስ ባነር (Marquee) -->
+  <div class="marquee-container">
+    <div class="marquee-text">
+      🔥 እንኳን ደስ አላችሁ! የ BYD ዘመናዊ ኤሌክትሪክ መኪና ዕጣ ቁጥር መምረጥ ጀምር። 1 ቲኬት 1000 ብር ብቻ! ዕጣው የሚወጣበት ቀን በ 29 ነው! ፈጥነው ዕድልዎን ይሞክሩ! 🚗✨
+    </div>
+  </div>
+
+  <main class="container">
+
+    <header class="topbar">
+      <div class="brand">✦ ETHIOPIA GAMES</div>
+      <a class="back" href="/">← መነሻ</a>
+    </header>
+
+    <!-- ጀግና/ማስታወቂያ ክፍል ከ መኪና ምስል እና መግለጫ ጋር -->
+    <section class="hero">
+      <div class="eyebrow">✦ GRAND PRIZE DRAW ✦</div>
+
+      <h1>BYD GRAND <span>CAR LOTTERY</span></h1>
+
+      <p class="subtitle">
+        አጠቃላይ ግምታዊ ዋጋው <b>3,000,000 ETB (ሶስት ሚሊዮን ብር)</b> የሆነውን የዘመኑን እጅግ ውብ እና ዘመናዊ የ BYD መኪና ባለቤት ይሁኑ!
+      </p>
+
+      <div class="car-scene">
+        <!-- እውነተኛ የ BYD መኪና ፎቶ -->
+        <img src="https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=900&q=80" alt="BYD Electric Car">
+        <div class="car-badge">🚘 BYD Flagship Model · 3,000,000 ETB</div>
+      </div>
+
+      <div class="meta-badges">
+        <div class="meta-tag">🎫 1 ቲኬት = 1,000 ብር</div>
+        <div class="meta-tag">🔢 ከ 1 እስከ 3000 ቁጥሮች</div>
+        <div class="meta-tag">📅 ዕጣ የሚወጣበት: 29</div>
+      </div>
+    </section>
+
+    <!-- የቁጥሮች ምርጫ ፓነል (1 እስከ 3000) -->
+    <section class="panel">
+      <h2>የዕጣ ቁጥር ይምረጡ</h2>
+      <p class="description">
+        ከታች ካሉት ከ 1 እስከ 3000 ከሚገኙ ቁጥሮች መካከል የሚፈልጉትን ይምረጡ። ቀድሞ የተያዙ ቁጥሮች ሲነኩ <b>«ተይዟል»</b> የሚል ማሳሰቢያ ይሰጣል።
+      </p>
+
+      <div class="filter-box">
+        <input type="number" id="numberSearch" class="search-input" placeholder="ቁጥር ፈልግ (ለምሳሌ: 777)..." min="1" max="3000">
+      </div>
+
+      <!-- የቁጥሮች ግሪድ ኮንቴይነር -->
+      <div class="numbers-container" id="numbersGrid">
+        <!-- በጃቫስክሪፕት በዳይናሚክ ይሞላል -->
+      </div>
+
+      <!-- የግዢ/ማረጋገጫ ቦታ -->
+      <div class="checkout-box">
+        <div class="selected-summary">
+          <small>የመረጡት ቁጥር:</small>
+          <strong id="selectedLabel">ምንም አልተመረጠም</strong>
+        </div>
+        <button class="buy-btn" id="buyButton" disabled>ቲኬት ግዛ (1,000 ብር)</button>
+      </div>
+    </section>
+
+    <footer>
+      <p>BYD Car Lottery · Ethiopia Games</p>
+      <p>ዕጣው በታማኝነት እና በቁጥጥር የሚካሄድ ይሆናል። መልካም ዕድል!</p>
+    </footer>
+
+  </main>
+
+  <!-- ቶስት ፖፕአፕ ማሳወቂያ -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const tg = window.Telegram?.WebApp;
+    const gridEl = document.getElementById('numbersGrid');
+    const searchInput = document.getElementById('numberSearch');
+    const selectedLabel = document.getElementById('selectedLabel');
+    const buyButton = document.getElementById('buyButton');
+    const toastEl = document.getElementById('toast');
+
+    let selectedNum = null;
+    const TOTAL_NUMBERS = 3000;
+
+    // ለናሙና የተወሰኑ ቁጥሮች የተያዙ (Taken) እንዲሆኑ እናደርጋለን (ለምሳሌ ቁጥር 1500 እና ሌሎችም)
+    const takenSet = new Set([
+      1500, 7, 12, 45, 100, 250, 500, 777, 1024, 1200, 1850, 2222, 2750
+    ]);
+
+    function showToast(message, isError = false) {
+      toastEl.textContent = message;
+      toastEl.className = 'toast show' + (isError ? ' error' : '');
+      setTimeout(() => {
+        toastEl.className = 'toast';
+      }, 3000);
+    }
+
+    // ግሪዱን መገንባት (ከ 1 እስከ 3000)
+    function renderGrid(filter = '') {
+      gridEl.replaceChildren();
+      const query = parseInt(filter, 10);
+
+      // አፈፃፀምን ለመጠበቅ እና UI እንዳይጨናነቅ በናሙና የመጀመሪያዎቹን 300 ወይም የተፈለገውን እናሳያለን (ሙሉ 3000 በሰርቨር/search ሊጣራ ይችላል)
+      const limit = !isNaN(query) ? Math.min(TOTAL_NUMBERS, query + 50) : 300; 
+      const start = !isNaN(query) ? Math.max(1, query - 25) : 1;
+
+      for (let i = start; i <= limit; i++) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'num-btn';
+        btn.textContent = i;
+        btn.dataset.num = i;
+
+        if (takenSet.has(i)) {
+          btn.classList.add('taken');
+          btn.textContent = `${i}\n(ተይዟል)`;
+          btn.addEventListener('click', () => {
+            showToast(`ቁጥር #${i} አስቀድሞ ተይዟል! እባክዎ ሌላ ቁጥር ይምረጡ።`, true);
+          });
+        } else {
+          if (selectedNum === i) {
+            btn.classList.add('selected');
+          }
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.num-btn.selected').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedNum = i;
+            selectedLabel.textContent = `ቁጥር #${i} (1,000 ETB)`;
+            buyButton.disabled = false;
+          });
+        }
+
+        gridEl.appendChild(btn);
       }
-      let randomNum;
-      do {
-        randomNum = Math.floor(Math.random() * 75) + 1;
-      } while (calledNumbers.includes(randomNum));
-      calledNumbers.push(randomNum);
-      io.to(room_id).emit('number_called', {
-        number: randomNum,
-        called_numbers: calledNumbers
-      });
-    }, 3000);
-  });
-
-  socket.on('disconnect', () => {
-    console.log(`ተጫዋች ወጥቷል: ${socket.id}`);
-  });
-});
-
-/*
- * ONE-TIME TEST CREDIT
- * Fixed Telegram ID and amount.
- * Requires ADMIN_TEST_KEY in Render Environment.
- */
-app.post('/api/admin/test-credit', async (req, res) => {
-  const configuredKey = process.env.ADMIN_TEST_KEY;
-  const providedKey = req.get('x-admin-test-key') || '';
-
-  if (!configuredKey || !providedKey) {
-    return res.status(401).json({
-      success: false,
-      message: 'Unauthorized'
-    });
-  }
-
-  const expected = Buffer.from(configuredKey);
-  const supplied = Buffer.from(providedKey);
-
-  if (
-    expected.length !== supplied.length ||
-    !crypto.timingSafeEqual(expected, supplied)
-  ) {
-    return res.status(401).json({
-      success: false,
-      message: 'Unauthorized'
-    });
-  }
-
-  const client = await pool.connect();
-
-  try {
-    await client.query('BEGIN');
-
-    // A fixed reference prevents this test credit being applied twice.
-    const reference = 'test-credit-686733543-v1';
-
-    const previous = await client.query(
-      `SELECT id FROM public.transactions
-       WHERE reference = $1`,
-      [reference]
-    );
-
-    if (previous.rowCount > 0) {
-      await client.query('ROLLBACK');
-      return res.status(409).json({
-        success: false,
-        message: 'This test credit has already been applied.'
-      });
     }
 
-    const userResult = await client.query(
-      `SELECT id, telegram_id, name, balance, bonus_balance
-       FROM public.users
-       WHERE telegram_id = $1
-       FOR UPDATE`,
-      ['686733543']
-    );
+    searchInput.addEventListener('input', (e) => {
+      renderGrid(e.target.value);
+    });
 
-    if (userResult.rowCount === 0) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({
-        success: false,
-        message: 'Telegram user not found.'
-      });
+    buyButton.addEventListener('click', () => {
+      if (!selectedNum) return;
+      showToast(`ቁጥር #${selectedNum} በትክክል ተይዟል! ክፍያ በመፈጸም ላይ...`);
+      buyButton.disabled = true;
+      // እዚህ ጋር ከ Backend API (ወይም Telegram WebApp) ጋር በመገናኘት ክፍያ ይፈጸማል
+    });
+
+    if (tg) {
+      tg.ready();
+      tg.expand();
     }
 
-    const user = userResult.rows[0];
-
-    const updated = await client.query(
-      `UPDATE public.users
-       SET balance = balance + 5000.00,
-           updated_at = NOW()
-       WHERE id = $1
-       RETURNING telegram_id, name, balance, bonus_balance`,
-      [user.id]
-    );
-
-    await client.query(
-      `INSERT INTO public.transactions
-       (user_id, type, amount, status, reference, description)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [
-        user.id,
-        'test_credit',
-        5000.00,
-        'approved',
-        reference,
-        'One-time administrative test credit'
-      ]
-    );
-
-    await client.query('COMMIT');
-
-    return res.json({
-      success: true,
-      message: 'Test credit applied successfully.',
-      user: updated.rows[0]
-    });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    console.error('Test credit error:', err.message);
-
-    return res.status(500).json({
-      success: false,
-      message: 'Test credit failed. Check server logs.'
-    });
-  } finally {
-    client.release();
-  }
-});
-
-const PORT = Number(process.env.PORT) || 10000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server is running on port ${PORT}`);
-});
-
-pool.on('error', (err) => {
-  console.error('Unexpected PostgreSQL pool error:', err.message);
-});
+    renderGrid();
+  </script>
+</body>
+</html>
