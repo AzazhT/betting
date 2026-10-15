@@ -1,0 +1,487 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BYD Car Lottery | Ethiopia Games</title>
+  <meta name="theme-color" content="#10251d">
+
+  <style>
+    :root {
+      --bg: #0b1512;
+      --panel: #14241d;
+      --gold: #f6c453;
+      --gold-light: #ffe9a6;
+      --muted: #b4c0b8;
+      --border: #344b3d;
+      --green: #18392a;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background:
+        radial-gradient(ellipse at top, #274a34 0%, transparent 48%),
+        var(--bg);
+      color: #fff;
+      min-height: 100vh;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .container {
+      width: min(100% - 28px, 1050px);
+      margin: auto;
+      padding: 22px 0 45px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 25px;
+    }
+
+    .brand {
+      font-size: 19px;
+      font-weight: 900;
+      color: var(--gold-light);
+    }
+
+    .back {
+      border: 1px solid var(--border);
+      background: #15271e;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+    }
+
+    .hero {
+      text-align: center;
+      padding: 30px 18px 25px;
+      border: 1px solid #b98c3d;
+      border-radius: 25px;
+      background:
+        radial-gradient(ellipse at top, #f6c45320, transparent 55%),
+        linear-gradient(145deg, #1d3326, #101b16);
+      overflow: hidden;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      padding: 8px 13px;
+      border: 1px solid #80642d;
+      border-radius: 30px;
+      color: var(--gold-light);
+      background: #f6c45312;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+    }
+
+    h1 {
+      font-size: clamp(30px, 6vw, 52px);
+      margin: 18px 0 10px;
+      line-height: 1.08;
+    }
+
+    h1 span {
+      color: var(--gold);
+    }
+
+    .subtitle {
+      color: var(--muted);
+      line-height: 1.7;
+      max-width: 580px;
+      margin: 0 auto;
+      font-size: 14px;
+    }
+
+    .car-scene {
+      margin: 24px auto 20px;
+      max-width: 580px;
+      min-height: 190px;
+      border-radius: 20px;
+      background:
+        radial-gradient(ellipse at center bottom, #e6b44427, transparent 65%),
+        #0c1912;
+      border: 1px solid #3b503b;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 22px;
+    }
+
+    .car {
+      font-size: clamp(75px, 17vw, 125px);
+      line-height: 1.2;
+      filter: drop-shadow(0 12px 15px #0007);
+    }
+
+    .car-name {
+      margin-top: 8px;
+      color: var(--gold-light);
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: 2px;
+    }
+
+    .status {
+      display: inline-block;
+      border-radius: 8px;
+      padding: 8px 12px;
+      background: #f6c45315;
+      color: var(--gold-light);
+      border: 1px solid #8c7138;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 18px;
+      margin-top: 20px;
+    }
+
+    .panel {
+      background: linear-gradient(145deg, #172920, #111e17);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 22px;
+    }
+
+    .panel h2 {
+      font-size: 20px;
+      margin-bottom: 8px;
+    }
+
+    .description {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      color: #dce5de;
+      font-size: 13px;
+      font-weight: bold;
+      margin: 15px 0 8px;
+    }
+
+    select, input {
+      width: 100%;
+      padding: 13px;
+      border-radius: 11px;
+      border: 1px solid #435849;
+      background: #0c1912;
+      color: #fff;
+      outline: none;
+      font-size: 15px;
+    }
+
+    select:focus, input:focus {
+      border-color: var(--gold);
+    }
+
+    .total {
+      margin: 18px 0;
+      padding: 17px;
+      border: 1px solid #6b572e;
+      background: #f6c4530c;
+      border-radius: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .total span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .total strong {
+      color: var(--gold);
+      font-size: 24px;
+    }
+
+    .primary {
+      width: 100%;
+      padding: 15px;
+      border: 0;
+      border-radius: 12px;
+      background: linear-gradient(100deg, #ffe8a0, #f0b832);
+      color: #2a2008;
+      font-weight: 900;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    .primary:hover {
+      filter: brightness(1.06);
+    }
+
+    .notice {
+      display: none;
+      margin-top: 15px;
+      padding: 13px;
+      border-radius: 10px;
+      border: 1px solid #80642d;
+      background: #f6c45310;
+      color: var(--gold-light);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .info-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid #2c4033;
+    }
+
+    .info-row:last-child {
+      border-bottom: 0;
+    }
+
+    .info-icon {
+      width: 38px;
+      height: 38px;
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      background: #f6c45312;
+      border-radius: 11px;
+      font-size: 19px;
+    }
+
+    .info-row strong {
+      display: block;
+      margin: 2px 0 5px;
+      font-size: 14px;
+    }
+
+    .info-row p {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .tickets {
+      margin-top: 20px;
+    }
+
+    .empty {
+      padding: 24px 12px;
+      text-align: center;
+      border: 1px dashed #405546;
+      border-radius: 13px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    footer {
+      text-align: center;
+      padding: 25px 10px 0;
+      color: #87988c;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 700px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        padding: 24px 13px;
+      }
+
+      .panel {
+        padding: 18px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+
+    <header class="topbar">
+      <div class="brand">✦ ETHIOPIA GAMES</div>
+      <a class="back" href="/">← Back to Games</a>
+    </header>
+
+    <section class="hero">
+      <div class="eyebrow">✦ SPECIAL GRAND PRIZE DRAW ✦</div>
+
+      <h1>WIN A <span>BYD CAR</span></h1>
+
+      <p class="subtitle">
+        Your next big moment could be closer than you think.
+        Explore the BYD Car Lottery and check the official draw
+        details before entering.
+      </p>
+
+      <div class="car-scene">
+        <div class="car" aria-label="Car illustration">🚘</div>
+        <div class="car-name">BYD GRAND PRIZE</div>
+      </div>
+
+      <div class="status">Draw date: To be announced</div>
+    </section>
+
+    <section class="grid">
+
+      <div class="panel">
+        <h2>🎟️ Lottery Entry</h2>
+        <p class="description">
+          Review the entry options below. This page is a preview;
+          entries and payments are not active yet.
+        </p>
+
+        <label for="ticketPrice">Ticket price (ETB)</label>
+        <select id="ticketPrice">
+          <option value="10">10 ETB</option>
+          <option value="50">50 ETB</option>
+          <option value="100">100 ETB</option>
+          <option value="200">200 ETB</option>
+        </select>
+
+        <label for="quantity">Number of tickets</label>
+        <input
+          id="quantity"
+          type="number"
+          min="1"
+          max="100"
+          step="1"
+          value="1"
+          inputmode="numeric"
+        >
+
+        <div class="total">
+          <span>Estimated total</span>
+          <strong><span id="total" style="color:inherit;font-size:inherit">10</span> ETB</strong>
+        </div>
+
+        <button class="primary" id="enterButton" type="button">
+          Enter Lottery — Coming Soon
+        </button>
+
+        <div class="notice" id="notice" role="status">
+          Ticket sales are not active. No payment has been taken
+          and no ticket has been created. The server, wallet,
+          and database must be connected before entries can begin.
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>🏆 Prize Information</h2>
+        <p class="description">
+          Important information about the planned lottery.
+        </p>
+
+        <div class="info-row">
+          <div class="info-icon">🚘</div>
+          <div>
+            <strong>Grand Prize</strong>
+            <p>BYD car prize details and model must be confirmed by the organizer.</p>
+          </div>
+        </div>
+
+        <div class="info-row">
+          <div class="info-icon">📅</div>
+          <div>
+            <strong>Draw Date</strong>
+            <p>Not announced yet. An official date should be published before tickets are sold.</p>
+          </div>
+        </div>
+
+        <div class="info-row">
+          <div class="info-icon">🎫</div>
+          <div>
+            <strong>Ticket Confirmation</strong>
+            <p>Each paid entry should receive a unique ticket number stored on the server.</p>
+          </div>
+        </div>
+
+        <div class="info-row">
+          <div class="info-icon">🔒</div>
+          <div>
+            <strong>Fair Draw</strong>
+            <p>The final system should document the draw rules and retain an auditable result.</p>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <section class="panel tickets">
+      <h2>🎟️ My Tickets</h2>
+      <p class="description">
+        Your confirmed ticket numbers will appear here after the
+        backend is connected.
+      </p>
+
+      <div class="empty">
+        No tickets yet.<br>
+        Ticket purchases are not enabled on this preview page.
+      </div>
+    </section>
+
+    <footer>
+      <p>BYD Car Lottery — Preview Page</p>
+      <p>
+        This page does not process payments, deduct wallet funds,
+        issue tickets, or select winners.
+      </p>
+    </footer>
+
+  </main>
+
+  <script>
+    const ticketPrice = document.getElementById('ticketPrice');
+    const quantity = document.getElementById('quantity');
+    const total = document.getElementById('total');
+    const enterButton = document.getElementById('enterButton');
+    const notice = document.getElementById('notice');
+
+    function updateTotal() {
+      let count = Number.parseInt(quantity.value, 10);
+
+      if (!Number.isFinite(count)) count = 1;
+      count = Math.max(1, Math.min(100, count));
+      quantity.value = count;
+
+      const price = Number(ticketPrice.value);
+      total.textContent = (price * count).toLocaleString('en-US');
+    }
+
+    ticketPrice.addEventListener('change', updateTotal);
+    quantity.addEventListener('input', updateTotal);
+
+    enterButton.addEventListener('click', function () {
+      notice.style.display = 'block';
+      notice.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    updateTotal();
+  </script>
+</body>
+</html>
