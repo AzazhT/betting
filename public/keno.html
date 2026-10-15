@@ -4,7 +4,7 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0a120e"><title>Fast Keno - እድል ኬኖ</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-:root{--bg:#0a120e;--panel:#121e17;--panel2:#1a2a21;--muted:#819e8f;--text:#f2f7f4;--gold:#f3bc3d;--gold-light:#ffe6a0;--gold-dark:#c19220;--green:#20d68b;--red:#ff5c5c;--line:#223b2e}
+:root{--bg:#0a120e;--panel:#121e17;--panel2:#1a2a21;--muted:#819e8f;--text:#f2f7f4;--gold:#f3bc3d;--gold-light:#ffe6a0;--gold-dark:#c19220;--green:#20d68b;--green-glow:#00ff88;--red:#ff5c5c;--line:#223b2e}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,var(--panel),var(--bg));color:var(--text);font:13px/1.35 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding-bottom:20px}
 .app{width:min(100%,480px);margin:auto;padding:10px 12px 20px}
 .topbar,.wallet,.head,.stake-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -20,14 +20,18 @@
 .head{margin-bottom:8px}.head h2{margin:0;font-size:15px;color:var(--gold-light)}
 .pill{border-radius:15px;padding:4px 8px;background:var(--panel2);color:var(--gold);font-size:10px;font-weight:700;white-space:nowrap;border:1px solid var(--line)}
 
-/* 3D ጀርባ እና የሰዓት ቆጣሪ */
+/* 3D ጀርባ እና የሰዓት ቆጣሪ ከ አረንጓዴ ኒዮን አኒሜሽን ጋር */
 .draw-area{min-height:130px;border-radius:12px;background:radial-gradient(ellipse at center,#1a3023,#0e1812 70%,#0a120e);border:1px solid #2c4a37;padding:10px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;margin-bottom:10px;position:relative;overflow:hidden;box-shadow:inset 0 2px 10px rgba(0,0,0,0.6)}
 .timer-circle{width:65px;height:65px;border-radius:50%;background:radial-gradient(circle,#233f2d,#101b14);border:3px solid var(--gold);display:grid;place-items:center;color:var(--gold-light);font-size:16px;font-weight:900;box-shadow:0 0 15px rgba(243,188,61,0.4);margin-bottom:2px;animation:pulseTimer 1s ease infinite alternate}
 @keyframes pulseTimer{0%{transform:scale(1);box-shadow:0 0 10px rgba(243,188,61,0.3)}100%{transform:scale(1.05);box-shadow:0 0 20px rgba(243,188,61,0.6)}}
-.current{font-size:28px;color:#171203;background:linear-gradient(135deg,var(--gold-light),var(--gold));width:55px;height:55px;border-radius:50%;display:grid;place-items:center;font-weight:900;box-shadow:0 0 15px rgba(243,188,61,0.6);margin-bottom:4px}
+.current{font-size:28px;color:#0a120e;background:linear-gradient(135deg,#7affc2,var(--green));width:55px;height:55px;border-radius:50%;display:grid;place-items:center;font-weight:900;box-shadow:0 0 25px var(--green-glow);margin-bottom:4px;animation:pulseBall .6s ease infinite alternate}
+@keyframes pulseBall{0%{transform:scale(1);box-shadow:0 0 15px var(--green-glow)}100%{transform:scale(1.1);box-shadow:0 0 30px var(--green-glow)}}
+
 .drawn{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;width:100%;max-height:80px;overflow-y:auto}
 .ball{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:800;background:#14241b;border:1px solid #2c4c39;color:#b2d4c3}
-.ball.active{background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:#171203;border-color:var(--gold-light);box-shadow:0 0 8px rgba(243,188,61,0.5)}
+.ball.active{background:linear-gradient(135deg,#7affc2,var(--green));color:#0a120e;border-color:#35f59c;box-shadow:0 0 12px var(--green-glow);animation:neonDrop .3s ease}
+@keyframes neonDrop{0%{transform:scale(0.5);opacity:0}100%{transform:scale(1);opacity:1}}
+
 .muted{color:var(--muted);font-size:11px}
 
 /* 3D ኒዮን ቁጥሮች አደራደር */
@@ -35,7 +39,7 @@
 .number{aspect-ratio:1;border-radius:7px;border:1px solid #223b2c;color:#cbf0dc;background:linear-gradient(135deg,#132219,#0f1a14);font-weight:700;cursor:pointer;padding:0;font-size:12px;transition:all .1s;box-shadow:0 2px 5px rgba(0,0,0,0.3)}
 .number:hover{border-color:var(--gold);transform:translateY(-1px)}
 .number.selected{color:#171203;background:linear-gradient(135deg,var(--gold-light),var(--gold));border-color:var(--gold-light);box-shadow:0 0 10px rgba(243,188,61,0.6);font-weight:900}
-.number.winning{color:#fff;background:var(--green);border-color:#35f59c;box-shadow:0 0 10px rgba(32,214,139,0.6)}
+.number.winning{color:#fff;background:var(--green);border-color:#35f59c;box-shadow:0 0 12px var(--green-glow)}
 .number:disabled{cursor:not-allowed;opacity:.7}
 
 .stake-row{flex-wrap:wrap;margin-bottom:10px}
@@ -48,9 +52,10 @@
 .bet-btn{width:100%;padding:12px;font-size:14px;letter-spacing:.5px}
 .bet-btn:disabled{opacity:.5;cursor:not-allowed}
 
-.payout-preview{background:#0e1c14;border:1px dashed var(--gold);border-radius:8px;padding:6px 10px;margin-bottom:10px;font-size:10px;color:var(--gold-light);display:flex;justify-content:space-between;align-items:center}
+/* የሚያገኙት ሽልማት (በደማቅ አረንጓዴ ኒዮን ከለር) */
+.payout-preview{background:#0e1c14;border:1px dashed var(--green);border-radius:8px;padding:6px 10px;margin-bottom:10px;font-size:11px;color:#7affc2;display:flex;justify-content:space-between;align-items:center;box-shadow:0 0 10px rgba(32,214,139,0.2);font-weight:800}
 
-/* ዋና ታቦች: ጨዋታ | Active | ታሪክ | ውጤት */
+/* ዋና ታቦች: Active Players | ታሪክ | ውጤት */
 .tabs{display:flex;gap:4px;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:10px}
 .tab{flex:1;border:0;border-radius:8px;padding:9px 2px;color:var(--muted);background:transparent;font-size:10px;font-weight:800;cursor:pointer;transition:all .15s;text-align:center}
 .tab.active{color:#171203;background:var(--gold);box-shadow:0 4px 12px rgba(243,188,61,0.3)}
@@ -59,9 +64,9 @@
 .itemtop,.itembottom{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px}
 .picks{display:flex;gap:4px;flex-wrap:wrap}
 .pick{width:24px;height:24px;border-radius:5px;background:#15261d;display:grid;place-items:center;font-size:10px;font-weight:800;color:var(--gold);border:1px solid #294a37}
-.matched{background:var(--green);color:#fff;border-color:#35f59c}
+.matched{background:var(--green);color:#fff;border-color:#35f59c;box-shadow:0 0 8px var(--green-glow)}
 .waiting{color:var(--gold);font-weight:800}
-.won{color:var(--green);font-weight:800}
+.won{color:var(--green);font-weight:800;text-shadow:0 0 8px rgba(32,214,139,0.4)}
 .lost{color:var(--red);font-weight:800}
 .empty{text-align:center;padding:14px 0;color:var(--muted)}
 .notice{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);width:max-content;max-width:90vw;background:#ffe6a0;color:#171203;border-radius:9px;padding:10px 14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:1000;font-weight:800;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.5)}
@@ -92,8 +97,8 @@
   <div class="grid" id="numberGrid"></div>
   
   <div class="payout-preview" id="payoutPreview">
-    <span>💡 ግምት ሽልማት: 0.00 ETB</span>
-    <span id="previewDetails">ቁጥሮችን ይምረጡ</span>
+    <span>🏆 የሚያገኙት ሽልማት</span>
+    <span id="previewDetails" style="color:#7affc2;font-weight:900;">ቁጥሮችን ይምረጡ</span>
   </div>
 
   <div class="stake-row"><span class="stake-label">ውርርድ (Stake)</span><div class="stake-control"><button id="minus">−</button><strong id="stakeAmount">10.00 ETB</strong><button id="plus">＋</button></div><button class="quick" id="double">×2</button><button class="quick" id="max">MAX</button></div>
@@ -102,15 +107,14 @@
 </div>
 </section>
 
-<!-- ዋና ታቦች -->
+<!-- ዋና ታቦች: Active Players (ጨዋታ ተወግዷል) -->
 <nav class="tabs">
-  <button class="tab active" data-tab="GAME">ጨዋታ</button>
-  <button class="tab" data-tab="ACTIVE">Active (<span id="activePlayerCount">180</span>)</button>
+  <button class="tab active" data-tab="ACTIVE">Active Players (<span id="activePlayerCount">180</span>)</button>
   <button class="tab" data-tab="HISTORY">ታሪክ</button>
   <button class="tab" data-tab="RESULTS">ውጤቶች</button>
 </nav>
 
-<section class="card"><div class="head"><h2 id="listTitle">የተያዙት ቲኬቶችዎ (ከፍተኛ ቅድሚያ)</h2><span class="pill" id="listCount">0</span></div><div id="ticketList"><div class="empty">ቲኬቶች እየተጫኑ ነው...</div></div></section></main><div class="notice" id="notice" role="status" aria-live="polite"></div>
+<section class="card"><div class="head"><h2 id="listTitle">የእርስዎ ቲኬቶች እና የቀጥታ ተጫዋቾች (Active)</h2><span class="pill" id="listCount">0</span></div><div id="ticketList"><div class="empty">ቲኬቶች እየተጫኑ ነው...</div></div></section></main><div class="notice" id="notice" role="status" aria-live="polite"></div>
 
 <script>
 (() => {
@@ -133,7 +137,7 @@ const PAYTABLE = {
 
 const $=s=>document.querySelector(s);
 const tg=window.Telegram?.WebApp;
-const state={identifier:String(tg?.initDataUnsafe?.user?.id??''),name:'Player',balance:0,picks:new Set(),stake:MIN_STAKE,round:null,myTickets:[],fakeBets:[],drawingRound:null,activeTab:'GAME',draw:[],activePlayerCount:180};
+const state={identifier:String(tg?.initDataUnsafe?.user?.id??''),name:'Player',balance:0,picks:new Set(),stake:MIN_STAKE,round:null,myTickets:[],fakeBets:[],drawingRound:null,activeTab:'ACTIVE',draw:[],activePlayerCount:180};
 const el={grid:$('#numberGrid'),timer:$('#roundTimer'),title:$('#gameTitle'),count:$('#selectedCount'),stake:$('#stakeAmount'),bet:$('#betButton'),balance:$('.wallet-balance'),player:$('#playerInfo'),notice:$('#notice'),placeholder:$('#drawPlaceholder'),current:$('#currentBall'),timerCircle:$('#timerCircle'),controls:$('#bettingControlsSection'),drawn:$('#drawnBalls'),counter:$('#drawCounter'),list:$('#ticketList'),listTitle:$('#listTitle'),listCount:$('#listCount'),activePlayers:$('#activePlayerCount'),preview:$('#payoutPreview'),previewDetails:$('#previewDetails')};
 let noticeTimer=null,pollBusy=false,activeInterval=null;
 
@@ -185,7 +189,6 @@ function setStake(v){if(state.round&&state.round.status!=='BETTING')return;let n
 
 function updateBetButton(){if(!state.round||state.round.status!=='BETTING'){el.bet.textContent='ውጤቱን በመጠበቅ ላይ';el.bet.disabled=true;}else{el.bet.textContent=`BET · ${money(state.stake)}`;el.bet.disabled=false;}}
 
-/* በርካታ ቲኬቶችን ያለእገዳ የማስገባት ሎጅክ */
 async function placeBet(){
   if(!state.identifier)return notice('የTelegram ተጠቃሚ መለያ አልተገኘም።',true);
   if(!state.round||state.round.status!=='BETTING')return notice('የውርርድ ጊዜው ተዘግቷል።',true);
@@ -204,9 +207,8 @@ async function placeBet(){
     renderTabContent();
     notice('ቲኬትዎ ተመዝግቧል!');
   }catch(err){
-    // "አስቀድሞ አስገብቷል" የሚለውን ስህተት አርሞ ተጨማሪ ቲኬት እንዲፈቀድ አድርጓል
-    notice('ቲኬትዎ ተመዝግቧል!');
-    refreshStatus();
+    notice(err.message||'ቲኬት መመዝገብ አልተቻለም።',true);
+    await refreshStatus();
   }finally{updateBetButton();}
 }
 
@@ -231,53 +233,59 @@ function renderTabContent(){
   el.list.replaceChildren();
   
   if(state.activeTab === 'ACTIVE'){
-    el.listTitle.textContent = 'የቀጥታ ተጫዋቾች እና ቶፕ ውርርዶች (Live Top Bets)';
-    el.listCount.textContent = String(state.fakeBets.length);
-    if(!state.fakeBets.length){el.list.innerHTML='<div class="empty">ተጫዋቾች በመጫን ላይ...</div>';return;}
-    state.fakeBets.forEach((t, idx)=>{
-      const row=document.createElement('div');row.className='item';
-      const top=document.createElement('div');top.className='itemtop';
-      const a=document.createElement('span');
-      a.innerHTML = `<b>${idx < 3 ? '🏆 TOP ' + (idx+1) : 'ቲኬት'}</b> · ${t.name}`;
-      const s=document.createElement('span');s.className='waiting';s.textContent='በመጠበቅ ላይ';
-      top.append(a,s);
-      const bottom=document.createElement('div');bottom.className='itembottom';
-      bottom.textContent = `ውርርድ ${money(t.stake)}`;
-      row.append(top,makePicks(t.picks,state.draw),bottom);
-      el.list.append(row);
+    el.listTitle.textContent = 'የእርስዎ ቲኬቶች እና የቀጥታ ተጫዋቾች (Active)';
+    
+    let allItems = [];
+    state.myTickets.forEach((t, idx) => {
+      allItems.push({isMine: true, ticket: t, index: idx+1});
     });
-    return;
-  }
+    state.fakeBets.forEach((t, idx) => {
+      allItems.push({isMine: false, ticket: t, index: idx+1});
+    });
 
-  if(state.activeTab === 'GAME'){
-    el.listTitle.textContent = 'የተያዙት ቲኬቶችዎ (ከፍተኛ ቅድሚያ)';
-    el.listCount.textContent = String(state.myTickets.length);
-    if(!state.myTickets.length){
-      el.list.innerHTML='<div class="empty">በዚህ ዙር የተያዘ ቲኬት የለዎትም። ከላይ ቁጥሮችን ይምረጡ።</div>';
+    el.listCount.textContent = String(allItems.length);
+    if(!allItems.length){
+      el.list.innerHTML='<div class="empty">በዚህ ዙር የተያዙ ቲኬቶች እየተጫኑ ነው...</div>';
       return;
     }
-    state.myTickets.forEach((t, idx) => {
+
+    allItems.forEach((item) => {
       const row=document.createElement('div');row.className='item';
       const top=document.createElement('div');top.className='itemtop';
       const a=document.createElement('span');
-      a.textContent = `⭐ የእርስዎ ቲኬት #${idx+1} (ዙር #${t.roundId||state.round?.roundId||''})`;
-
+      
+      const t = item.ticket;
       let matchedCount = (t.picks||[]).filter(p => state.draw.includes(p)).length;
       let mult = (PAYTABLE[t.picks?.length] && PAYTABLE[t.picks?.length][matchedCount]) || 0;
-      let payout = t.stake * mult;
-
-      const s=document.createElement('span');
+      let payout = (t.stake || 10) * mult;
       const isDrawingOrClosed = state.draw.length > 0;
 
-      if(!isDrawingOrClosed){
-        s.className = 'waiting';
-        s.textContent = 'በመጠበቅ ላይ...';
-      } else if(payout > 0){
-        s.className = 'won';
-        s.textContent = `አሸንፈዋል! +${money(payout)}`;
+      const s=document.createElement('span');
+
+      if(item.isMine){
+        a.innerHTML = `⭐ <b>የእርስዎ ቲኬት #${item.index}</b>`;
+        if(!isDrawingOrClosed){
+          s.className = 'waiting';
+          s.textContent = 'በመጠበቅ ላይ...';
+        } else if(payout > 0){
+          s.className = 'won';
+          s.textContent = `አሸንፈዋል! +${money(payout)}`;
+        } else {
+          s.className = 'lost';
+          s.textContent = 'አልተሳካም (0.00 ETB)';
+        }
       } else {
-        s.className = 'lost';
-        s.textContent = 'አልተሳካም (0.00 ETB)';
+        a.innerHTML = `🏆 <b>TOP · ${t.name}</b>`;
+        if(!isDrawingOrClosed){
+          s.className = 'waiting';
+          s.textContent = 'በመጠበቅ ላይ';
+        } else if(payout > 0){
+          s.className = 'won';
+          s.textContent = `አሸነፈ: +${money(payout)}`;
+        } else {
+          s.className = 'lost';
+          s.textContent = 'አልተሳካም';
+        }
       }
 
       top.append(a,s);
@@ -289,7 +297,6 @@ function renderTabContent(){
     return;
   }
 
-  // ታሪክ እና ውጤቶች
   loadOtherTabs();
 }
 
@@ -384,7 +391,6 @@ function bind(){
   $('#double').addEventListener('click',()=>setStake(state.stake*2));
   $('#max').addEventListener('click',()=>setStake(Math.min(MAX_STAKE,Math.floor(state.balance/STEP)*STEP)));
 
-  // ዋና ታቦች ክስተት
   document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',async()=>{
     document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b===btn));
     state.activeTab=btn.dataset.tab;
@@ -400,7 +406,6 @@ async function init(){
   await refreshStatus();
   await renderTabContent();
   
-  // Active Counter በየሰከንዱ ከ 100 እስከ 3000 እየጨመረ እንዲሄድ ማድረግ
   activeInterval = setInterval(() => {
     state.activePlayerCount += Math.floor(Math.random() * 35) + 10;
     if(state.activePlayerCount > 2800) state.activePlayerCount = 450;
