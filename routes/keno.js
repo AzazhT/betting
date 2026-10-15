@@ -65,7 +65,7 @@ module.exports = function createKenoRouter(pool, io) {
             status TEXT NOT NULL DEFAULT 'BETTING',
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             betting_ends_at TIMESTAMPTZ NOT NULL
-              DEFAULT (NOW() + INTERVAL '30 seconds'),
+              DEFAULT (NOW() + INTERVAL '60 seconds'),
             drawing_ends_at TIMESTAMPTZ,
             draw_numbers INTEGER[],
             closed_at TIMESTAMPTZ
@@ -141,13 +141,13 @@ module.exports = function createKenoRouter(pool, io) {
             betting_ends_at = CASE
               WHEN LOWER(status) = 'open'
                 AND betting_ends_at IS NULL
-              THEN NOW() + INTERVAL '30 seconds'
+              THEN NOW() + INTERVAL '60 seconds'
               ELSE betting_ends_at
             END,
             drawing_ends_at = CASE
               WHEN LOWER(status) = 'drawing'
                 AND drawing_ends_at IS NULL
-              THEN NOW() + INTERVAL '20 seconds'
+              THEN NOW() + INTERVAL '15 seconds'
               ELSE drawing_ends_at
             END
           WHERE LOWER(status) IN ('open', 'drawing', 'closed')
@@ -217,9 +217,7 @@ module.exports = function createKenoRouter(pool, io) {
           ON public.keno_bets(identifier)
         `);
 
-
         // Separate Keno-only bonus wallet. Each Telegram ID can receive 100 ETB once.
-        // Rows are never reset during normal play, so revisiting Keno cannot re-grant it.
         await pool.query(`
           CREATE TABLE IF NOT EXISTS public.keno_bonus_wallets (
             identifier TEXT PRIMARY KEY,
@@ -371,7 +369,6 @@ module.exports = function createKenoRouter(pool, io) {
             [matched, payout, status, bet.id]
           );
           if (payout > 0) {
-            // Keno winnings stay in the Keno-only bonus wallet; main wallet is untouched.
             await client.query(
               `UPDATE public.keno_bonus_wallets
                SET balance = balance + $1, updated_at = NOW()
@@ -381,6 +378,7 @@ module.exports = function createKenoRouter(pool, io) {
           }
         }
 
+        // እዚህ ጋር draw_numbers እና drawn_numbers በአንድ ላይ ይዘመናሉ
         await client.query(
           `UPDATE public.keno_rounds
            SET status = 'DRAWING',
@@ -451,7 +449,6 @@ module.exports = function createKenoRouter(pool, io) {
     }
   });
 
-  // Claim the one-time 100 ETB Keno bonus and return the Keno-only balance.
   router.get('/bonus', async (req, res) => {
     const identifier = String(req.query.identifier || '').trim();
     if (!identifier || identifier.length > 128) {
@@ -466,7 +463,6 @@ module.exports = function createKenoRouter(pool, io) {
       if (!user.rows.length) {
         return res.status(404).json({ success: false, error: 'ተጠቃሚው አልተገኘም።' });
       }
-      // A unique identifier ensures the bonus can only be created once per player.
       await pool.query(
         `INSERT INTO public.keno_bonus_wallets (identifier, balance)
          VALUES ($1, 100.00)
@@ -491,7 +487,7 @@ module.exports = function createKenoRouter(pool, io) {
   });
 
   router.post('/play', async (req, res) => {
-    const identifier = String(req.body?.identifier || '').trim(); // Must equal users.telegram_id
+    const identifier = String(req.body?.identifier || '').trim();
     const picks = req.body?.picks;
     const stake = Number(req.body?.stake);
 
@@ -532,8 +528,7 @@ module.exports = function createKenoRouter(pool, io) {
         return res.status(404).json({ success: false, error: 'ተጠቃሚው አልተገኘም። Telegram ID በusers.telegram_id ውስጥ መኖሩን ያረጋግጡ።' });
       }
 
-      // If the player has not claimed Keno bonus yet, grant 100 ETB exactly once.
-      await client.query(
+      await pool.query(
         `INSERT INTO public.keno_bonus_wallets (identifier, balance)
          VALUES ($1, 100.00)
          ON CONFLICT (identifier) DO NOTHING`,
