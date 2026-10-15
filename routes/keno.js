@@ -113,6 +113,32 @@ module.exports = function createKenoRouter(pool, io) {
           ADD COLUMN IF NOT EXISTS betting_ends_at TIMESTAMPTZ
         `);
 
+        // Migrate legacy Keno round states to the current format.
+        await pool.query(`
+          UPDATE public.keno_rounds
+          SET
+            status = CASE
+              WHEN LOWER(status) = 'open' THEN 'BETTING'
+              WHEN LOWER(status) = 'drawing' THEN 'DRAWING'
+              WHEN LOWER(status) = 'closed' THEN 'CLOSED'
+              ELSE status
+            END,
+            betting_ends_at = CASE
+              WHEN LOWER(status) = 'open'
+                AND betting_ends_at IS NULL
+              THEN NOW() + INTERVAL '30 seconds'
+              ELSE betting_ends_at
+            END,
+            drawing_ends_at = CASE
+              WHEN LOWER(status) = 'drawing'
+                AND drawing_ends_at IS NULL
+              THEN NOW() + INTERVAL '20 seconds'
+              ELSE drawing_ends_at
+            END
+          WHERE LOWER(status) IN ('open', 'drawing', 'closed')
+        `);
+        console.log('Keno legacy round statuses checked and migrated.');
+
         await pool.query(`
           CREATE TABLE IF NOT EXISTS public.keno_bets (
             id BIGSERIAL PRIMARY KEY,
