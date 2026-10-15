@@ -55,7 +55,7 @@
   const MIN_STAKE = 10, MAX_STAKE = 1000, STEP = 10, MAX_PICKS = 10;
   const $ = s => document.querySelector(s);
   const state = { identifier: getIdentifier(), name: 'Player', balance: 0, picks: new Set(), stake: MIN_STAKE, round: null, myTicket: null, drawingRound: null, activeTab: 'GAME', draw: [], online: false };
-  const el = { grid: $('#numberGrid'), timer: $('#roundTimer'), title: $('#gameTitle'), count: $('#selectedCount'), stake: $('#stakeAmount'), bet: $('#betButton'), balance: $('.wallet-balance'), player: $('#playerInfo'), notice: $('#notice'), placeholder: $('#drawPlaceholder'), current: $('#currentBallContainer'), drawn: $('#drawnBallsRow'), counter: $('#drawCounter'), list: $('#ticketList'), listTitle: $('#listTitle'), listCount: $('#listCount') };
+  const el = { grid: $('#numberGrid'), timer: $('#roundTimer'), title: $('#gameTitle'), count: $('#selectedCount'), stake: $('#stakeAmount'), bet: $('#betButton'), balance: $('.wallet-balance'), player:$('#playerInfo'), notice: $('#notice'), placeholder: $('#drawPlaceholder'), current: $('#currentBallContainer'), drawn: $('#drawnBallsRow'), counter: $('#drawCounter'), list: $('#ticketList'), listTitle: $('#listTitle'), listCount: $('#listCount') };
   let noticeTimeout, pollBusy = false;
 
   function getIdentifier() {
@@ -75,16 +75,62 @@
     return data;
   }
   function updateBalance(v) { state.balance = Number(v) || 0; el.balance.textContent = money(state.balance); }
+
   async function loadUser() {
-    const tg = window.Telegram?.WebApp; if (tg) { tg.ready(); tg.expand(); }
-    const user = tg?.initDataUnsafe?.user;
+    const tg = window.Telegram?.WebApp;
+
+    if (tg) {
+      tg.ready();
+      tg.expand();
+    }
+
+    const tgUser = tg?.initDataUnsafe?.user;
+
     try {
-      const data = await request(API.user, { method: 'POST', body: JSON.stringify({ identifier: state.identifier, name: user?.first_name || 'Keno Player', username: user?.username || 'keno_user' }) });
-      if (data.user) { state.identifier = String(data.user.identifier || data.user.telegram_id || state.identifier); state.name = data.user.name || user?.first_name || 'Player'; el.player.textContent = `PLAYER · ${state.name}`; }
-      const bonus = await request(`${API.bonus}?identifier=${encodeURIComponent(state.identifier)}`);
+      const data = await request(API.user, {
+        method: 'POST',
+        body: JSON.stringify({
+          identifier: state.identifier,
+          name: tgUser?.first_name || 'Keno Player',
+          username: tgUser?.username || 'keno_user'
+        })
+      });
+
+      if (data.user) {
+        // Prefer Telegram ID because the bonus API checks users.telegram_id.
+        const telegramId = data.user.telegram_id;
+
+        if (telegramId != null) {
+          state.identifier = String(telegramId);
+        } else if (tgUser?.id != null) {
+          state.identifier = String(tgUser.id);
+        }
+
+        state.name =
+          data.user.name || tgUser?.first_name || 'Player';
+
+        el.player.textContent = `PLAYER · ${state.name}`;
+      }
+
+      if (!tgUser?.id && !data.user?.telegram_id) {
+        throw new Error(
+          'የTelegram ID አልተገኘም። Kenoን ከTelegram Web App ይክፈቱ።'
+        );
+      }
+
+      const bonus = await request(
+        `${API.bonus}?identifier=${encodeURIComponent(state.identifier)}`
+      );
+
       updateBalance(bonus.bonus);
-    } catch (err) { console.error('Keno user/bonus load error:', err); notice('የKeno Bonus መረጃ አልተገኘም።', true); }
+
+      console.log('Keno bonus loaded:', bonus.bonus);
+    } catch (err) {
+      console.error('Keno user/bonus load error:', err);
+      notice(err.message || 'የKeno Bonus ማግኘት አልተቻለም።', true);
+    }
   }
+
   function buildGrid() {
     el.grid.replaceChildren();
     for (let n = 1; n <= 80; n++) { const b = document.createElement('button'); b.type = 'button'; b.className = 'number'; b.textContent = String(n); b.dataset.number = String(n); b.addEventListener('click', () => togglePick(n)); el.grid.appendChild(b); }
@@ -176,8 +222,6 @@
     const data = await request(`${API.tickets}?identifier=${encodeURIComponent(state.identifier)}`);
     const current = (data.tickets || []).find(t => String(t.roundId) === String(state.round?.roundId));
     if (current) { state.myTicket = { ...current, roundId: current.roundId }; if (current.draw?.length) state.draw = current.draw; renderGameTicket(); }
-    // Refresh wallet from the existing user endpoint after settlement.
-    const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
     const bonus = await request(`${API.bonus}?identifier=${encodeURIComponent(state.identifier)}`);
     updateBalance(bonus.bonus);
   }
