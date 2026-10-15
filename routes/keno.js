@@ -4,8 +4,8 @@ const crypto = require('crypto');
 module.exports = function createKenoRouter(pool, io) {
   const router = express.Router();
 
-  const ROUND_SECONDS = 30;
-  const DRAW_SECONDS = 20;
+  const ROUND_SECONDS = 60;
+  const DRAW_SECONDS = 30;
   const DRAW_COUNT = 20;
   const MIN_NUMBER = 1;
   const MAX_NUMBER = 80;
@@ -217,6 +217,19 @@ module.exports = function createKenoRouter(pool, io) {
           ON public.keno_bets(identifier)
         `);
 
+
+        // Separate Keno-only bonus wallet. Each Telegram ID can receive 100 ETB once.
+        // Rows are never reset during normal play, so revisiting Keno cannot re-grant it.
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS public.keno_bonus_wallets (
+            identifier TEXT PRIMARY KEY,
+            balance NUMERIC(14,2) NOT NULL DEFAULT 100.00,
+            bonus_claimed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          )
+        `);
+
         const check = await pool.query(`
           SELECT
             current_database() AS database_name,
@@ -358,8 +371,11 @@ module.exports = function createKenoRouter(pool, io) {
             [matched, payout, status, bet.id]
           );
           if (payout > 0) {
+            // Keno winnings stay in the Keno-only bonus wallet; main wallet is untouched.
             await client.query(
-              'UPDATE public.users SET balance = balance + $1 WHERE telegram_id = $2',
+              `UPDATE public.keno_bonus_wallets
+               SET balance = balance + $1, updated_at = NOW()
+               WHERE identifier = $2`,
               [payout, bet.identifier]
             );
           }
@@ -435,6 +451,45 @@ module.exports = function createKenoRouter(pool, io) {
     }
   });
 
+  // Claim the one-time 100 ETB Keno bonus and return the Keno-only balance.
+  router.get('/bonus', async (req, res) => {
+    const identifier = String(req.query.identifier || '').trim();
+    if (!identifier || identifier.length > 128) {
+      return res.status(400).json({ success: false, error: 'identifier (Telegram ID) ያስፈልጋል።' });
+    }
+    try {
+      await ensureSchema();
+      const user = await pool.query(
+        'SELECT telegram_id FROM public.users WHERE telegram_id = $1',
+        [identifier]
+      );
+      if (!user.rows.length) {
+        return res.status(404).json({ success: false, error: 'ተጠቃሚው አልተገኘም።' });
+      }
+      // A unique identifier ensures the bonus can only be created once per player.
+      await pool.query(
+        `INSERT INTO public.keno_bonus_wallets (identifier, balance)
+         VALUES ($1, 100.00)
+         ON CONFLICT (identifier) DO NOTHING`,
+        [identifier]
+      );
+      const result = await pool.query(
+        `SELECT balance, bonus_claimed_at
+         FROM public.keno_bonus_wallets WHERE identifier = $1`,
+        [identifier]
+      );
+      return res.json({
+        success: true,
+        bonus: Number(result.rows[0].balance),
+        bonusClaimedAt: result.rows[0].bonus_claimed_at,
+        currency: 'ETB'
+      });
+    } catch (err) {
+      console.error('Keno bonus error:', err.message);
+      return res.status(500).json({ success: false, error: 'የKeno Bonus ማግኘት አልተቻለም።' });
+    }
+  });
+
   router.post('/play', async (req, res) => {
     const identifier = String(req.body?.identifier || '').trim(); // Must equal users.telegram_id
     const picks = req.body?.picks;
@@ -468,15 +523,30 @@ module.exports = function createKenoRouter(pool, io) {
         return res.status(409).json({ success: false, error: 'የውርርድ ጊዜው ተዘግቷል፤ ቀጣዩን ዙር ይጠብቁ።' });
       }
 
-      const userRes = await client.query('SELECT telegram_id, balance FROM public.users WHERE telegram_id = $1 FOR UPDATE', [identifier]);
+      const userRes = await client.query(
+        'SELECT telegram_id FROM public.users WHERE telegram_id = $1',
+        [identifier]
+      );
       if (!userRes.rows.length) {
         await client.query('ROLLBACK');
         return res.status(404).json({ success: false, error: 'ተጠቃሚው አልተገኘም። Telegram ID በusers.telegram_id ውስጥ መኖሩን ያረጋግጡ።' });
       }
-      const balance = Number(userRes.rows[0].balance);
+
+      // If the player has not claimed Keno bonus yet, grant 100 ETB exactly once.
+      await client.query(
+        `INSERT INTO public.keno_bonus_wallets (identifier, balance)
+         VALUES ($1, 100.00)
+         ON CONFLICT (identifier) DO NOTHING`,
+        [identifier]
+      );
+      const bonusRes = await client.query(
+        'SELECT balance FROM public.keno_bonus_wallets WHERE identifier = $1 FOR UPDATE',
+        [identifier]
+      );
+      const balance = Number(bonusRes.rows[0].balance);
       if (!Number.isFinite(balance) || balance < stake) {
         await client.query('ROLLBACK');
-        return res.status(400).json({ success: false, error: 'በዋሌትዎ ውስጥ በቂ ብር የለም።' });
+        return res.status(400).json({ success: false, error: 'በKeno Bonus ውስጥ በቂ ብር የለም።' });
       }
 
       const existing = await client.query('SELECT id FROM public.keno_bets WHERE round_id = $1 AND identifier = $2', [round.id, identifier]);
@@ -486,7 +556,9 @@ module.exports = function createKenoRouter(pool, io) {
       }
 
       const balanceRes = await client.query(
-        'UPDATE public.users SET balance = balance - $1 WHERE telegram_id = $2 RETURNING balance',
+        `UPDATE public.keno_bonus_wallets
+         SET balance = balance - $1, updated_at = NOW()
+         WHERE identifier = $2 RETURNING balance`,
         [stake, identifier]
       );
       const sortedPicks = [...picks].sort((a, b) => a - b);
