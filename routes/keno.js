@@ -3,7 +3,6 @@ const express = require('express');
 module.exports = function(pool, io) {
     const router = express.Router();
 
-    // የተሟላ የኬኖ Paytable (ማባዣዎች)
     const PAYTABLE = {
         1: { 1: 3.8 },
         2: { 2: 12 },
@@ -24,7 +23,18 @@ module.exports = function(pool, io) {
         winningDraw: []
     };
 
-    // በሰርቨር በኩል በየ 1 ሰከንዱ የሚቆጠር እና ሁሉንም ተጫዋቾች የሚያመሳስል ሰዓት ቆጣሪ
+    // አዲስ ተጠቃሚ ከሶኬት ጋር ሲገናኝ ወዲያውኑ የአሁኑን ሰዓት እንዲልክ ማድረግ
+    if (io) {
+        io.on('connection', (socket) => {
+            socket.emit('round_update', {
+                roundId: currentRound.roundId,
+                timeLeft: currentRound.timeLeft,
+                status: currentRound.status
+            });
+        });
+    }
+
+    // በሰርቨር በኩል በየ 1 ሰከንዱ የሚቆጠር ሰዓት ቆጣሪ
     setInterval(async () => {
         if (currentRound.status === 'BETTING') {
             currentRound.timeLeft--;
@@ -37,12 +47,10 @@ module.exports = function(pool, io) {
                 });
             }
 
-            // 30 ሰከንዱ ሲያልቅ ወደ ድራው (DRAWING) ይገባል
             if (currentRound.timeLeft <= 0) {
                 currentRound.status = 'DRAWING';
-                currentRound.timeLeft = 20; // 20 ሰከንድ ለቀጥታ ድራው አኒሜሽን
+                currentRound.timeLeft = 20; // 20 ሰከንድ ለቀጥታ ድራው
 
-                // 20 የዘፈቀደ ቁጥሮች ማውጣት
                 let draw = [];
                 while (draw.length < 20) {
                     let r = Math.floor(Math.random() * 80) + 1;
@@ -50,7 +58,6 @@ module.exports = function(pool, io) {
                 }
                 currentRound.winningDraw = draw;
 
-                // የዚህን ዙር ውርርዶች አረጋግጦ አሸናፊዎችን መክፈል
                 await processRoundPayouts(currentRound.roundId, draw);
 
                 if (io) {
@@ -73,7 +80,6 @@ module.exports = function(pool, io) {
                 });
             }
 
-            // 20 ሰከንዱ ሲያልቅ አዲስ ዙር (BETTING) ይጀምራል
             if (currentRound.timeLeft <= 0) {
                 currentRound.roundId = Date.now();
                 currentRound.status = 'BETTING';
@@ -91,7 +97,6 @@ module.exports = function(pool, io) {
         }
     }, 1000);
 
-    // የአሁንን የዙር ሁኔታ ማሳያ
     router.get('/status', (req, res) => {
         res.json({
             success: true,
@@ -102,7 +107,6 @@ module.exports = function(pool, io) {
         });
     });
 
-    // የውርርድ መቀበያ ሩት
     router.post('/play', async (req, res) => {
         const { picks, stake, identifier } = req.body;
 
@@ -140,7 +144,6 @@ module.exports = function(pool, io) {
             let newBalance = currentBalance - numericStake;
             await client.query('UPDATE users SET balance = $1 WHERE identifier = $2', [newBalance, identifier]);
 
-            // ቲኬቱን ማስቀመጥ
             await client.query(
                 `INSERT INTO keno_bets (user_identifier, round_id, picks, stake, status) 
                  VALUES ($1, $2, $3, $4, 'WAITING')`,
@@ -165,7 +168,6 @@ module.exports = function(pool, io) {
         }
     });
 
-    // አሸናፊዎችን በሰርቨር በኩል በራስ ሰር የማስላት እና የመክፈል ተግባር
     async function processRoundPayouts(roundId, draw) {
         const client = await pool.connect();
         try {
@@ -186,13 +188,11 @@ module.exports = function(pool, io) {
                 let payout = stake * multiplier;
                 let status = payout > 0 ? 'WON' : 'LOST';
 
-                // ቲኬቱን ማዘመን
                 await client.query(
                     'UPDATE keno_bets SET matched = $1, payout = $2, status = $3 WHERE id = $4',
                     [matchedCount, payout, status, bet.id]
                 );
 
-                // አሸናፊ ከሆነ ባላንሱ ላይ መጨመር
                 if (payout > 0) {
                     await client.query(
                         'UPDATE users SET balance = balance + $1 WHERE identifier = $2',
