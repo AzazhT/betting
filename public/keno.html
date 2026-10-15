@@ -267,6 +267,7 @@
 
       const CONFIG = {
         playEndpoint: "/api/keno/play",
+        statusEndpoint: "/api/keno/status",
         maxPicks: 10,
         minStake: 10,
         stakeStep: 10,
@@ -358,6 +359,23 @@
           }
         } catch (e) {
           console.error("User load error:", e);
+        }
+      }
+
+      // አፑ ሲከፈት ወዲያውኑ የሰአት ሁኔታን ከሰርቨር ማምጣት
+      async function fetchRoundStatus() {
+        try {
+          const res = await fetch(CONFIG.statusEndpoint);
+          const data = await res.json();
+          if (data.success) {
+            if (data.status === 'BETTING') {
+              if (elements.roundTimer) elements.roundTimer.textContent = `ውርርድ: ${data.timeLeft}ሰ`;
+            } else if (data.status === 'DRAWING') {
+              if (elements.roundTimer) elements.roundTimer.textContent = `ድራው: ${data.timeLeft}ሰ`;
+            }
+          }
+        } catch (e) {
+          console.error("Status fetch error:", e);
         }
       }
 
@@ -488,7 +506,7 @@
               if (elements.gameTitle) elements.gameTitle.textContent = "ዙሩ ተጠናቋል";
               resolve();
             }
-          }, 750); // በየ 750 ሚሊሰከንድ አንድ ኳስ (በአጠቃላይ ~15 ሰከንድ)
+          }, 750);
         });
       }
 
@@ -595,6 +613,7 @@
         setStake(state.stake);
         renderTicketsList();
         loadUser();
+        fetchRoundStatus(); // ቆጣሪው ሲከፈት ወዲያውኑ እንዲጀምር
       }
 
       if (document.readyState === "loading") {
