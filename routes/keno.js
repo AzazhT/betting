@@ -73,11 +73,18 @@ module.exports = function createKenoRouter(pool, io) {
           WHERE LOWER(status) IN ('open','drawing','closed')`);
         await pool.query(`CREATE TABLE IF NOT EXISTS public.keno_bets (
           id BIGSERIAL PRIMARY KEY, round_id BIGINT NOT NULL REFERENCES public.keno_rounds(id),
-          identifier TEXT NOT NULL, picks INTEGER[], stake NUMERIC(14,2) NOT NULL DEFAULT 10,
+          identifier TEXT NOT NULL, telegram_id TEXT, picks INTEGER[], stake NUMERIC(14,2) NOT NULL DEFAULT 10,
           matched_count INTEGER, payout NUMERIC(14,2) NOT NULL DEFAULT 0,
           status TEXT NOT NULL DEFAULT 'WAITING', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )`);
+        await pool.query(`ALTER TABLE public.keno_bets ADD COLUMN IF NOT EXISTS telegram_id TEXT`);
         await pool.query(`ALTER TABLE public.keno_bets ADD COLUMN IF NOT EXISTS identifier TEXT`);
+        await pool.query(`
+          UPDATE public.keno_bets
+          SET telegram_id = identifier
+          WHERE telegram_id IS NULL
+            AND identifier IS NOT NULL
+        `);
         await pool.query(`ALTER TABLE public.keno_bets ADD COLUMN IF NOT EXISTS picks INTEGER[]`);
         await pool.query(`ALTER TABLE public.keno_bets ADD COLUMN IF NOT EXISTS stake NUMERIC(14,2)`);
         await pool.query(`ALTER TABLE public.keno_bets ADD COLUMN IF NOT EXISTS matched_count INTEGER`);
@@ -177,7 +184,6 @@ module.exports = function createKenoRouter(pool, io) {
     };
   }
 
-  // The Keno balance endpoint reads the SAME cash balance used by the main wallet.
   router.get('/bonus', async (req, res) => {
     const identifier = String(req.query.identifier || '').trim();
     if (!identifier || identifier.length > 128) return res.status(400).json({ success: false, error: 'identifier (Telegram ID) ያስፈልጋል።' });
@@ -225,7 +231,12 @@ module.exports = function createKenoRouter(pool, io) {
       const debited = await client.query('UPDATE public.users SET balance=balance-$1 WHERE telegram_id=$2 AND balance >= $1 RETURNING balance', [stake, identifier]);
       if (!debited.rowCount) { await client.query('ROLLBACK'); return res.status(400).json({ success: false, error: 'በዋናው ዋሌት ውስጥ በቂ ብር የለም።' }); }
       const sortedPicks = [...picks].sort((a, b) => a - b);
-      await client.query('INSERT INTO public.keno_bets (round_id, identifier, picks, stake) VALUES ($1,$2,$3,$4)', [round.id, identifier, sortedPicks, stake]);
+      await client.query(
+        `INSERT INTO public.keno_bets
+         (round_id, identifier, telegram_id, picks, stake)
+         VALUES ($1, $2, $2, $3, $4)`,
+        [round.id, identifier, sortedPicks, stake]
+      );
       await client.query('COMMIT');
       const ticket = { roundId: String(round.id), picks: sortedPicks, stake, payout: 0, matched: null, status: 'WAITING' };
       if (io) io.emit('keno:bet', { roundId: String(round.id), ticket });
