@@ -1,326 +1,35 @@
-
 const express = require('express');
-
-module.exports = function (pool) {
-  const router = express.Router();
-
-  const STARTING_BALANCE = 1000;
-  const MIN_BET = 1;
-  const MAX_BET = 10000;
-
-  let round = {
-    id: 1,
-    phase: 'waiting',
-    multiplier: 1,
-    crashPoint: 1,
-    startedAt: null,
-    bettingEndsAt: Date.now() + 10000,
-    history: []
-  };
-
-  const activeBets = new Map();
-  let nextRoundId = 1;
-  let timerStarted = false;
-
-  async function initTables() {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS aviator_demo_wallets (
-        telegram_id TEXT PRIMARY KEY,
-        balance NUMERIC(14,2) NOT NULL DEFAULT 1000,
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS aviator_demo_bets (
-        id BIGSERIAL PRIMARY KEY,
-        round_id BIGINT NOT NULL,
-        telegram_id TEXT NOT NULL,
-        bet_amount NUMERIC(14,2) NOT NULL,
-        cashout_multiplier NUMERIC(12,4),
-        payout NUMERIC(14,2) NOT NULL DEFAULT 0,
-        status TEXT NOT NULL DEFAULT 'active',
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        UNIQUE(round_id, telegram_id)
-      )
-    `);
-  }
-
-  const ready = initTables();
-
-  function makeCrashPoint() {
-    // Demo-only random multiplier; not an external provider result.
-    const r = Math.random();
-    return Math.min(100, Math.max(1, Number((0.99 / (1 - r)).toFixed(2))));
-  }
-
-  function publicRound() {
-    return {
-      id: round.id,
-      phase: round.phase,
-      multiplier: round.multiplier,
-      bettingEndsAt: round.bettingEndsAt,
-      history: round.history.slice(0, 10)
-    };
-  }
-
-  async function ensureWallet(telegramId) {
-    await pool.query(
-      `INSERT INTO aviator_demo_wallets (telegram_id, balance)
-       VALUES ($1, $2)
-       ON CONFLICT (telegram_id) DO NOTHING`,
-      [telegramId, STARTING_BALANCE]
-    );
-
-    const result = await pool.query(
-      'SELECT balance FROM aviator_demo_wallets WHERE telegram_id = $1',
-      [telegramId]
-    );
-
-    return Number(result.rows[0].balance);
-  }
-
-  async function getWallet(telegramId) {
-    const result = await pool.query(
-      'SELECT balance FROM aviator_demo_wallets WHERE telegram_id = $1',
-      [telegramId]
-    );
-    return result.rows.length ? Number(result.rows[0].balance) : null;
-  }
-
-  function startLoop() {
-    if (timerStarted) return;
-    timerStarted = true;
-
-    setInterval(async () => {
-      try {
-        const now = Date.now();
-
-        if (round.phase === 'waiting' && now >= round.bettingEndsAt) {
-          round.phase = 'flying';
-          round.startedAt = now;
-          round.crashPoint = makeCrashPoint();
-          round.multiplier = 1;
-          return;
-        }
-
-        if (round.phase === 'flying') {
-          const elapsed = (now - round.startedAt) / 1000;
-          round.multiplier = Number(Math.exp(0.085 * elapsed).toFixed(2));
-
-          if (round.multiplier >= round.crashPoint) {
-            round.multiplier = round.crashPoint;
-            round.phase = 'crashed';
-
-            // Bets not cashed out lose their demo stake.
-            await pool.query(
-              `UPDATE aviator_demo_bets
-               SET status = 'lost'
-               WHERE round_id = $1 AND status = 'active'`,
-              [round.id]
-            );
-
-            round.history.unshift({
-              id: round.id,
-              multiplier: round.crashPoint
-            });
-            round.history = round.history.slice(0, 10);
-
-            setTimeout(() => {
-              round = {
-                id: ++nextRoundId,
-                phase: 'waiting',
-                multiplier: 1,
-                crashPoint: 1,
-                startedAt: null,
-                bettingEndsAt: Date.now() + 10000,
-                history: round.history
-              };
-              activeBets.clear();
-            }, 4000);
-          }
-        }
-      } catch (err) {
-        console.error('Aviator demo loop error:', err.message);
-      }
-    }, 100);
-  }
-
-  router.get('/state', async (req, res) => {
+const crypto = require('crypto');
+module.exports = function(pool) {
+  const r = express.Router();
+  const BOT = process.env.TELEGRAM_BOT_TOKEN || '';
+  const MIN = Number(process.env.AVIATOR_MIN_BET || 1), MAX = Number(process.env.AVIATOR_MAX_BET || 10000);
+  const EDGE = Math.min(.20, Math.max(0, Number(process.env.AVIATOR_HOUSE_EDGE || .20)));
+  const BET_MS = Number(process.env.AVIATOR_BETTING_MS || 8000), LOCK = 730242;
+  let ready = false, ticking = false;
+  function authData(s) {
+    if (!BOT || !s) return null;
     try {
-      await ready;
-      startLoop();
-
-      const telegramId = String(req.query.telegram_id || '').trim();
-      let balance = null;
-
-      if (telegramId) {
-        if (telegramId.length > 64) {
-          return res.status(400).json({ success: false, error: 'Invalid user ID' });
-        }
-        balance = await ensureWallet(telegramId);
-      }
-
-      res.json({
-        success: true,
-        round: publicRound(),
-        balance,
-        minBet: MIN_BET,
-        maxBet: MAX_BET
-      });
-    } catch (err) {
-      console.error('Aviator state error:', err.message);
-      res.status(500).json({ success: false, error: 'Could not load demo game' });
-    }
-  });
-
-  router.post('/bet', async (req, res) => {
-    const telegramId = String(req.body.telegram_id || '').trim();
-    const amount = Number(req.body.amount);
-
-    if (!telegramId || telegramId.length > 64) {
-      return res.status(400).json({ success: false, error: 'Invalid user ID' });
-    }
-
-    if (!Number.isFinite(amount) || amount < MIN_BET ||
-        amount > MAX_BET || Math.round(amount * 100) !== amount * 100) {
-      return res.status(400).json({
-        success: false,
-        error: `Bet must be between ${MIN_BET} and ${MAX_BET}`
-      });
-    }
-
-    const client = await pool.connect();
-
-    try {
-      await ready;
-      startLoop();
-
-      if (round.phase !== 'waiting' || Date.now() >= round.bettingEndsAt) {
-        return res.status(409).json({ success: false, error: 'Betting is closed' });
-      }
-
-      if (activeBets.has(telegramId)) {
-        return res.status(409).json({ success: false, error: 'You already placed a bet this round' });
-      }
-
-      await client.query('BEGIN');
-
-      await client.query(
-        `INSERT INTO aviator_demo_wallets (telegram_id, balance)
-         VALUES ($1, $2) ON CONFLICT (telegram_id) DO NOTHING`,
-        [telegramId, STARTING_BALANCE]
-      );
-
-      const wallet = await client.query(
-        `SELECT balance FROM aviator_demo_wallets
-         WHERE telegram_id = $1 FOR UPDATE`,
-        [telegramId]
-      );
-
-      if (Number(wallet.rows[0].balance) < amount) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({ success: false, error: 'Not enough demo balance' });
-      }
-
-      await client.query(
-        `UPDATE aviator_demo_wallets
-         SET balance = balance - $1, updated_at = NOW()
-         WHERE telegram_id = $2`,
-        [amount, telegramId]
-      );
-
-      await client.query(
-        `INSERT INTO aviator_demo_bets
-         (round_id, telegram_id, bet_amount, status)
-         VALUES ($1, $2, $3, 'active')`,
-        [round.id, telegramId, amount]
-      );
-
-      await client.query('COMMIT');
-
-      activeBets.set(telegramId, { amount, roundId: round.id });
-
-      res.json({
-        success: true,
-        message: 'Demo bet placed',
-        balance: await getWallet(telegramId),
-        round: publicRound()
-      });
-    } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
-      console.error('Aviator bet error:', err.message);
-      res.status(500).json({ success: false, error: 'Could not place demo bet' });
-    } finally {
-      client.release();
-    }
-  });
-
-  router.post('/cashout', async (req, res) => {
-    const telegramId = String(req.body.telegram_id || '').trim();
-
-    if (!telegramId || telegramId.length > 64) {
-      return res.status(400).json({ success: false, error: 'Invalid user ID' });
-    }
-
-    const client = await pool.connect();
-
-    try {
-      await ready;
-      startLoop();
-
-      if (round.phase !== 'flying') {
-        return res.status(409).json({ success: false, error: 'Round is not flying' });
-      }
-
-      const bet = activeBets.get(telegramId);
-
-      if (!bet || bet.roundId !== round.id) {
-        return res.status(400).json({ success: false, error: 'No active bet in this round' });
-      }
-
-      const multiplier = round.multiplier;
-      const payout = Math.floor(bet.amount * multiplier * 100) / 100;
-
-      await client.query('BEGIN');
-
-      const updated = await client.query(
-        `UPDATE aviator_demo_bets
-         SET status = 'cashed_out', cashout_multiplier = $1, payout = $2
-         WHERE round_id = $3 AND telegram_id = $4 AND status = 'active'
-         RETURNING id`,
-        [multiplier, payout, round.id, telegramId]
-      );
-
-      if (!updated.rowCount) {
-        await client.query('ROLLBACK');
-        return res.status(409).json({ success: false, error: 'Bet already settled' });
-      }
-
-      await client.query(
-        `UPDATE aviator_demo_wallets
-         SET balance = balance + $1, updated_at = NOW()
-         WHERE telegram_id = $2`,
-        [payout, telegramId]
-      );
-
-      await client.query('COMMIT');
-      activeBets.delete(telegramId);
-
-      res.json({
-        success: true,
-        multiplier,
-        payout,
-        balance: await getWallet(telegramId)
-      });
-    } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
-      console.error('Aviator cashout error:', err.message);
-      res.status(500).json({ success: false, error: 'Could not cash out' });
-    } finally {
-      client.release();
-    }
-  });
-
-  return router;
+      const p = new URLSearchParams(s), hash = p.get('hash'); if (!hash) return null; p.delete('hash');
+      const check = [...p.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>`${k}=${v}`).join('\n');
+      const secret = crypto.createHmac('sha256','WebAppData').update(BOT).digest();
+      const expected = crypto.createHmac('sha256',secret).update(check).digest('hex');
+      const a=Buffer.from(hash,'hex'), b=Buffer.from(expected,'hex');
+      if(a.length!==b.length||!crypto.timingSafeEqual(a,b)) return null;
+      const ts=Number(p.get('auth_date')||0); if(!ts||Math.abs(Date.now()/1000-ts)>86400) return null;
+      const u=JSON.parse(p.get('user')||'null'); return u&&u.id?String(u.id):null;
+    } catch (_) { return null; }
+  }
+  async function schema(){ if(ready)return; await pool.query(`
+    CREATE TABLE IF NOT EXISTS public.aviator_rounds(id BIGSERIAL PRIMARY KEY,status TEXT NOT NULL CHECK(status IN('BETTING','FLYING','CRASHED')),crash_point NUMERIC(10,2),started_at TIMESTAMPTZ,betting_ends_at TIMESTAMPTZ NOT NULL,crashed_at TIMESTAMPTZ,total_stakes NUMERIC(14,2) NOT NULL DEFAULT 0,platform_share NUMERIC(14,2) NOT NULL DEFAULT 0,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+    CREATE TABLE IF NOT EXISTS public.aviator_bets(id BIGSERIAL PRIMARY KEY,round_id BIGINT NOT NULL REFERENCES public.aviator_rounds(id),telegram_id TEXT NOT NULL,stake NUMERIC(14,2) NOT NULL CHECK(stake>0),status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN('ACTIVE','CASHED_OUT','LOST')),cashout_multiplier NUMERIC(10,2),payout NUMERIC(14,2) NOT NULL DEFAULT 0,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),settled_at TIMESTAMPTZ,UNIQUE(round_id,telegram_id));
+    CREATE TABLE IF NOT EXISTS public.aviator_ledger(id BIGSERIAL PRIMARY KEY,telegram_id TEXT NOT NULL,round_id BIGINT,bet_id BIGINT,entry_type TEXT NOT NULL,amount NUMERIC(14,2) NOT NULL,balance_after NUMERIC(14,2) NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`); ready=true; }
+  function crashPoint(){const x=crypto.randomInt(1,1000000)/1000000;return Math.max(1,Math.min(100,Math.floor(((1-EDGE)/(1-x))*100)/100));}
+  async function tick(){if(ticking)return;ticking=true;try{await schema();const c=await pool.connect();try{await c.query('BEGIN');await c.query('SELECT pg_advisory_xact_lock($1)',[LOCK]);let q=await c.query('SELECT * FROM public.aviator_rounds ORDER BY id DESC LIMIT 1 FOR UPDATE');let a=q.rows[0];if(!a||a.status==='CRASHED'){q=await c.query(`INSERT INTO public.aviator_rounds(status,betting_ends_at) VALUES('BETTING',NOW()+($1*INTERVAL '1 millisecond')) RETURNING *`,[BET_MS]);a=q.rows[0];}else if(a.status==='BETTING'&&Date.now()>=new Date(a.betting_ends_at).getTime()){q=await c.query(`UPDATE public.aviator_rounds SET status='FLYING',crash_point=$1,started_at=NOW() WHERE id=$2 RETURNING *`,[crashPoint(),a.id]);a=q.rows[0];}else if(a.status==='FLYING'&&Math.exp((Date.now()-new Date(a.started_at).getTime())/10000)>=Number(a.crash_point)){await c.query(`UPDATE public.aviator_rounds SET status='CRASHED',crashed_at=NOW() WHERE id=$1`,[a.id]);await c.query(`UPDATE public.aviator_bets SET status='LOST',settled_at=NOW() WHERE round_id=$1 AND status='ACTIVE'`,[a.id]);}await c.query('COMMIT');}catch(e){try{await c.query('ROLLBACK')}catch(_){}throw e}finally{c.release()}}catch(e){console.error('Aviator tick:',e.message)}finally{ticking=false}}
+  setInterval(tick,250); tick();
+  async function auth(req,res,next){try{await schema();const id=authData(req.get('x-telegram-init-data')||req.body?.initData);if(!id)return res.status(401).json({success:false,error:'Telegram Web App ሴሽን አልተረጋገጠም። በTelegram ውስጥ ይክፈቱ።'});req.tid=id;next()}catch(e){console.error(e);res.status(500).json({success:false,error:'Database error'})}}
+  r.get('/state',auth,async(req,res)=>{try{await tick();const c=await pool.connect();try{const u=await c.query('SELECT balance FROM public.users WHERE telegram_id=$1',[req.tid]);if(!u.rows.length)return res.status(404).json({success:false,error:'ተጠቃሚው በpublic.users ውስጥ አልተገኘም።'});const q=await c.query('SELECT * FROM public.aviator_rounds ORDER BY id DESC LIMIT 1');const a=q.rows[0];const b=await c.query('SELECT status,stake,cashout_multiplier,payout FROM public.aviator_bets WHERE round_id=$1 AND telegram_id=$2',[a.id,req.tid]);const h=await c.query(`SELECT id,crash_point AS multiplier FROM public.aviator_rounds WHERE status='CRASHED' ORDER BY id DESC LIMIT 10`);let m=1;if(a.status==='FLYING')m=Math.floor(Math.exp(Math.max(0,Date.now()-new Date(a.started_at).getTime())/10000)*100)/100;res.json({success:true,balance:Number(u.rows[0].balance),minBet:MIN,maxBet:MAX,round:{id:String(a.id),phase:a.status.toLowerCase(),multiplier:m,bettingEndsAt:new Date(a.betting_ends_at).getTime(),history:h.rows.map(x=>({id:String(x.id),multiplier:Number(x.multiplier)}))},myBet:b.rows[0]?{status:b.rows[0].status,stake:Number(b.rows[0].stake),multiplier:b.rows[0].cashout_multiplier?Number(b.rows[0].cashout_multiplier):null,payout:Number(b.rows[0].payout)}:null})}finally{c.release()}}catch(e){console.error(e);res.status(500).json({success:false,error:'State error'})}});
+  r.post('/bet',auth,async(req,res)=>{const amount=Math.round(Number(req.body?.amount)*100)/100;if(!Number.isFinite(amount)||amount<MIN||amount>MAX)return res.status(400).json({success:false,error:`Bet must be ${MIN}-${MAX} ETB`});const c=await pool.connect();try{await c.query('BEGIN');await c.query('SELECT pg_advisory_xact_lock($1)',[LOCK]);const q=await c.query('SELECT * FROM public.aviator_rounds ORDER BY id DESC LIMIT 1 FOR UPDATE');const a=q.rows[0];if(!a||a.status!=='BETTING'||Date.now()>=new Date(a.betting_ends_at).getTime()){await c.query('ROLLBACK');return res.status(409).json({success:false,error:'የውርርድ ጊዜው ተዘግቷል።'})}const u=await c.query('SELECT balance FROM public.users WHERE telegram_id=$1 FOR UPDATE',[req.tid]);if(!u.rows.length){await c.query('ROLLBACK');return res.status(404).json({success:false,error:'የዋሌት ተጠቃሚ አልተገኘም።'})}if(Number(u.rows[0].balance)<amount){await c.query('ROLLBACK');return res.status(400).json({success:false,error:'በዋሌትዎ ውስጥ በቂ ብር የለም።'})}const old=await c.query('SELECT id FROM public.aviator_bets WHERE round_id=$1 AND telegram_id=$2',[a.id,req.tid]);if(old.rows.length){await c.query('ROLLBACK');return res.status(409).json({success:false,error:'በዚህ ዙር አንድ ውርርድ ብቻ ይፈቀዳል።'})}const w=await c.query('UPDATE public.users SET balance=balance-$1 WHERE telegram_id=$2 RETURNING balance',[amount,req.tid]);const b=await c.query('INSERT INTO public.aviator_bets(round_id,telegram_id,stake) VALUES($1,$2,$3) RETURNING id',[a.id,req.tid,amount]);await c.query('UPDATE public.aviator_rounds SET total_stakes=total_stakes+$1,platform_share=platform_share+($1*$2) WHERE id=$3',[amount,EDGE,a.id]);await c.query(`INSERT INTO public.aviator_ledger(telegram_id,round_id,bet_id,entry_type,amount,balance_after) VALUES($1,$2,$3,'BET',$4,$5)`,[req.tid,a.id,b.rows[0].id,-amount,w.rows[0].balance]);await c.query('COMMIT');res.json({success:true,balance:Number(w.rows[0].balance),message:'ውርርድ ተቀብሏል።'})}catch(e){try{await c.query('ROLLBACK')}catch(_){}console.error(e);res.status(500).json({success:false,error:'Bet failed'})}finally{c.release()}});
+  r.post('/cashout',auth,async(req,res)=>{const c=await pool.connect();try{await c.query('BEGIN');await c.query('SELECT pg_advisory_xact_lock($1)',[LOCK]);const q=await c.query('SELECT * FROM public.aviator_rounds ORDER BY id DESC LIMIT 1 FOR UPDATE');const a=q.rows[0];if(!a||a.status!=='FLYING'){await c.query('ROLLBACK');return res.status(409).json({success:false,error:'Cash Out አሁን አይቻልም።'})}const elapsed=Math.max(0,Date.now()-new Date(a.started_at).getTime()),m=Math.floor(Math.exp(elapsed/10000)*100)/100;if(m>=Number(a.crash_point)){await c.query('ROLLBACK');return res.status(409).json({success:false,error:'አውሮፕላኑ ወድቋል።'})}const q2=await c.query(`SELECT * FROM public.aviator_bets WHERE round_id=$1 AND telegram_id=$2 FOR UPDATE`,[a.id,req.tid]);const b=q2.rows[0];if(!b||b.status!=='ACTIVE'){await c.query('ROLLBACK');return res.status(409).json({success:false,error:'ንቁ ውርርድ የለም።'})}const pay=Math.floor(Number(b.stake)*m*100)/100;const w=await c.query('UPDATE public.users SET balance=balance+$1 WHERE telegram_id=$2 RETURNING balance',[pay,req.tid]);await c.query(`UPDATE public.aviator_bets SET status='CASHED_OUT',cashout_multiplier=$1,payout=$2,settled_at=NOW() WHERE id=$3`,[m,pay,b.id]);await c.query(`INSERT INTO public.aviator_ledger(telegram_id,round_id,bet_id,entry_type,amount,balance_after) VALUES($1,$2,$3,'CASHOUT',$4,$5)`,[req.tid,a.id,b.id,pay,w.rows[0].balance]);await c.query('COMMIT');res.json({success:true,multiplier:m,payout:pay,balance:Number(w.rows[0].balance)})}catch(e){try{await c.query('ROLLBACK')}catch(_){}console.error(e);res.status(500).json({success:false,error:'Cash Out failed'})}finally{c.release()}});
+  return r;
 };
