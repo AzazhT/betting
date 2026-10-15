@@ -16,7 +16,7 @@ module.exports = function(pool) {
 
             if (userCheck.rows.length === 0) {
                 const bonusRes = await pool.query("SELECT value FROM settings WHERE key = 'signup_bonus'");
-                const bonusAmount = bonusRes.rows.length > 0 ? parseFloat(bonusRes.rows.value) : 0.00;
+                const bonusAmount = bonusRes.rows.length > 0 ? parseFloat(bonusRes.rows[0].value) : 0.00;
 
                 const newUser = await pool.query(
                     `INSERT INTO users (telegram_id, name, username, phone, balance, bonus_balance) 
