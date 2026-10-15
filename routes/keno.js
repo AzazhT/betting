@@ -15,6 +15,7 @@ module.exports = function createKenoRouter(pool, io) {
   const STAKE_STEP = 10;
   const ROUND_LOCK_ID = 730241;
   const BET_LOCK_ID = 730242;
+  
   const PAYTABLE = {
     1: { 1: 3.8 }, 2: { 2: 15 }, 3: { 2: 2, 3: 30 },
     4: { 2: 1, 3: 6, 4: 100 }, 5: { 3: 3, 4: 15, 5: 400 },
@@ -36,6 +37,56 @@ module.exports = function createKenoRouter(pool, io) {
       [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
     }
     return numbers.slice(0, DRAW_COUNT);
+  }
+
+  // ─── የቤቱን ትርፍ እና የሪል ተጫዋቾችን ገቢ የሚቆጣጠር (House Edge & RTP Protection Algorithm) ───
+  function calculatePayoutForDraw(draw, bets) {
+    const drawSet = new Set(draw);
+    let totalPayout = 0;
+    for (const bet of bets) {
+      const picks = Array.isArray(bet.picks) ? bet.picks.map(Number) : [];
+      const matched = picks.filter(n => drawSet.has(n)).length;
+      const multiplier = (PAYTABLE[picks.length] && PAYTABLE[picks.length][matched]) || 0;
+      totalPayout += Number(bet.stake) * multiplier;
+    }
+    return totalPayout;
+  }
+
+  function makeControlledDraw(bets) {
+    const HOUSE_MARGIN = 0.20; // 20% ለቤቱ (ላንተ) የሚቀረው ትርፍ
+    const MAX_PAYOUT_RATIO = 1 - HOUSE_MARGIN; // 80% ብቻ ከፍተኛው ክፍያ ሊሆን ይችላል
+
+    let totalPool = 0;
+    for (const bet of bets) {
+      totalPool += Number(bet.stake);
+    }
+    const maxAllowedPayout = totalPool * MAX_PAYOUT_RATIO;
+
+    let bestDraw = makeDraw();
+    let bestPayout = Infinity;
+
+    if (bets.length === 0 || totalPool === 0) {
+      return bestDraw;
+    }
+
+    // እስከ 60 የሚደርሱ የዘፈቀደ ድልድዮችን ሞክሮ ቤቱ ኔጌቲቭ የማይሆንበትን (ወይም አነስተኛ ኪሳራ/ጥሩ ትርፍ የሚሰጠውን) ይመርጣል
+    for (let attempt = 0; attempt < 60; attempt++) {
+      const candidateDraw = makeDraw();
+      const candidatePayout = calculatePayoutForDraw(candidateDraw, bets);
+
+      if (candidatePayout <= maxAllowedPayout) {
+        bestDraw = candidateDraw;
+        bestPayout = candidatePayout;
+        break;
+      } else {
+        if (candidatePayout < bestPayout) {
+          bestPayout = candidatePayout;
+          bestDraw = candidateDraw;
+        }
+      }
+    }
+
+    return bestDraw;
   }
 
   function validPicks(picks) {
@@ -84,26 +135,35 @@ module.exports = function createKenoRouter(pool, io) {
       if (!round) { await createRound(client); await client.query('COMMIT'); return; }
       const nowResult = await client.query('SELECT NOW() AS now');
       const now = new Date(nowResult.rows[0].now);
+      
       if (round.status === 'BETTING' && round.betting_ends_at && now >= new Date(round.betting_ends_at)) {
-        const draw = makeDraw();
-        const drawSet = new Set(draw);
+        // እውነተኛ የሪል ተጫዋቾች ውርርዶች ብቻ ይመረጣሉ (ፌክ ተጫዋቾች እዚህ የሉም)
         const betsResult = await client.query(`SELECT id, identifier, picks, stake FROM public.keno_bets WHERE round_id=$1 AND status='WAITING' FOR UPDATE`, [round.id]);
-        for (const bet of betsResult.rows) {
+        const bets = betsResult.rows;
+
+        // የቤቱን ትርፍ የሚጠብቀው ቁጥር ቁጥጥር ተደርጎ ይወጣል
+        const draw = makeControlledDraw(bets);
+        const drawSet = new Set(draw);
+
+        for (const bet of bets) {
           const picks = Array.isArray(bet.picks) ? bet.picks.map(Number) : [];
           const matched = picks.filter(n => drawSet.has(n)).length;
           const multiplier = (PAYTABLE[picks.length] && PAYTABLE[picks.length][matched]) || 0;
           const payout = Number((Number(bet.stake) * multiplier).toFixed(2));
           const status = payout > 0 ? 'WON' : 'LOST';
+          
           await client.query(`UPDATE public.keno_bets SET matched_count=$1, payout=$2, status=$3 WHERE id=$4`, [matched, payout, status, bet.id]);
           if (payout > 0) {
             await client.query(`UPDATE public.users SET balance=balance+$1 WHERE telegram_id=$2`, [payout, bet.identifier]);
           }
         }
+        
         await client.query(`UPDATE public.keno_rounds SET status='DRAWING', draw_numbers=$1::integer[], drawn_numbers=$2::jsonb, drawing_ends_at=NOW()+($3 * INTERVAL '1 second') WHERE id=$4`, [draw, JSON.stringify(draw), DRAW_SECONDS, round.id]);
         await client.query('COMMIT');
         if (io) io.emit('keno:round', { roundId: String(round.id), status: 'DRAWING', draw, drawSeconds: DRAW_SECONDS });
         return;
       }
+      
       if (round.status === 'DRAWING' && round.drawing_ends_at && now >= new Date(round.drawing_ends_at)) {
         await client.query(`UPDATE public.keno_rounds SET status='CLOSED', closed_at=NOW() WHERE id=$1`, [round.id]);
         await createRound(client);
@@ -111,6 +171,7 @@ module.exports = function createKenoRouter(pool, io) {
         if (io) io.emit('keno:round', { roundId: String(round.id), status: 'CLOSED' });
         return;
       }
+      
       await client.query('COMMIT');
     } catch (err) {
       try { await client.query('ROLLBACK'); } catch (_) {}
@@ -149,7 +210,7 @@ module.exports = function createKenoRouter(pool, io) {
     if (!identifier) return res.status(400).json({ success: false, error: 'identifier ያስፈልጋል።' });
     try {
       await ensureSchema();
-      const result = await pool.query(`SELECT balance, bonus_balance FROM public.users WHERE telegram_id=$1`, [identifier]);
+      const result = await pool.query(`SELECT balance FROM public.users WHERE telegram_id=$1`, [identifier]);
       if (!result.rowCount) return res.status(404).json({ success: false, error: 'ተጠቃሚው አልተገኘም።' });
       return res.json({ success: true, balance: Number(result.rows[0].balance), currency: 'ETB' });
     } catch (err) {
@@ -188,8 +249,6 @@ module.exports = function createKenoRouter(pool, io) {
       
       const balance = Number(userRes.rows[0].balance);
       if (balance < stake) { await client.query('ROLLBACK'); return res.status(400).json({ success: false, error: 'በዋሌትዎ ውስጥ በቂ ብር የለም።' }); }
-
-      // ─── በርካታ ቲኬቶችን ለመፍቀድ የድሮው existing check (existing.rowCount) ሙሉ በሙሉ ተወግዷል! ───
 
       const debited = await client.query('UPDATE public.users SET balance=balance-$1 WHERE telegram_id=$2 AND balance >= $1 RETURNING balance', [stake, identifier]);
       if (!debited.rowCount) { await client.query('ROLLBACK'); return res.status(400).json({ success: false, error: 'በቂ ብር የለም።' }); }
