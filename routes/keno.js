@@ -77,6 +77,21 @@ module.exports = function createKenoRouter(pool, io) {
           ADD COLUMN IF NOT EXISTS draw_numbers INTEGER[]
         `);
 
+        await pool.query(`
+          ALTER TABLE public.keno_rounds
+          ADD COLUMN IF NOT EXISTS starts_at TIMESTAMPTZ
+        `);
+
+        await pool.query(`
+          ALTER TABLE public.keno_rounds
+          ADD COLUMN IF NOT EXISTS ends_at TIMESTAMPTZ
+        `);
+
+        await pool.query(`
+          ALTER TABLE public.keno_rounds
+          ADD COLUMN IF NOT EXISTS drawn_numbers INTEGER[]
+        `);
+
         const verify = await pool.query(`
           SELECT
             current_database() AS db,
@@ -273,11 +288,25 @@ module.exports = function createKenoRouter(pool, io) {
 
   async function createRound(client) {
     const result = await client.query(
-      `INSERT INTO public.keno_rounds (status, betting_ends_at)
-       VALUES ('BETTING', NOW() + ($1 * INTERVAL '1 second'))
-       RETURNING id, status, created_at, betting_ends_at, drawing_ends_at, draw_numbers`,
+      `INSERT INTO public.keno_rounds
+        (status, created_at, starts_at, ends_at,
+         betting_ends_at, drawing_ends_at,
+         draw_numbers, drawn_numbers)
+       VALUES (
+         'BETTING',
+         NOW(),
+         NOW(),
+         NOW() + ($1 * INTERVAL '1 second'),
+         NOW() + ($1 * INTERVAL '1 second'),
+         NULL,
+         NULL,
+         ARRAY[]::INTEGER[]
+       )
+       RETURNING id, status, created_at, betting_ends_at,
+                 drawing_ends_at, draw_numbers`,
       [ROUND_SECONDS]
     );
+
     return result.rows[0];
   }
 
