@@ -1,21 +1,24 @@
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="am">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>BYD Car Lottery | Ethiopia Games</title>
   <meta name="theme-color" content="#10251d">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
   <style>
     :root {
       --bg: #0b1512;
       --panel: #14241d;
+      --panel2: #1c3228;
       --gold: #f6c453;
       --gold-light: #ffe9a6;
+      --gold-dark: #c89a32;
       --muted: #b4c0b8;
       --border: #344b3d;
-      --green: #18392a;
+      --red: #e5484d;
+      --text: #fff;
     }
 
     * {
@@ -29,19 +32,37 @@
       background:
         radial-gradient(ellipse at top, #274a34 0%, transparent 48%),
         var(--bg);
-      color: #fff;
+      color: var(--text);
       min-height: 100vh;
+      padding-bottom: 50px;
     }
 
-    a {
-      color: inherit;
-      text-decoration: none;
+    /* Top Marquee Banner */
+    .marquee-container {
+      background: linear-gradient(90deg, #382905, #634b0a, #382905);
+      border-bottom: 1px solid var(--gold);
+      overflow: hidden;
+      padding: 9px 0;
+      white-space: nowrap;
+      box-shadow: 0 4px 15px rgba(246, 196, 83, 0.15);
+      margin-bottom: 18px;
+    }
+    .marquee-text {
+      display: inline-block;
+      animation: marquee 20s linear infinite;
+      color: var(--gold-light);
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+    }
+    @keyframes marquee {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
     }
 
     .container {
-      width: min(100% - 28px, 1050px);
+      width: min(100% - 24px, 850px);
       margin: auto;
-      padding: 22px 0 45px;
     }
 
     .topbar {
@@ -49,7 +70,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      margin-bottom: 25px;
+      margin-bottom: 20px;
     }
 
     .brand {
@@ -61,38 +82,46 @@
     .back {
       border: 1px solid var(--border);
       background: #15271e;
-      padding: 10px 14px;
+      padding: 9px 14px;
       border-radius: 12px;
       font-size: 13px;
+      color: var(--gold);
+      text-decoration: none;
+      font-weight: 700;
     }
 
+    /* Hero Section */
     .hero {
       text-align: center;
-      padding: 30px 18px 25px;
+      padding: 24px 16px;
       border: 1px solid #b98c3d;
-      border-radius: 25px;
+      border-radius: 22px;
       background:
         radial-gradient(ellipse at top, #f6c45320, transparent 55%),
         linear-gradient(145deg, #1d3326, #101b16);
+      position: relative;
       overflow: hidden;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
     }
 
     .eyebrow {
       display: inline-block;
-      padding: 8px 13px;
+      padding: 6px 14px;
       border: 1px solid #80642d;
       border-radius: 30px;
       color: var(--gold-light);
-      background: #f6c45312;
+      background: #f6c45315;
       font-size: 11px;
       font-weight: 900;
       letter-spacing: 1.5px;
+      margin-bottom: 12px;
     }
 
     h1 {
-      font-size: clamp(30px, 6vw, 52px);
-      margin: 18px 0 10px;
-      line-height: 1.08;
+      font-size: clamp(26px, 5vw, 42px);
+      margin: 6px 0 10px;
+      line-height: 1.1;
     }
 
     h1 span {
@@ -101,387 +130,375 @@
 
     .subtitle {
       color: var(--muted);
-      line-height: 1.7;
-      max-width: 580px;
-      margin: 0 auto;
-      font-size: 14px;
+      line-height: 1.6;
+      max-width: 600px;
+      margin: 0 auto 18px;
+      font-size: 13px;
     }
 
+    /* ሙሉ የ BYD መኪና ምስል ማሳያ */
     .car-scene {
-      margin: 24px auto 20px;
-      max-width: 580px;
-      min-height: 190px;
-      border-radius: 20px;
-      background:
-        radial-gradient(ellipse at center bottom, #e6b44427, transparent 65%),
-        #0c1912;
+      margin: 16px auto;
+      max-width: 100%;
+      height: 280px;
+      border-radius: 16px;
+      background: #08120d;
       border: 1px solid #3b503b;
+      position: relative;
+      overflow: hidden;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 22px;
     }
-
-    .car {
-      font-size: clamp(75px, 17vw, 125px);
-      line-height: 1.2;
-      filter: drop-shadow(0 12px 15px #0007);
+    .car-scene img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
     }
-
-    .car-name {
-      margin-top: 8px;
-      color: var(--gold-light);
-      font-size: 17px;
-      font-weight: 900;
-      letter-spacing: 2px;
-    }
-
-    .status {
-      display: inline-block;
+    .car-badge {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      background: rgba(0,0,0,0.8);
+      border: 1px solid var(--gold);
+      padding: 6px 14px;
       border-radius: 8px;
-      padding: 8px 12px;
-      background: #f6c45315;
       color: var(--gold-light);
-      border: 1px solid #8c7138;
+      font-weight: 800;
       font-size: 12px;
-      font-weight: bold;
+      backdrop-filter: blur(6px);
     }
 
-    .grid {
-      display: grid;
-      grid-template-columns: 1.1fr .9fr;
-      gap: 18px;
-      margin-top: 20px;
+    .meta-badges {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+    .meta-tag {
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--gold);
     }
 
+    /* Main Grid Panel */
     .panel {
       background: linear-gradient(145deg, #172920, #111e17);
       border: 1px solid var(--border);
       border-radius: 20px;
-      padding: 22px;
+      padding: 20px;
+      margin-bottom: 20px;
     }
 
     .panel h2 {
-      font-size: 20px;
-      margin-bottom: 8px;
+      font-size: 18px;
+      margin-bottom: 6px;
+      color: var(--gold-light);
     }
 
     .description {
       color: var(--muted);
       font-size: 13px;
-      line-height: 1.6;
-      margin-bottom: 20px;
+      line-height: 1.5;
+      margin-bottom: 16px;
     }
 
-    label {
-      display: block;
-      color: #dce5de;
-      font-size: 13px;
-      font-weight: bold;
-      margin: 15px 0 8px;
+    /* 1 እስከ 3000 ቁጥሮች ሙሉ በሙሉ የሚታዩበት ግሪድ */
+    .filter-box {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
     }
-
-    select, input {
-      width: 100%;
-      padding: 13px;
-      border-radius: 11px;
+    .search-input {
+      flex: 1;
+      padding: 11px 14px;
+      border-radius: 10px;
       border: 1px solid #435849;
       background: #0c1912;
       color: #fff;
       outline: none;
-      font-size: 15px;
+      font-size: 14px;
     }
+    .search-input:focus { border-color: var(--gold); }
 
-    select:focus, input:focus {
-      border-color: var(--gold);
-    }
-
-    .total {
-      margin: 18px 0;
-      padding: 17px;
-      border: 1px solid #6b572e;
-      background: #f6c4530c;
-      border-radius: 13px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .total span {
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .total strong {
-      color: var(--gold);
-      font-size: 24px;
-    }
-
-    .primary {
-      width: 100%;
-      padding: 15px;
-      border: 0;
+    .numbers-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+      gap: 6px;
+      height: 360px;
+      overflow-y: auto;
+      padding: 6px;
+      background: #0c1711;
+      border: 1px solid var(--border);
       border-radius: 12px;
+    }
+
+    .num-btn {
+      aspect-ratio: 1.2;
+      background: #14241d;
+      border: 1px solid #283d31;
+      border-radius: 8px;
+      color: #e2ede5;
+      font-weight: 700;
+      font-size: 11px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.1s ease;
+    }
+    .num-btn:hover:not(.taken) {
+      border-color: var(--gold);
+      background: #1f382c;
+    }
+    .num-btn.taken {
+      background: #2a1515;
+      border-color: #5c2626;
+      color: var(--red);
+      cursor: not-allowed;
+      opacity: 0.8;
+      font-size: 9px;
+    }
+    .num-btn.taken small {
+      font-size: 8px;
+      color: #ff9999;
+    }
+    .num-btn.selected {
+      background: var(--gold);
+      color: #171203;
+      border-color: var(--gold-light);
+      box-shadow: 0 0 12px rgba(246, 196, 83, 0.4);
+    }
+
+    /* Checkout / Action Box */
+    .checkout-box {
+      margin-top: 18px;
+      background: #0f1c16;
+      border: 1px solid #4d3d19;
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .selected-summary small { color: var(--muted); display: block; font-size: 11px; }
+    .selected-summary strong { color: var(--gold); font-size: 16px; }
+
+    .buy-btn {
+      padding: 13px 22px;
+      border: 0;
+      border-radius: 11px;
       background: linear-gradient(100deg, #ffe8a0, #f0b832);
       color: #2a2008;
       font-weight: 900;
-      font-size: 15px;
-      cursor: pointer;
-    }
-
-    .primary:hover {
-      filter: brightness(1.06);
-    }
-
-    .notice {
-      display: none;
-      margin-top: 15px;
-      padding: 13px;
-      border-radius: 10px;
-      border: 1px solid #80642d;
-      background: #f6c45310;
-      color: var(--gold-light);
-      font-size: 13px;
-      line-height: 1.6;
-    }
-
-    .info-row {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 14px 0;
-      border-bottom: 1px solid #2c4033;
-    }
-
-    .info-row:last-child {
-      border-bottom: 0;
-    }
-
-    .info-icon {
-      width: 38px;
-      height: 38px;
-      flex-shrink: 0;
-      display: grid;
-      place-items: center;
-      background: #f6c45312;
-      border-radius: 11px;
-      font-size: 19px;
-    }
-
-    .info-row strong {
-      display: block;
-      margin: 2px 0 5px;
       font-size: 14px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(240, 184, 50, 0.3);
+      white-space: nowrap;
+    }
+    .buy-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
-    .info-row p {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.6;
-    }
-
-    .tickets {
-      margin-top: 20px;
-    }
-
-    .empty {
-      padding: 24px 12px;
-      text-align: center;
-      border: 1px dashed #405546;
-      border-radius: 13px;
-      color: var(--muted);
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 25px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #f6c453;
+      color: #171203;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-weight: 800;
       font-size: 13px;
-      line-height: 1.7;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+      transition: transform 0.3s ease;
+      z-index: 1000;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+    .toast.error {
+      background: var(--red);
+      color: #fff;
     }
 
     footer {
       text-align: center;
-      padding: 25px 10px 0;
+      padding: 20px 10px;
       color: #87988c;
       font-size: 12px;
-      line-height: 1.7;
-    }
-
-    @media (max-width: 700px) {
-      .grid {
-        grid-template-columns: 1fr;
-      }
-
-      .hero {
-        padding: 24px 13px;
-      }
-
-      .panel {
-        padding: 18px;
-      }
+      line-height: 1.6;
     }
   </style>
 </head>
 
 <body>
+
+  <!-- የማስታወቂያ የሚንቀሳቀስ ባነር -->
+  <div class="marquee-container">
+    <div class="marquee-text">
+      🔥 እንኳን ደስ አላችሁ! የ BYD ዘመናዊ ኤሌክትሪክ መኪና (የግምት ዋጋ 3,000,000 ብር) ዕጣ ቁጥር መምረጥ ጀምር። 1 ቲኬት 1000 ብር ብቻ! ዕጣው የሚወጣበት ቀን በ 29 ነው! ፈጥነው ዕድልዎን ይሞክሩ! 🚗✨
+    </div>
+  </div>
+
   <main class="container">
 
     <header class="topbar">
       <div class="brand">✦ ETHIOPIA GAMES</div>
-      <a class="back" href="/">← Back to Games</a>
+      <a class="back" href="/">← መነሻ</a>
     </header>
 
+    <!-- የመኪናው ምስል እና መግለጫ -->
     <section class="hero">
-      <div class="eyebrow">✦ SPECIAL GRAND PRIZE DRAW ✦</div>
+      <div class="eyebrow">✦ GRAND PRIZE DRAW ✦</div>
 
-      <h1>WIN A <span>BYD CAR</span></h1>
+      <h1>BYD GRAND <span>CAR LOTTERY</span></h1>
 
       <p class="subtitle">
-        Your next big moment could be closer than you think.
-        Explore the BYD Car Lottery and check the official draw
-        details before entering.
+        አጠቃላይ ግምታዊ ዋጋው <b>3,000,000 ETB (ሶስት ሚሊዮን ብር)</b> የሆነውን የዘመኑን እጅግ ውብ እና ዘመናዊ የ BYD መኪና በ 1000 ብር ብቻ ባለቤት ይሁኑ!
       </p>
 
       <div class="car-scene">
-        <div class="car" aria-label="Car illustration">🚘</div>
-        <div class="car-name">BYD GRAND PRIZE</div>
+        <!-- ሙሉ የ BYD መኪና ፎቶ -->
+        <img src="https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=1200&q=80" alt="BYD Luxury Electric Car">
+        <div class="car-badge">🚘 BYD Flagship Electric Car · 3,000,000 ETB</div>
       </div>
 
-      <div class="status">Draw date: To be announced</div>
+      <div class="meta-badges">
+        <div class="meta-tag">🎫 1 ቲኬት = 1,000 ብር</div>
+        <div class="meta-tag">🔢 ከ 1 እስከ 3000 ቁጥሮች</div>
+        <div class="meta-tag">📅 ዕጣ የሚወጣበት: 29</div>
+      </div>
     </section>
 
-    <section class="grid">
-
-      <div class="panel">
-        <h2>🎟️ Lottery Entry</h2>
-        <p class="description">
-          Review the entry options below. This page is a preview;
-          entries and payments are not active yet.
-        </p>
-
-        <label for="ticketPrice">Ticket price (ETB)</label>
-        <select id="ticketPrice">
-          <option value="10">10 ETB</option>
-          <option value="50">50 ETB</option>
-          <option value="100">100 ETB</option>
-          <option value="200">200 ETB</option>
-        </select>
-
-        <label for="quantity">Number of tickets</label>
-        <input
-          id="quantity"
-          type="number"
-          min="1"
-          max="100"
-          step="1"
-          value="1"
-          inputmode="numeric"
-        >
-
-        <div class="total">
-          <span>Estimated total</span>
-          <strong><span id="total" style="color:inherit;font-size:inherit">10</span> ETB</strong>
-        </div>
-
-        <button class="primary" id="enterButton" type="button">
-          Enter Lottery — Coming Soon
-        </button>
-
-        <div class="notice" id="notice" role="status">
-          Ticket sales are not active. No payment has been taken
-          and no ticket has been created. The server, wallet,
-          and database must be connected before entries can begin.
-        </div>
-      </div>
-
-      <div class="panel">
-        <h2>🏆 Prize Information</h2>
-        <p class="description">
-          Important information about the planned lottery.
-        </p>
-
-        <div class="info-row">
-          <div class="info-icon">🚘</div>
-          <div>
-            <strong>Grand Prize</strong>
-            <p>BYD car prize details and model must be confirmed by the organizer.</p>
-          </div>
-        </div>
-
-        <div class="info-row">
-          <div class="info-icon">📅</div>
-          <div>
-            <strong>Draw Date</strong>
-            <p>Not announced yet. An official date should be published before tickets are sold.</p>
-          </div>
-        </div>
-
-        <div class="info-row">
-          <div class="info-icon">🎫</div>
-          <div>
-            <strong>Ticket Confirmation</strong>
-            <p>Each paid entry should receive a unique ticket number stored on the server.</p>
-          </div>
-        </div>
-
-        <div class="info-row">
-          <div class="info-icon">🔒</div>
-          <div>
-            <strong>Fair Draw</strong>
-            <p>The final system should document the draw rules and retain an auditable result.</p>
-          </div>
-        </div>
-      </div>
-
-    </section>
-
-    <section class="panel tickets">
-      <h2>🎟️ My Tickets</h2>
+    <!-- ከ 1 እስከ 3000 ቁጥሮች መምረጫ ፓነል -->
+    <section class="panel">
+      <h2>የዕጣ ቁጥር ይምረጡ (1 እስከ 3000)</h2>
       <p class="description">
-        Your confirmed ticket numbers will appear here after the
-        backend is connected.
+        ከታች ካሉት ከ 1 እስከ 3000 ከሚገኙ ቁጥሮች መካከል የሚፈልጉትን ይምረጡ። ቀድሞ የተያዙ ቁጥሮች (ለምሳሌ ቁጥር 1500) ሲነኩ <b>«ተይዟል»</b> የሚል ማሳሰቢያ ይሰጣል።
       </p>
 
-      <div class="empty">
-        No tickets yet.<br>
-        Ticket purchases are not enabled on this preview page.
+      <div class="filter-box">
+        <input type="number" id="numberSearch" class="search-input" placeholder="ቁጥር ፈልግ (ለምሳሌ: 1500)..." min="1" max="3000">
+      </div>
+
+      <!-- የቁጥሮች ግሪድ ኮንቴይነር (ከ 1 እስከ 3000 የተሟላ) -->
+      <div class="numbers-container" id="numbersGrid">
+        <!-- ጃቫስክሪፕት በዳይናሚክ 3000 ቁጥሮቹን ይጭናል -->
+      </div>
+
+      <!-- የግዢ/ማረጋገጫ ቦታ -->
+      <div class="checkout-box">
+        <div class="selected-summary">
+          <small>የመረጡት ቁጥር:</small>
+          <strong id="selectedLabel">ምንም አልተመረጠም</strong>
+        </div>
+        <button class="buy-btn" id="buyButton" disabled>ቲኬት ግዛ (1,000 ብር)</button>
       </div>
     </section>
 
     <footer>
-      <p>BYD Car Lottery — Preview Page</p>
-      <p>
-        This page does not process payments, deduct wallet funds,
-        issue tickets, or select winners.
-      </p>
+      <p>BYD Car Lottery · Ethiopia Games</p>
+      <p>ዕጣው በታማኝነት እና በቁጥጥር የሚካሄድ ይሆናል። መልካም ዕድል!</p>
     </footer>
 
   </main>
 
+  <!-- ቶስት ፖፕአፕ ማሳወቂያ -->
+  <div class="toast" id="toast"></div>
+
   <script>
-    const ticketPrice = document.getElementById('ticketPrice');
-    const quantity = document.getElementById('quantity');
-    const total = document.getElementById('total');
-    const enterButton = document.getElementById('enterButton');
-    const notice = document.getElementById('notice');
+    const tg = window.Telegram?.WebApp;
+    const gridEl = document.getElementById('numbersGrid');
+    const searchInput = document.getElementById('numberSearch');
+    const selectedLabel = document.getElementById('selectedLabel');
+    const buyButton = document.getElementById('buyButton');
+    const toastEl = document.getElementById('toast');
 
-    function updateTotal() {
-      let count = Number.parseInt(quantity.value, 10);
+    let selectedNum = null;
+    const TOTAL_NUMBERS = 3000;
 
-      if (!Number.isFinite(count)) count = 1;
-      count = Math.max(1, Math.min(100, count));
-      quantity.value = count;
+    // ለናሙና የተወሰኑ ቁጥሮች የተያዙ (Taken) እንዲሆኑ (ቁጥር 1500ን ጨምሮ)
+    const takenSet = new Set([
+      1500, 7, 12, 45, 100, 250, 500, 777, 1024, 1200, 1850, 2000, 2222, 2750, 2999
+    ]);
 
-      const price = Number(ticketPrice.value);
-      total.textContent = (price * count).toLocaleString('en-US');
+    function showToast(message, isError = false) {
+      toastEl.textContent = message;
+      toastEl.className = 'toast show' + (isError ? ' error' : '');
+      setTimeout(() => {
+        toastEl.className = 'toast';
+      }, 3000);
     }
 
-    ticketPrice.addEventListener('change', updateTotal);
-    quantity.addEventListener('input', updateTotal);
+    // ከ 1 እስከ 3000 ያሉትን ሁሉንም ቁጥሮች በግሪዱ ላይ መፍጠር
+    function renderGrid(filterQuery = '') {
+      gridEl.replaceChildren();
+      const q = parseInt(filterQuery, 10);
 
-    enterButton.addEventListener('click', function () {
-      notice.style.display = 'block';
-      notice.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      for (let i = 1; i <= TOTAL_NUMBERS; i++) {
+        // የሰርች ማጣሪያ ከገባ ያንን ቁጥር ማዕከል አድርጎ ወይም ፈልጎ ያሳያል
+        if (!isNaN(q) && q > 0 && !String(i).includes(q)) {
+          continue;
+        }
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'num-btn';
+        
+        if (takenSet.has(i)) {
+          btn.classList.add('taken');
+          btn.innerHTML = `${i}<small>ተይዟል</small>`;
+          btn.addEventListener('click', () => {
+            showToast(`ቁጥር #${i} አስቀድሞ ተይዟል! እባክዎ ሌላ ቁጥር ይምረጡ።`, true);
+          });
+        } else {
+          btn.textContent = i;
+          if (selectedNum === i) {
+            btn.classList.add('selected');
+          }
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.num-btn.selected').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedNum = i;
+            selectedLabel.textContent = `ቁጥር #${i} (1,000 ETB)`;
+            buyButton.disabled = false;
+          });
+        }
+
+        gridEl.appendChild(btn);
+      }
+    }
+
+    searchInput.addEventListener('input', (e) => {
+      renderGrid(e.target.value);
     });
 
-    updateTotal();
+    buyButton.addEventListener('click', () => {
+      if (!selectedNum) return;
+      showToast(`ቁጥር #${selectedNum} በትክክል ተይዟል! ክፍያ በመፈጸም ላይ...`);
+      buyButton.disabled = true;
+      // እዚህ ጋር ከ Backend ጋር በመገናኘት ክፍያ ይፈጸማል
+    });
+
+    if (tg) {
+      tg.ready();
+      tg.expand();
+    }
+
+    renderGrid();
   </script>
 </body>
 </html>
