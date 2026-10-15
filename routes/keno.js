@@ -85,7 +85,6 @@ module.exports = function createKenoRouter(pool, io) {
           WHERE telegram_id IS NULL
             AND identifier IS NOT NULL
         `);
-        // If 'numbers' column exists as INTEGER[], we can alter it to JSONB if needed, or keep it safe
         await pool.query(`ALTER TABLE public.keno_bets ALTER COLUMN numbers TYPE JSONB USING numbers::jsonb`);
         await pool.query(`
           UPDATE public.keno_bets
@@ -241,8 +240,14 @@ module.exports = function createKenoRouter(pool, io) {
       await client.query(
         `INSERT INTO public.keno_bets
          (round_id, identifier, telegram_id, numbers, picks, stake)
-         VALUES ($1, $2, $2, $3::jsonb, $3, $4)`,
-        [round.id, identifier, JSON.stringify(sortedPicks), sortedPicks, stake]
+         VALUES ($1, $2, $2, $3::jsonb, $4::integer[], $5)`,
+        [
+          round.id,
+          identifier,
+          JSON.stringify(sortedPicks),
+          sortedPicks,
+          stake
+        ]
       );
       await client.query('COMMIT');
       const ticket = { roundId: String(round.id), picks: sortedPicks, stake, payout: 0, matched: null, status: 'WAITING' };
