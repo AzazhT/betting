@@ -5,7 +5,7 @@ module.exports = function createKenoRouter(pool, io) {
   const router = express.Router();
 
   const ROUND_SECONDS = 60;
-  const DRAW_SECONDS = 30;
+  const DRAW_SECONDS = 15;
   const DRAW_COUNT = 20;
   const MIN_NUMBER = 1;
   const MAX_NUMBER = 80;
