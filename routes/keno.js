@@ -217,17 +217,6 @@ module.exports = function createKenoRouter(pool, io) {
           ON public.keno_bets(identifier)
         `);
 
-        // Separate Keno-only bonus wallet. Each Telegram ID can receive 100 ETB once.
-        await pool.query(`
-          CREATE TABLE IF NOT EXISTS public.keno_bonus_wallets (
-            identifier TEXT PRIMARY KEY,
-            balance NUMERIC(14,2) NOT NULL DEFAULT 100.00,
-            bonus_claimed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-          )
-        `);
-
         const check = await pool.query(`
           SELECT
             current_database() AS database_name,
@@ -369,16 +358,22 @@ module.exports = function createKenoRouter(pool, io) {
             [matched, payout, status, bet.id]
           );
           if (payout > 0) {
-            await client.query(
-              `UPDATE public.keno_bonus_wallets
-               SET balance = balance + $1, updated_at = NOW()
-               WHERE identifier = $2`,
+            const creditResult = await client.query(
+              `UPDATE public.users
+               SET balance = balance + $1
+               WHERE telegram_id = $2
+               RETURNING telegram_id`,
               [payout, bet.identifier]
             );
+
+            if (!creditResult.rows.length) {
+              throw new Error(
+                `Keno payout failed: user not found for bet ${bet.id}`
+              );
+            }
           }
         }
 
-        // እዚህ ጋር draw_numbers እና drawn_numbers በአንድ ላይ ይዘመናሉ
         await client.query(
           `UPDATE public.keno_rounds
            SET status = 'DRAWING',
@@ -451,38 +446,47 @@ module.exports = function createKenoRouter(pool, io) {
 
   router.get('/bonus', async (req, res) => {
     const identifier = String(req.query.identifier || '').trim();
+
     if (!identifier || identifier.length > 128) {
-      return res.status(400).json({ success: false, error: 'identifier (Telegram ID) ያስፈልጋል።' });
+      return res.status(400).json({
+        success: false,
+        error: 'identifier (Telegram ID) ያስፈልጋል።'
+      });
     }
+
     try {
       await ensureSchema();
-      const user = await pool.query(
-        'SELECT telegram_id FROM public.users WHERE telegram_id = $1',
-        [identifier]
-      );
-      if (!user.rows.length) {
-        return res.status(404).json({ success: false, error: 'ተጠቃሚው አልተገኘም።' });
-      }
-      await pool.query(
-        `INSERT INTO public.keno_bonus_wallets (identifier, balance)
-         VALUES ($1, 100.00)
-         ON CONFLICT (identifier) DO NOTHING`,
-        [identifier]
-      );
+
       const result = await pool.query(
-        `SELECT balance, bonus_claimed_at
-         FROM public.keno_bonus_wallets WHERE identifier = $1`,
+        `SELECT balance, bonus_balance
+         FROM public.users
+         WHERE telegram_id = $1`,
         [identifier]
       );
+
+      if (!result.rows.length) {
+        return res.status(404).json({
+          success: false,
+          error: 'ተጠቃሚው አልተገኘም።'
+        });
+      }
+
+      const user = result.rows[0];
+
       return res.json({
         success: true,
-        bonus: Number(result.rows[0].balance),
-        bonusClaimedAt: result.rows[0].bonus_claimed_at,
+        balance: Number(user.balance),
+        bonus: Number(user.balance),
+        bonusBalance: Number(user.bonus_balance || 0),
         currency: 'ETB'
       });
     } catch (err) {
-      console.error('Keno bonus error:', err.message);
-      return res.status(500).json({ success: false, error: 'የKeno Bonus ማግኘት አልተቻለም።' });
+      console.error('Keno wallet error:', err.message);
+
+      return res.status(500).json({
+        success: false,
+        error: 'የዋናውን ዋሌት ማግኘት አልተቻለም።'
+      });
     }
   });
 
@@ -520,28 +524,29 @@ module.exports = function createKenoRouter(pool, io) {
       }
 
       const userRes = await client.query(
-        'SELECT telegram_id FROM public.users WHERE telegram_id = $1',
+        `SELECT balance
+         FROM public.users
+         WHERE telegram_id = $1
+         FOR UPDATE`,
         [identifier]
       );
+
       if (!userRes.rows.length) {
         await client.query('ROLLBACK');
-        return res.status(404).json({ success: false, error: 'ተጠቃሚው አልተገኘም። Telegram ID በusers.telegram_id ውስጥ መኖሩን ያረጋግጡ።' });
+        return res.status(404).json({
+          success: false,
+          error: 'ተጠቃሚው አልተገኘም።'
+        });
       }
 
-      await pool.query(
-        `INSERT INTO public.keno_bonus_wallets (identifier, balance)
-         VALUES ($1, 100.00)
-         ON CONFLICT (identifier) DO NOTHING`,
-        [identifier]
-      );
-      const bonusRes = await client.query(
-        'SELECT balance FROM public.keno_bonus_wallets WHERE identifier = $1 FOR UPDATE',
-        [identifier]
-      );
-      const balance = Number(bonusRes.rows[0].balance);
+      const balance = Number(userRes.rows[0].balance);
+
       if (!Number.isFinite(balance) || balance < stake) {
         await client.query('ROLLBACK');
-        return res.status(400).json({ success: false, error: 'በKeno Bonus ውስጥ በቂ ብር የለም።' });
+        return res.status(400).json({
+          success: false,
+          error: 'በዋናው ዋሌት ውስጥ በቂ ብር የለም።'
+        });
       }
 
       const existing = await client.query('SELECT id FROM public.keno_bets WHERE round_id = $1 AND identifier = $2', [round.id, identifier]);
@@ -551,11 +556,22 @@ module.exports = function createKenoRouter(pool, io) {
       }
 
       const balanceRes = await client.query(
-        `UPDATE public.keno_bonus_wallets
-         SET balance = balance - $1, updated_at = NOW()
-         WHERE identifier = $2 RETURNING balance`,
+        `UPDATE public.users
+         SET balance = balance - $1
+         WHERE telegram_id = $2
+           AND balance >= $1
+         RETURNING balance`,
         [stake, identifier]
       );
+
+      if (!balanceRes.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({
+          success: false,
+          error: 'በዋናው ዋሌት ውስጥ በቂ ብር የለም።'
+        });
+      }
+
       const sortedPicks = [...picks].sort((a, b) => a - b);
       await client.query(
         `INSERT INTO public.keno_bets (round_id, identifier, picks, stake) VALUES ($1, $2, $3, $4)`,
