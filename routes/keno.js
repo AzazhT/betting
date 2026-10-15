@@ -73,7 +73,7 @@ module.exports = function createKenoRouter(pool, io) {
           WHERE LOWER(status) IN ('open','drawing','closed')`);
         await pool.query(`CREATE TABLE IF NOT EXISTS public.keno_bets (
           id BIGSERIAL PRIMARY KEY, round_id BIGINT NOT NULL REFERENCES public.keno_rounds(id),
-          identifier TEXT NOT NULL, telegram_id TEXT, numbers INTEGER[], picks INTEGER[], stake NUMERIC(14,2) NOT NULL DEFAULT 10,
+          identifier TEXT NOT NULL, telegram_id TEXT, numbers JSONB, picks INTEGER[], stake NUMERIC(14,2) NOT NULL DEFAULT 10,
           matched_count INTEGER, payout NUMERIC(14,2) NOT NULL DEFAULT 0,
           status TEXT NOT NULL DEFAULT 'WAITING', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )`);
@@ -85,10 +85,11 @@ module.exports = function createKenoRouter(pool, io) {
           WHERE telegram_id IS NULL
             AND identifier IS NOT NULL
         `);
-        await pool.query(`ALTER TABLE public.keno_bets ADD COLUMN IF NOT EXISTS numbers INTEGER[]`);
+        // If 'numbers' column exists as INTEGER[], we can alter it to JSONB if needed, or keep it safe
+        await pool.query(`ALTER TABLE public.keno_bets ALTER COLUMN numbers TYPE JSONB USING numbers::jsonb`);
         await pool.query(`
           UPDATE public.keno_bets
-          SET numbers = picks
+          SET numbers = to_jsonb(picks)
           WHERE numbers IS NULL AND picks IS NOT NULL
         `);
         await pool.query(`ALTER TABLE public.keno_bets ADD COLUMN IF NOT EXISTS picks INTEGER[]`);
@@ -240,8 +241,8 @@ module.exports = function createKenoRouter(pool, io) {
       await client.query(
         `INSERT INTO public.keno_bets
          (round_id, identifier, telegram_id, numbers, picks, stake)
-         VALUES ($1, $2, $2, $3, $3, $4)`,
-        [round.id, identifier, sortedPicks, stake]
+         VALUES ($1, $2, $2, $3::jsonb, $3, $4)`,
+        [round.id, identifier, JSON.stringify(sortedPicks), sortedPicks, stake]
       );
       await client.query('COMMIT');
       const ticket = { roundId: String(round.id), picks: sortedPicks, stake, payout: 0, matched: null, status: 'WAITING' };
