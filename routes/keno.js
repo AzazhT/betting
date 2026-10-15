@@ -40,7 +40,7 @@ module.exports = function createKenoRouter(pool, io) {
       const j = crypto.randomInt(0, i + 1);
       [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
     }
-    return numbers.slice(0, DRAW_COUNT).sort((a, b) => a - b);
+    return numbers.slice(0, DRAW_COUNT);
   }
 
   function validPicks(picks) {
