@@ -77,6 +77,27 @@ module.exports = function createKenoRouter(pool, io) {
           ADD COLUMN IF NOT EXISTS draw_numbers INTEGER[]
         `);
 
+        const verify = await pool.query(`
+          SELECT
+            current_database() AS db,
+            current_schema() AS schema_name,
+            to_regclass('public.keno_rounds') AS rounds_table
+        `);
+
+        const cols = await pool.query(`
+          SELECT column_name
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'keno_rounds'
+          ORDER BY ordinal_position
+        `);
+
+        console.log('KENO DB CHECK:', JSON.stringify(verify.rows[0]));
+        console.log(
+          'KENO ROUND COLUMNS:',
+          JSON.stringify(cols.rows.map(row => row.column_name))
+        );
+
         await pool.query(`
           ALTER TABLE public.keno_rounds
           ADD COLUMN IF NOT EXISTS drawing_ends_at TIMESTAMPTZ
