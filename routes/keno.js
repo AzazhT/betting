@@ -466,6 +466,14 @@ module.exports = function createKenoRouter(pool, io) {
     }
   });
 
+  router.get('/health', (req, res) => {
+    res.json({
+      success: true,
+      route: 'keno',
+      message: 'Keno routes are loaded'
+    });
+  });
+
   router.get('/results', async (req, res) => {
     try {
       await ensureSchema();
