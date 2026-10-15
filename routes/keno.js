@@ -58,93 +58,175 @@ module.exports = function createKenoRouter(pool, io) {
   async function ensureSchema() {
     if (!schemaPromise) {
       schemaPromise = (async () => {
+        // Use the same PostgreSQL schema consistently.
         await pool.query(`
-          CREATE TABLE IF NOT EXISTS keno_rounds (
+          CREATE TABLE IF NOT EXISTS public.keno_rounds (
             id BIGSERIAL PRIMARY KEY,
             status TEXT NOT NULL DEFAULT 'BETTING',
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            betting_ends_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '30 seconds'),
+            betting_ends_at TIMESTAMPTZ NOT NULL
+              DEFAULT (NOW() + INTERVAL '30 seconds'),
             drawing_ends_at TIMESTAMPTZ,
             draw_numbers INTEGER[],
             closed_at TIMESTAMPTZ
           )
         `);
-        await pool.query(`
-          CREATE TABLE IF NOT EXISTS keno_bets (
-            id BIGSERIAL PRIMARY KEY,
-            round_id BIGINT NOT NULL REFERENCES keno_rounds(id),
-            identifier TEXT NOT NULL,
-            picks INTEGER[],
-            stake NUMERIC(14,2) NOT NULL CHECK (stake > 0),
-            matched_count INTEGER,
-            payout NUMERIC(14,2) NOT NULL DEFAULT 0,
-            status TEXT NOT NULL DEFAULT 'WAITING',
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            UNIQUE (round_id, identifier)
-          )
-        `);
 
-        // Migration updates for existing tables
         await pool.query(`
-          ALTER TABLE keno_rounds
+          ALTER TABLE public.keno_rounds
           ADD COLUMN IF NOT EXISTS draw_numbers INTEGER[]
         `);
 
         await pool.query(`
-          ALTER TABLE keno_bets
+          ALTER TABLE public.keno_rounds
+          ADD COLUMN IF NOT EXISTS drawing_ends_at TIMESTAMPTZ
+        `);
+
+        await pool.query(`
+          ALTER TABLE public.keno_rounds
+          ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ
+        `);
+
+        await pool.query(`
+          ALTER TABLE public.keno_rounds
+          ADD COLUMN IF NOT EXISTS betting_ends_at TIMESTAMPTZ
+        `);
+
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS public.keno_bets (
+            id BIGSERIAL PRIMARY KEY,
+            round_id BIGINT NOT NULL
+              REFERENCES public.keno_rounds(id),
+            identifier TEXT NOT NULL,
+            picks INTEGER[],
+            stake NUMERIC(14,2) NOT NULL DEFAULT 10,
+            matched_count INTEGER,
+            payout NUMERIC(14,2) NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'WAITING',
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          )
+        `);
+
+        await pool.query(`
+          ALTER TABLE public.keno_bets
           ADD COLUMN IF NOT EXISTS identifier TEXT
         `);
 
         await pool.query(`
-          ALTER TABLE keno_bets
+          ALTER TABLE public.keno_bets
           ADD COLUMN IF NOT EXISTS picks INTEGER[]
         `);
 
         await pool.query(`
-          ALTER TABLE keno_bets
+          ALTER TABLE public.keno_bets
           ADD COLUMN IF NOT EXISTS stake NUMERIC(14,2)
         `);
 
         await pool.query(`
-          ALTER TABLE keno_bets
+          ALTER TABLE public.keno_bets
           ADD COLUMN IF NOT EXISTS matched_count INTEGER
         `);
 
         await pool.query(`
-          ALTER TABLE keno_bets
-          ADD COLUMN IF NOT EXISTS payout NUMERIC(14,2) NOT NULL DEFAULT 0
+          ALTER TABLE public.keno_bets
+          ADD COLUMN IF NOT EXISTS payout NUMERIC(14,2)
+          NOT NULL DEFAULT 0
         `);
 
         await pool.query(`
-          ALTER TABLE keno_bets
-          ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'WAITING'
+          ALTER TABLE public.keno_bets
+          ADD COLUMN IF NOT EXISTS status TEXT
+          NOT NULL DEFAULT 'WAITING'
+        `);
+
+        await pool.query(`
+          ALTER TABLE public.keno_bets
+          ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ
+          NOT NULL DEFAULT NOW()
         `);
 
         await pool.query(`
           CREATE INDEX IF NOT EXISTS keno_bets_round_idx
-          ON keno_bets(round_id)
+          ON public.keno_bets(round_id)
         `);
 
-        await pool.query(`CREATE INDEX IF NOT EXISTS keno_bets_identifier_idx ON keno_bets(identifier)`);
+        await pool.query(`
+          CREATE INDEX IF NOT EXISTS keno_bets_identifier_idx
+          ON public.keno_bets(identifier)
+        `);
+
+        const check = await pool.query(`
+          SELECT
+            current_database() AS database_name,
+            current_schema() AS active_schema,
+            to_regclass('public.keno_rounds') AS rounds_table,
+            to_regclass('public.keno_bets') AS bets_table
+        `);
+
+        const info = check.rows[0];
+
+        const columns = await pool.query(`
+          SELECT table_name, column_name
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND (
+              (table_name = 'keno_rounds'
+               AND column_name = 'draw_numbers')
+              OR
+              (table_name = 'keno_bets'
+               AND column_name IN (
+                 'round_id', 'identifier', 'picks', 'stake',
+                 'matched_count', 'payout', 'status'
+               ))
+            )
+          ORDER BY table_name, column_name
+        `);
+
+        const hasDrawColumn = columns.rows.some(
+          row =>
+            row.table_name === 'keno_rounds' &&
+            row.column_name === 'draw_numbers'
+        );
+
+        if (!info.rounds_table || !info.bets_table || !hasDrawColumn) {
+          throw new Error(
+            `Keno schema verification failed: ${JSON.stringify(info)}`
+          );
+        }
+
+        console.log(
+          'Keno schema ready:',
+          JSON.stringify(info),
+          'columns:',
+          JSON.stringify(columns.rows)
+        );
 
         const usersCheck = await pool.query(`
-          SELECT 1 FROM information_schema.columns
-          WHERE table_schema = current_schema() AND table_name = 'users' AND column_name = 'telegram_id'
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'users'
+            AND column_name = 'telegram_id'
         `);
+
         if (!usersCheck.rowCount) {
-          throw new Error("users.telegram_id column not found; Keno expects identifier to be the Telegram ID");
+          throw new Error(
+            'public.users.telegram_id column not found'
+          );
         }
       })().catch(err => {
         schemaPromise = null;
+        console.error('Keno schema migration failed:', err.message);
         throw err;
       });
     }
+
     return schemaPromise;
   }
 
   async function createRound(client) {
     const result = await client.query(
-      `INSERT INTO keno_rounds (status, betting_ends_at)
+      `INSERT INTO public.keno_rounds (status, betting_ends_at)
        VALUES ('BETTING', NOW() + ($1 * INTERVAL '1 second'))
        RETURNING id, status, created_at, betting_ends_at, drawing_ends_at, draw_numbers`,
       [ROUND_SECONDS]
@@ -163,7 +245,7 @@ module.exports = function createKenoRouter(pool, io) {
         return;
       }
 
-      const result = await client.query('SELECT * FROM keno_rounds ORDER BY id DESC LIMIT 1 FOR UPDATE');
+      const result = await client.query('SELECT * FROM public.keno_rounds ORDER BY id DESC LIMIT 1 FOR UPDATE');
       let round = result.rows[0];
       if (!round) {
         await createRound(client);
@@ -178,7 +260,7 @@ module.exports = function createKenoRouter(pool, io) {
         const draw = makeDraw();
         const drawSet = new Set(draw);
         const betsResult = await client.query(
-          `SELECT id, identifier, picks, stake FROM keno_bets
+          `SELECT id, identifier, picks, stake FROM public.keno_bets
            WHERE round_id = $1 AND status = 'WAITING' FOR UPDATE`, [round.id]
         );
 
@@ -190,19 +272,19 @@ module.exports = function createKenoRouter(pool, io) {
           const status = payout > 0 ? 'WON' : 'LOST';
 
           await client.query(
-            `UPDATE keno_bets SET matched_count = $1, payout = $2, status = $3 WHERE id = $4`,
+            `UPDATE public.keno_bets SET matched_count = $1, payout = $2, status = $3 WHERE id = $4`,
             [matched, payout, status, bet.id]
           );
           if (payout > 0) {
             await client.query(
-              'UPDATE users SET balance = balance + $1 WHERE telegram_id = $2',
+              'UPDATE public.users SET balance = balance + $1 WHERE telegram_id = $2',
               [payout, bet.identifier]
             );
           }
         }
 
         await client.query(
-          `UPDATE keno_rounds SET status = 'DRAWING', draw_numbers = $1,
+          `UPDATE public.keno_rounds SET status = 'DRAWING', draw_numbers = $1,
            drawing_ends_at = NOW() + ($2 * INTERVAL '1 second') WHERE id = $3`,
           [draw, DRAW_SECONDS, round.id]
         );
@@ -212,7 +294,7 @@ module.exports = function createKenoRouter(pool, io) {
       }
 
       if (round.status === 'DRAWING' && round.drawing_ends_at && now >= new Date(round.drawing_ends_at)) {
-        await client.query(`UPDATE keno_rounds SET status = 'CLOSED', closed_at = NOW() WHERE id = $1`, [round.id]);
+        await client.query(`UPDATE public.keno_rounds SET status = 'CLOSED', closed_at = NOW() WHERE id = $1`, [round.id]);
         if (io) io.emit('keno:round', { roundId: String(round.id), status: 'CLOSED' });
         await createRound(client);
       }
@@ -238,7 +320,7 @@ module.exports = function createKenoRouter(pool, io) {
   async function getLatestRound() {
     await ensureSchema();
     await advanceRound();
-    const result = await pool.query('SELECT * FROM keno_rounds ORDER BY id DESC LIMIT 1');
+    const result = await pool.query('SELECT * FROM public.keno_rounds ORDER BY id DESC LIMIT 1');
     return result.rows[0] || null;
   }
 
@@ -293,14 +375,14 @@ module.exports = function createKenoRouter(pool, io) {
         return res.status(409).json({ success: false, error: 'እባክዎ እንደገና ይሞክሩ።' });
       }
 
-      const roundRes = await client.query('SELECT * FROM keno_rounds ORDER BY id DESC LIMIT 1 FOR UPDATE');
+      const roundRes = await client.query('SELECT * FROM public.keno_rounds ORDER BY id DESC LIMIT 1 FOR UPDATE');
       const round = roundRes.rows[0];
       if (!round || round.status !== 'BETTING' || new Date(round.betting_ends_at).getTime() <= Date.now()) {
         await client.query('ROLLBACK');
         return res.status(409).json({ success: false, error: 'የውርርድ ጊዜው ተዘግቷል፤ ቀጣዩን ዙር ይጠብቁ።' });
       }
 
-      const userRes = await client.query('SELECT telegram_id, balance FROM users WHERE telegram_id = $1 FOR UPDATE', [identifier]);
+      const userRes = await client.query('SELECT telegram_id, balance FROM public.users WHERE telegram_id = $1 FOR UPDATE', [identifier]);
       if (!userRes.rows.length) {
         await client.query('ROLLBACK');
         return res.status(404).json({ success: false, error: 'ተጠቃሚው አልተገኘም። Telegram ID በusers.telegram_id ውስጥ መኖሩን ያረጋግጡ።' });
@@ -311,19 +393,19 @@ module.exports = function createKenoRouter(pool, io) {
         return res.status(400).json({ success: false, error: 'በዋሌትዎ ውስጥ በቂ ብር የለም።' });
       }
 
-      const existing = await client.query('SELECT id FROM keno_bets WHERE round_id = $1 AND identifier = $2', [round.id, identifier]);
+      const existing = await client.query('SELECT id FROM public.keno_bets WHERE round_id = $1 AND identifier = $2', [round.id, identifier]);
       if (existing.rows.length) {
         await client.query('ROLLBACK');
         return res.status(409).json({ success: false, error: 'በዚህ ዙር ውርርድ አስቀድመው አስገብተዋል።' });
       }
 
       const balanceRes = await client.query(
-        'UPDATE users SET balance = balance - $1 WHERE telegram_id = $2 RETURNING balance',
+        'UPDATE public.users SET balance = balance - $1 WHERE telegram_id = $2 RETURNING balance',
         [stake, identifier]
       );
       const sortedPicks = [...picks].sort((a, b) => a - b);
       await client.query(
-        `INSERT INTO keno_bets (round_id, identifier, picks, stake) VALUES ($1, $2, $3, $4)`,
+        `INSERT INTO public.keno_bets (round_id, identifier, picks, stake) VALUES ($1, $2, $3, $4)`,
         [round.id, identifier, sortedPicks, stake]
       );
       await client.query('COMMIT');
@@ -349,7 +431,7 @@ module.exports = function createKenoRouter(pool, io) {
       const result = await pool.query(
         `SELECT b.id, b.round_id, b.picks, b.stake, b.matched_count, b.payout, b.status, b.created_at,
                 r.draw_numbers, r.status AS round_status
-         FROM keno_bets b JOIN keno_rounds r ON r.id = b.round_id
+         FROM public.keno_bets b JOIN public.keno_rounds r ON r.id = b.round_id
          WHERE b.identifier = $1 ORDER BY b.id DESC LIMIT 30`, [identifier]
       );
       res.json({ success: true, tickets: result.rows.map(row => ({
@@ -366,10 +448,13 @@ module.exports = function createKenoRouter(pool, io) {
   router.get('/results', async (req, res) => {
     try {
       await ensureSchema();
-      const result = await pool.query(
-        `SELECT id, status, created_at, draw_numbers, closed_at FROM keno_rounds
-         WHERE status IN ('DRAWING','CLOSED') ORDER BY id DESC LIMIT 20`
-      );
+      const result = await pool.query(`
+        SELECT id, status, created_at, draw_numbers, closed_at
+        FROM public.keno_rounds
+        WHERE status IN ('DRAWING', 'CLOSED')
+        ORDER BY id DESC
+        LIMIT 20
+      `);
       res.json({ success: true, results: result.rows.map(row => ({
         roundId: String(row.id), status: row.status, createdAt: row.created_at,
         draw: row.draw_numbers || [], closedAt: row.closed_at
