@@ -83,23 +83,50 @@ module.exports = function createKenoRouter(pool, io) {
             UNIQUE (round_id, identifier)
           )
         `);
-        // Migrate existing tables without dropping any data.
-        await pool.query(`ALTER TABLE keno_rounds ADD COLUMN IF NOT EXISTS draw_numbers INTEGER[]`);
-        await pool.query(`ALTER TABLE keno_rounds ADD COLUMN IF NOT EXISTS betting_ends_at TIMESTAMPTZ`);
-        await pool.query(`ALTER TABLE keno_rounds ADD COLUMN IF NOT EXISTS drawing_ends_at TIMESTAMPTZ`);
-        await pool.query(`ALTER TABLE keno_rounds ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ`);
-        await pool.query(`ALTER TABLE keno_bets ADD COLUMN IF NOT EXISTS identifier TEXT`);
-        await pool.query(`ALTER TABLE keno_bets ADD COLUMN IF NOT EXISTS picks INTEGER[]`);
-        await pool.query(`ALTER TABLE keno_bets ADD COLUMN IF NOT EXISTS stake NUMERIC(14,2)`);
-        await pool.query(`ALTER TABLE keno_bets ADD COLUMN IF NOT EXISTS matched_count INTEGER`);
-        await pool.query(`ALTER TABLE keno_bets ADD COLUMN IF NOT EXISTS payout NUMERIC(14,2) NOT NULL DEFAULT 0`);
-        await pool.query(`ALTER TABLE keno_bets ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'WAITING'`);
-        await pool.query(`ALTER TABLE keno_bets ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
-        await pool.query(`CREATE INDEX IF NOT EXISTS keno_bets_round_idx ON keno_bets(round_id)`);
+
+        // Migration updates for existing tables
+        await pool.query(`
+          ALTER TABLE keno_rounds
+          ADD COLUMN IF NOT EXISTS draw_numbers INTEGER[]
+        `);
+
+        await pool.query(`
+          ALTER TABLE keno_bets
+          ADD COLUMN IF NOT EXISTS identifier TEXT
+        `);
+
+        await pool.query(`
+          ALTER TABLE keno_bets
+          ADD COLUMN IF NOT EXISTS picks INTEGER[]
+        `);
+
+        await pool.query(`
+          ALTER TABLE keno_bets
+          ADD COLUMN IF NOT EXISTS stake NUMERIC(14,2)
+        `);
+
+        await pool.query(`
+          ALTER TABLE keno_bets
+          ADD COLUMN IF NOT EXISTS matched_count INTEGER
+        `);
+
+        await pool.query(`
+          ALTER TABLE keno_bets
+          ADD COLUMN IF NOT EXISTS payout NUMERIC(14,2) NOT NULL DEFAULT 0
+        `);
+
+        await pool.query(`
+          ALTER TABLE keno_bets
+          ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'WAITING'
+        `);
+
+        await pool.query(`
+          CREATE INDEX IF NOT EXISTS keno_bets_round_idx
+          ON keno_bets(round_id)
+        `);
+
         await pool.query(`CREATE INDEX IF NOT EXISTS keno_bets_identifier_idx ON keno_bets(identifier)`);
 
-        // The project's users table uses telegram_id, not identifier.
-        // Keno's request identifier must therefore be the user's Telegram ID.
         const usersCheck = await pool.query(`
           SELECT 1 FROM information_schema.columns
           WHERE table_schema = current_schema() AND table_name = 'users' AND column_name = 'telegram_id'
@@ -168,7 +195,7 @@ module.exports = function createKenoRouter(pool, io) {
           );
           if (payout > 0) {
             await client.query(
-              `UPDATE users SET balance = balance + $1 WHERE telegram_id = $2`,
+              'UPDATE users SET balance = balance + $1 WHERE telegram_id = $2',
               [payout, bet.identifier]
             );
           }
@@ -290,7 +317,10 @@ module.exports = function createKenoRouter(pool, io) {
         return res.status(409).json({ success: false, error: 'በዚህ ዙር ውርርድ አስቀድመው አስገብተዋል።' });
       }
 
-      const balanceRes = await client.query('UPDATE users SET balance = balance - $1 WHERE telegram_id = $2 RETURNING balance', [stake, identifier]);
+      const balanceRes = await client.query(
+        'UPDATE users SET balance = balance - $1 WHERE telegram_id = $2 RETURNING balance',
+        [stake, identifier]
+      );
       const sortedPicks = [...picks].sort((a, b) => a - b);
       await client.query(
         `INSERT INTO keno_bets (round_id, identifier, picks, stake) VALUES ($1, $2, $3, $4)`,
