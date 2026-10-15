@@ -15,9 +15,8 @@ body{margin:0;background:radial-gradient(ellipse at top,#132941 0,#07111d 48%);c
 .muted{color:var(--muted);font-size:12px}.balance{font-size:20px;font-weight:900;color:var(--green);margin-top:4px}
 .pill{border:1px solid #2b435a;border-radius:30px;padding:7px 10px;color:#c9d8e8;font-size:11px;background:#0b1927}
 
-/* CINEMATIC AVIATOR STAGE */
-.stage{position:relative;isolation:isolate;overflow:hidden;background:linear-gradient(160deg,#102d48,#06101c 75%);height:310px;border:1px solid #2f5270;border-radius:20px;margin-top:15px;box-shadow:0 14px 38px #0007;perspective:900px}
-.clouds{position:absolute;inset:0;background-image:radial-gradient(circle, rgba(255,255,255,0.2) 1.5px, transparent 2px), radial-gradient(circle, rgba(255,255,255,0.1) 3px, transparent 3px);background-size:140px 140px, 220px 220px;background-position:0 0, 70px 70px;opacity:.6;animation:driftClouds 18s linear infinite;pointer-events:none;z-index:1}
+/* ውብ ሰማይ እና ዳመናዎች */
+.clouds{position:absolute;inset:0;background-image:radial-gradient(circle, rgba(255,255,255,0.25) 1.5px, transparent 2px), radial-gradient(circle, rgba(255,255,255,0.12) 3px, transparent 3px);background-size:140px 140px, 220px 220px;background-position:0 0, 70px 70px;opacity:.7;animation:driftClouds 18s linear infinite;pointer-events:none;z-index:1}
 @keyframes driftClouds{from{background-position:0 0, 70px 70px}to{background-position:-700px 0, -650px 70px}}
 
 .stage-top{position:absolute;left:14px;right:14px;top:13px;display:flex;justify-content:space-between;align-items:center;z-index:4}
@@ -26,62 +25,197 @@ body{margin:0;background:radial-gradient(ellipse at top,#132941 0,#07111d 48%);c
 
 .status{position:absolute;top:142px;left:0;right:0;text-align:center;color:#b8c8d7;font-size:12px;z-index:3}
 .flight{position:absolute;inset:0;overflow:hidden;z-index:2}
+.flightline{position:absolute;width:130%;height:4px;left:-15%;bottom:15px;background:linear-gradient(90deg,transparent,#ff435f88,#ff435f);transform:rotate(-24deg);transform-origin:left center;opacity:0;transition:opacity .2s;box-shadow:0 0 20px #ff435faa}
 
-/* የበረራ መስመር (Takeoff Curve Line) */
-.flightline{position:absolute;left:0;bottom:0;width:100%;height:100%;pointer-events:none;z-index:2;opacity:0;transition:opacity .3s}
-.stage.flying .flightline{opacity:1}
+.trail{position:absolute;right:60px;top:32px;width:105px;height:18px;border-radius:100%;background:linear-gradient(90deg,transparent,#ff273f55,#ff4a61ff);filter:blur(6px);transform:rotate(22deg)}
 
-/* ከታች ተነስቶ ወደ ላይ የሚሄደው አውሮፕላን (Bottom-Left Origin) */
-#planeWrap{
+.smoke{position:absolute;width:14px;height:14px;border-radius:50%;background:#ff435f;filter:blur(3px);opacity:0;left:12%;bottom:58px;z-index:1}
+.smoke:nth-child(2){width:20px;height:20px;background:#ff725e}.smoke:nth-child(3){width:12px;height:12px;background:#ffcf57}.smoke:nth-child(4){width:26px;height:26px;background:#a62a48;filter:blur(6px)}
+
+/* ===== CINEMATIC 5D AVIATOR EFFECTS ===== */
+.stage {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  height: 310px;
+  border: 1px solid #2f5270;
+  border-radius: 20px;
+  margin-top: 15px;
+  box-shadow: 0 14px 38px #0007;
+  perspective: 900px;
+  transform-style: preserve-3d;
+  background:
+    radial-gradient(ellipse at 50% 85%, #ff453522, transparent 45%),
+    radial-gradient(ellipse at 75% 20%, #1b6e9a44, transparent 45%),
+    linear-gradient(160deg, #102d48, #06101c 75%);
+  transition: border-color .25s, box-shadow .25s;
+}
+
+.stage::before {
+  content: "";
   position: absolute;
-  left: 20px;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background-image:
+    radial-gradient(#c4e9ff 1px, transparent 1.8px),
+    radial-gradient(#5ba4d9 1px, transparent 2px);
+  background-size: 37px 41px, 71px 63px;
+  animation: starDrift 5s linear infinite;
+  opacity: .38;
+}
+
+@keyframes starDrift {
+  from { background-position: 0 0, 30px 10px; }
+  to { background-position: -100px 130px, 100px 180px; }
+}
+
+#planeWrap {
+  position: absolute;
+  left: 12%;
   bottom: 20px;
-  width: 70px;
-  height: 50px;
+  width: 75px;
+  height: 65px;
   z-index: 3;
-  transform-origin: center center;
-  transition: transform .15s linear;
+  transform: translate(0, 0) rotate(-22deg);
+  transform-origin: center;
+  filter: drop-shadow(0 0 10px #ffcf57);
   will-change: transform;
+  transition: transform .15s linear;
 }
 
-#plane{
-  font-size: 48px;
+#plane {
   display: block;
-  transform: rotate(0deg);
-  filter: drop-shadow(0 0 10px #ff435f);
+  font-size: 52px;
+  transform: rotate(-8deg);
+  filter:
+    drop-shadow(0 0 8px #ffcf57)
+    drop-shadow(0 0 15px #ff435f);
+  animation: planeBob .35s ease-in-out infinite alternate;
 }
 
-.stage.flying #plane {
-  animation: planeFloat .4s ease-in-out infinite alternate;
-}
-@keyframes planeFloat {
-  from { transform: translateY(0px) rotate(0deg); }
-  to { transform: translateY(-4px) rotate(2deg); }
+@keyframes planeBob {
+  from { margin-top: -2px; }
+  to { margin-top: 3px; }
 }
 
-.mult{
+.stage.flying #planeWrap {
+  filter: drop-shadow(0 0 15px #ffcf57);
+}
+
+.stage.flying .flightline {
+  opacity: 1;
+  height: 4px;
+  background: linear-gradient(
+    90deg, transparent, #ffcf57, #ff435f, #fff
+  );
+  box-shadow: 0 0 20px #ff435f;
+}
+
+.stage.crashed {
+  animation: crashShake .48s ease-out;
+  border-color: #ff263f;
+  box-shadow:
+    inset 0 0 70px #ff183955,
+    0 0 35px #ff183933;
+}
+
+@keyframes crashShake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-7px); }
+  30% { transform: translateX(6px); }
+  45% { transform: translateX(-5px); }
+  60% { transform: translateX(4px); }
+  75% { transform: translateX(-2px); }
+}
+
+.crash-flash {
   position: absolute;
-  top: 65px;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    circle at 70% 30%,
+    #fff 0%,
+    #ffb13b 7%,
+    #ff283e99 22%,
+    transparent 65%
+  );
+}
+
+.stage.crashed .crash-flash {
+  animation: impactFlash .65s ease-out;
+}
+
+@keyframes impactFlash {
+  0% { opacity: .95; }
+  100% { opacity: 0; }
+}
+
+.crash-ring {
+  position: absolute;
+  left: 70%;
+  top: 30%;
+  width: 15px;
+  height: 15px;
+  border: 3px solid #ffcf57;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.stage.crashed .crash-ring {
+  animation: impactRing .7s ease-out;
+}
+
+@keyframes impactRing {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(.2); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(13); }
+}
+
+.stage.crashed .smoke {
+  animation: crashSmoke .9s ease-out forwards !important;
+}
+
+@keyframes crashSmoke {
+  0% { opacity: .95; transform: scale(.5); }
+  100% { opacity: 0; transform: translate(-45px, 35px) scale(4); }
+}
+
+@keyframes floatSmoke {
+  0% {
+    transform: scale(.7) translate(0, 0);
+    opacity: .65;
+  }
+  100% {
+    transform: scale(1.7) translate(-22px, 8px);
+    opacity: 0;
+  }
+}
+
+.mult {
+  position: absolute;
+  top: 68px;
   left: 0;
   right: 0;
   text-align: center;
-  font-size: clamp(48px,12vw,68px);
+  font-size: clamp(46px,12vw,66px);
   font-weight: 1000;
   letter-spacing: -2px;
   z-index: 3;
-  text-shadow: 0 0 15px #ffffff44, 0 6px 20px #000;
+  text-shadow:
+    0 0 12px #ffffff55,
+    0 0 30px #48aaff55,
+    0 6px 20px #000;
 }
+
 .mult.flying{color:#fff}
-.mult.crashed{color:#ff435f;animation:shakeMult .3s ease;text-shadow:0 0 25px #ff1839aa}
-@keyframes shakeMult{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
-
-/* CRASH EFFECTS */
-.stage.crashed{animation:crashShake .45s ease-out;border-color:#ff263f;box-shadow:inset 0 0 70px #ff183955}
-@keyframes crashShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
-
-.crash-flash{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;background:radial-gradient(circle at center,#fff 0%,#ffb13b 20%,#ff283e99 45%,transparent 70%)}
-.stage.crashed .crash-flash{animation:impactFlash .55s ease-out}
-@keyframes impactFlash{0%{opacity:.95}100%{opacity:0}}
+.mult.crashed {
+  color: #ff435f;
+  text-shadow: 0 0 25px #ff1839aa;
+}
 
 .panel{background:linear-gradient(145deg,#122338,#0d1a29);border:1px solid #243a50;border-radius:17px;padding:14px;margin-top:13px;box-shadow:0 8px 25px #0002}
 input,button{font:inherit;border-radius:11px;padding:13px;border:0}
@@ -97,7 +231,7 @@ input:focus{border-color:#24d18b}
 .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 .info{background:#0a1725;border:1px solid #203449;border-radius:11px;padding:10px}.info strong{display:block;margin-top:5px;font-size:14px}
 button{cursor:pointer;transition:filter .15s,transform .15s}button:active{transform:scale(.985)}button:disabled{cursor:not-allowed}
-@media(max-width:400px){.wrap{padding:11px}.stage{height:285px}.mult{top:70px}.status{top:138px}.brand{font-size:21px}}
+@media(max-width:400px){.wrap{padding:11px}.stage{height:285px}.mult{top:72px}.status{top:139px}.brand{font-size:21px}}
 </style>
 </head>
 <body>
@@ -108,15 +242,16 @@ button{cursor:pointer;transition:filter .15s,transform .15s}button:active{transf
   </div>
   <div id="stage" class="stage">
     <div class="crash-flash"></div>
+    <div class="crash-ring"></div>
     <div class="clouds"></div>
     <div class="stage-top"><span class="live"><i class="dot"></i> LIVE ROUND</span><span class="pill" id="roundLabel">ROUND LIVE</span></div>
     <div id="mult" class="mult">1.00x</div>
     <div id="status" class="status">ግንኙነት በመጠበቅ ላይ…</div>
     <div class="flight">
-      <svg class="flightline" id="lineSvg" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <path id="curvePath" d="M 0 100 Q 0 100 0 100" fill="rgba(255, 67, 95, 0.2)" stroke="#ff435f" stroke-width="2"/>
-      </svg>
+      <div class="flightline"></div>
+      <div class="trail"></div>
       <div id="planeWrap"><span id="plane">✈️</span></div>
+      <span class="smoke"></span><span class="smoke"></span><span class="smoke"></span><span class="smoke"></span>
     </div>
   </div>
   <div class="panel">
@@ -136,7 +271,12 @@ const tg=window.Telegram?.WebApp;
 tg?.ready();tg?.expand();
 const initData=tg?.initData||'';
 const $=id=>document.getElementById(id);
-let phase='',lastPhase='',myBet=null,lastRoundId=null,lastMult=1,refreshBusy=false;
+let phase='',
+    lastPhase='',
+    myBet=null,
+    lastRoundId=null,
+    lastMult=1,
+    refreshBusy=false;
 
 function money(n){return Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function note(t,bad=false){$('msg').style.display='block';$('msg').textContent=t;$('msg').style.border=bad?'1px solid #ff4c69':'1px solid #24d18b'}
@@ -149,31 +289,54 @@ async function api(path,body){
   return d;
 }
 
-/* ከታች (Bottom-Left) ተነስቶ ወደ ላይ (Top-Right) የሚሄድ አኒሜሽን */
-function animatePlane(mult){
-  const m = Math.max(1, Number(mult)||1);
-  // Logarithmic progression for smooth curve takeover
-  const progress = Math.min(1, Math.log(m) / Math.log(15));
-  
-  // X: 0% -> 75% (ከግራ ወደ ቀኝ)
-  // Y: 0% -> 70% (ከታች ወደ ላይ)
-  const xPx = progress * ($('stage').offsetWidth * 0.72);
-  const yPx = progress * ($('stage').offsetHeight * 0.65);
-  const angle = Math.min(35, progress * 28); // አንግሉ እየጨመረ ወደ ላይ ያዘነብላል
+function animatePlane(mult) {
+  const stage = $('stage');
+  const planeWrap = $('planeWrap');
+  const plane = $('plane');
 
-  if(phase === 'crashed'){
-    $('plane').textContent = '💥';
-    $('planeWrap').style.transform = `translate(${xPx}px, -${yPx}px) scale(1.2) rotate(45deg)`;
+  const width = stage.clientWidth;
+  const height = stage.clientHeight;
+
+  const m = Math.max(1, Number(mult) || 1);
+  const progress = Math.max(
+    0,
+    Math.min(1, Math.log(m) / Math.log(20))
+  );
+
+  const x = progress * width * 0.73;
+  const y = progress * height * 0.66;
+  const curve = Math.sin(progress * Math.PI) * 24;
+
+  planeWrap.style.left = '12%';
+  planeWrap.style.bottom = '20px';
+  planeWrap.style.transform =
+    `translate(${x + curve}px, ${-y}px) rotate(-22deg)`;
+
+  if (phase === 'crashed') {
+    plane.textContent = '💥';
   } else {
-    $('plane').textContent = '✈️';
-    $('planeWrap').style.transform = `translate(${xPx}px, -${yPx}px) rotate(-${angle}deg)`;
+    plane.textContent = '✈️';
   }
 
-  // የቀይ ከፍታ መስመር (Curve SVG Path Update)
-  const pathX = progress * 100;
-  const pathY = 100 - (progress * 70);
-  const controlX = pathX * 0.5;
-  $('curvePath').setAttribute('d', `M 0 100 Q ${controlX} 100 ${pathX} ${pathY} L ${pathX} 100 Z`);
+  const trail = document.querySelector('.trail');
+  trail.style.left = `${Math.max(0, 12 + progress * 48)}%`;
+  trail.style.top = `${Math.max(20, height - 75 - y)}px`;
+  trail.style.right = 'auto';
+  trail.style.transform = 'rotate(-22deg)';
+
+  document.querySelectorAll('.smoke').forEach((smoke, i) => {
+    smoke.style.left = `${12 + progress * 48 - i * 3}%`;
+    smoke.style.bottom = `${20 + y * 0.65 - i * 5}px`;
+
+    if (phase === 'flying') {
+      smoke.style.opacity = String(0.55 - i * 0.08);
+      smoke.style.animation =
+        `floatSmoke ${0.65 + i * 0.13}s infinite`;
+    } else {
+      smoke.style.opacity = '0';
+      smoke.style.animation = 'none';
+    }
+  });
 }
 
 function render(d){
@@ -181,17 +344,35 @@ function render(d){
   const round=d.round||{};
   phase = round.phase || '';
 
-  if (phase === 'crashed' && lastPhase !== 'crashed') {
-    $('stage').classList.remove('crashed');
-    void $('stage').offsetWidth;
-    $('stage').classList.add('crashed');
+  const stage = $('stage');
+  const previousPhase = lastPhase;
+
+  stage.className =
+    'stage' +
+    (phase === 'flying' ? ' flying' :
+     phase === 'crashed' ? ' crashed' : '');
+
+  if (phase === 'crashed' && previousPhase !== 'crashed') {
+    stage.classList.remove('crashed');
+    void stage.offsetWidth;
+    stage.classList.add('crashed');
+
+    setTimeout(() => {
+      if (phase === 'crashed') {
+        stage.classList.remove('crashed');
+      }
+    }, 1100);
   }
 
   lastPhase = phase;
+
   myBet=d.myBet||null;
   const mult=Number(round.multiplier||1);
-  $('mult').textContent=mult.toFixed(2)+'x';
-  $('mult').className='mult'+(phase==='flying'?' flying':phase==='crashed'?' crashed':'');$('stage').className='stage'+(phase==='flying'?' flying':phase==='crashed'?' crashed':'');
+  $('mult').textContent=mult.toFixed(2)+'x';$('mult').className =
+    'mult' +
+    (phase === 'flying' ? ' flying' :
+     phase === 'crashed' ? ' crashed' : '');
+     
   $('roundLabel').textContent=phase==='betting'?'NEXT ROUND':phase==='flying'?'ROUND LIVE':phase==='crashed'?'CRASHED':'CONNECTING';$('status').textContent=phase==='betting'?'ውርርድ ይቀበላል':phase==='flying'?'አውሮፕላኑ እየበረረ ነው':'ዙሩ አልቋል';
   animatePlane(mult);
   $('bet').disabled=!(phase==='betting'&&!myBet);
