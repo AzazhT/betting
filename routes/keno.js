@@ -89,7 +89,7 @@ module.exports = function createKenoRouter(pool, io) {
 
         await pool.query(`
           ALTER TABLE public.keno_rounds
-          ADD COLUMN IF NOT EXISTS drawn_numbers INTEGER[]
+          ADD COLUMN IF NOT EXISTS drawn_numbers jsonb
         `);
 
         const verify = await pool.query(`
@@ -289,9 +289,16 @@ module.exports = function createKenoRouter(pool, io) {
   async function createRound(client) {
     const result = await client.query(
       `INSERT INTO public.keno_rounds
-        (status, created_at, starts_at, ends_at,
-         betting_ends_at, drawing_ends_at,
-         draw_numbers, drawn_numbers)
+        (
+          status,
+          created_at,
+          starts_at,
+          ends_at,
+          betting_ends_at,
+          drawing_ends_at,
+          draw_numbers,
+          drawn_numbers
+        )
        VALUES (
          'BETTING',
          NOW(),
@@ -300,10 +307,9 @@ module.exports = function createKenoRouter(pool, io) {
          NOW() + ($1 * INTERVAL '1 second'),
          NULL,
          NULL,
-         ARRAY[]::INTEGER[]
+         '[]'::jsonb
        )
-       RETURNING id, status, created_at, betting_ends_at,
-                 drawing_ends_at, draw_numbers`,
+       RETURNING *`,
       [ROUND_SECONDS]
     );
 
@@ -360,9 +366,13 @@ module.exports = function createKenoRouter(pool, io) {
         }
 
         await client.query(
-          `UPDATE public.keno_rounds SET status = 'DRAWING', draw_numbers = $1,
-           drawing_ends_at = NOW() + ($2 * INTERVAL '1 second') WHERE id = $3`,
-          [draw, DRAW_SECONDS, round.id]
+          `UPDATE public.keno_rounds
+           SET status = 'DRAWING',
+               draw_numbers = $1::integer[],
+               drawn_numbers = $2::jsonb,
+               drawing_ends_at = NOW() + ($3 * INTERVAL '1 second')
+           WHERE id = $4`,
+          [draw, JSON.stringify(draw), DRAW_SECONDS, round.id]
         );
         if (io) io.emit('keno:round', { roundId: String(round.id), status: 'DRAWING', draw, drawSeconds: DRAW_SECONDS });
         await client.query('COMMIT');
