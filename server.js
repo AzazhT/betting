@@ -4,6 +4,7 @@ const path = require('path');
 const { Server } = require('socket.io');
 const { Pool } = require('pg');
 const cors = require('cors');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const app = express();
@@ -77,6 +78,118 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log(`ተጫዋች ወጥቷል: ${socket.id}`);
   });
+});
+
+/*
+ * ONE-TIME TEST CREDIT
+ * Fixed Telegram ID and amount.
+ * Requires ADMIN_TEST_KEY in Render Environment.
+ */
+app.post('/api/admin/test-credit', async (req, res) => {
+  const configuredKey = process.env.ADMIN_TEST_KEY;
+  const providedKey = req.get('x-admin-test-key') || '';
+
+  if (!configuredKey || !providedKey) {
+    return res.status(401).json({
+      success: false,
+      message: 'Unauthorized'
+    });
+  }
+
+  const expected = Buffer.from(configuredKey);
+  const supplied = Buffer.from(providedKey);
+
+  if (
+    expected.length !== supplied.length ||
+    !crypto.timingSafeEqual(expected, supplied)
+  ) {
+    return res.status(401).json({
+      success: false,
+      message: 'Unauthorized'
+    });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // A fixed reference prevents this test credit being applied twice.
+    const reference = 'test-credit-686733543-v1';
+
+    const previous = await client.query(
+      `SELECT id FROM public.transactions
+       WHERE reference = $1`,
+      [reference]
+    );
+
+    if (previous.rowCount > 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({
+        success: false,
+        message: 'This test credit has already been applied.'
+      });
+    }
+
+    const userResult = await client.query(
+      `SELECT id, telegram_id, name, balance, bonus_balance
+       FROM public.users
+       WHERE telegram_id = $1
+       FOR UPDATE`,
+      ['686733543']
+    );
+
+    if (userResult.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        success: false,
+        message: 'Telegram user not found.'
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    const updated = await client.query(
+      `UPDATE public.users
+       SET balance = balance + 5000.00,
+           updated_at = NOW()
+       WHERE id = $1
+       RETURNING telegram_id, name, balance, bonus_balance`,
+      [user.id]
+    );
+
+    await client.query(
+      `INSERT INTO public.transactions
+       (user_id, type, amount, status, reference, description)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        user.id,
+        'test_credit',
+        5000.00,
+        'approved',
+        reference,
+        'One-time administrative test credit'
+      ]
+    );
+
+    await client.query('COMMIT');
+
+    return res.json({
+      success: true,
+      message: 'Test credit applied successfully.',
+      user: updated.rows[0]
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Test credit error:', err.message);
+
+    return res.status(500).json({
+      success: false,
+      message: 'Test credit failed. Check server logs.'
+    });
+  } finally {
+    client.release();
+  }
 });
 
 const PORT = Number(process.env.PORT) || 10000;
