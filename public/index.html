@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#071b18">
-  <title>Ethiopia Games</title>
+  <title>Eshetu Games</title>
 
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
@@ -879,4 +879,130 @@
     document.getElementById('moneyRequestForm').addEventListener('submit', async function(event) {
       event.preventDefault();
 
-      const message = document.
+      const message = document.getElementById('moneyMessage');
+      const button = document.getElementById('moneySubmit');
+      const amount = Number(document.getElementById('moneyAmount').value);
+
+      const isDeposit = currentTransactionType === 'deposit';
+      const paymentMethod = isDeposit
+        ? document.getElementById('paymentMethod').value
+        : document.getElementById('withdrawMethod').value;
+
+      const reference = isDeposit
+        ? document.getElementById('paymentReference').value.trim()
+        : '';
+
+      const accountDetails = isDeposit
+        ? ''
+        : document.getElementById('withdrawAccount').value.trim();
+
+      if (!telegramUser?.id) {
+        message.textContent = 'እባክዎ በTelegram Web App ውስጥ ይክፈቱ።';
+        return;
+      }
+
+      if (!Number.isFinite(amount) || amount < 50 || amount > 100000) {
+        message.textContent = 'ከ50 እስከ 100,000 ብር ያለ መጠን ያስገቡ።';
+        return;
+      }
+
+      if (isDeposit && !reference) {
+        message.textContent = 'የክፍያ Reference ቁጥር ያስገቡ።';
+        return;
+      }
+
+      if (!isDeposit && !accountDetails) {
+        message.textContent = 'ገንዘቡ የሚላክበትን የTelebirr ወይም የባንክ መለያ ያስገቡ።';
+        return;
+      }
+
+      button.disabled = true;
+      message.textContent = 'ጥያቄውን በመላክ ላይ...';
+
+      try {
+        const response = await fetch('/api/wallet/request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            telegram_id: String(telegramUser.id),
+            request_type: currentTransactionType,
+            amount,
+            payment_method: paymentMethod,
+            reference,
+            account_details: accountDetails
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'ጥያቄው አልተሳካም።');
+        }
+
+        message.textContent = isDeposit
+          ? 'የDeposit ጥያቄዎ ተልኳል። አድሚን እስኪያረጋግጥ ይጠብቁ።'
+          : 'የWithdraw ጥያቄዎ ተልኳል። እስኪጸድቅ ይጠብቁ።';
+
+        document.getElementById('moneyRequestForm').reset();
+      } catch (error) {
+        message.textContent = error.message || 'የኔትወርክ ችግር ተፈጥሯል። እንደገና ይሞክሩ።';
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') closeSection();
+    });
+
+    async function connectTelegram() {
+      if (!tg) {
+        accountEl.textContent = 'Browser Preview';
+        return;
+      }
+
+      tg.ready();
+      tg.expand();
+
+      const user = tg.initDataUnsafe?.user;
+      telegramUser = user || null;
+
+      if (!user?.id) {
+        accountEl.textContent = 'Telegram user unavailable';
+        return;
+      }
+
+      accountEl.textContent = user.first_name || 'Telegram User';
+
+      try {
+        const response = await fetch('/api/wallet/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            telegram_id: String(user.id),
+            name: user.first_name || '',
+            username: user.username || '',
+            phone: null
+          })
+        });
+
+        if (!response.ok) {
+          console.warn('Wallet sync returned:', response.status);
+          return;
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.user) {
+          cashBalanceEl.textContent = showMoney(result.user.balance);
+          bonusBalanceEl.textContent = showMoney(result.user.bonus_balance);
+        }
+      } catch (error) {
+        console.error('Wallet sync failed:', error);
+      }
+    }
+
+    connectTelegram();
+  </script>
+</body>
+</html>
