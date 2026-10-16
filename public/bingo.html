@@ -397,17 +397,17 @@
 
         async function fetchUserData() {
             try {
-                const res = await fetch('/api/get-user', {
+                const res = await fetch('/api/wallet/sync', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier: currentUser.id, name: currentUser.first_name, username: currentUser.username })
+                    body: JSON.stringify({ telegram_id: currentUser.id, name: currentUser.first_name, username: currentUser.username })
                 });
                 const data = await res.json();
                 if(data.success && data.user) {
-                    userWallet = parseFloat(data.user.balance);
+                    userWallet = parseFloat(data.user.balance || 0);
                     updateHeaderStats();
                     document.getElementById('profName').innerText = data.user.name || currentUser.first_name;
-                    document.getElementById('profId').innerText = data.user.identifier || currentUser.id;
+                    document.getElementById('profId').innerText = data.user.telegram_id || currentUser.id;
                     if (data.user.phone) {
                         document.getElementById('profPhone').innerText = data.user.phone;
                         document.getElementById('btnSharePhone').style.display = 'none';
@@ -501,8 +501,7 @@
         });
 
         socket.on('gameOver', (data) => {
-            // Refresh the shared wallet balance after the server settles the round.
-            setTimeout(() => fetchUserData(), 500);
+            fetchUserData();
             document.getElementById('winnerSubText').innerText = data.subtitle || "አሸናፊ ተገኝቷል!";
             document.getElementById('modalWinnerName').innerText = data.winnerName || "Winner";
             document.getElementById('modalBoardNumText').innerText = `Board ${data.boardNumber || selectedCardId}`;
