@@ -13,16 +13,7 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = String(process.env.ADMIN_TELEGRAM_ID || '686733543');
 const ADMIN_API_TOKEN = process.env.ADMIN_API_TOKEN;
 const WEB_APP_URL = process.env.WEB_APP_URL;
-const keyboard = {
-  inline_keyboard: [[
-    {
-      text: '🎮 Open App',
-      web_app: {
-        url: 'https://betting-1-wsrp.onrender.com'
-      }
-    }
-  ]]
-};
+
 let bot = null;
 
 if (BOT_TOKEN) {
@@ -54,111 +45,6 @@ if (BOT_TOKEN) {
     }
   });
 
-  // Handle admin inline button callbacks for approving/rejecting requests directly from Telegram
-  bot.on('callback_query', async (query) => {
-    const chatId = query.message.chat.id;
-    const data = query.data; // e.g. "approve_12" or "reject_12"
-
-    if (String(chatId) !== ADMIN_ID) {
-      await bot.answerCallbackQuery(query.id, { text: 'Unauthorized', show_alert: true });
-      return;
-    }
-
-    const [action, requestId] = data.split('_');
-    if (!action || !requestId) return;
-
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-
-      const requestResult = await client.query(
-        `SELECT * FROM wallet_requests WHERE id = $1 FOR UPDATE`,
-        [requestId]
-      );
-
-      if (!requestResult.rows.length) {
-        await client.query('ROLLBACK');
-        await bot.answerCallbackQuery(query.id, { text: 'Request not found.', show_alert: true });
-        return;
-      }
-
-      const request = requestResult.rows[0];
-
-      if (request.status !== 'pending') {
-        await client.query('ROLLBACK');
-        await bot.answerCallbackQuery(query.id, { text: 'This request has already been reviewed.', show_alert: true });
-        return;
-      }
-
-      const userResult = await client.query(
-        `SELECT telegram_id, balance FROM users WHERE telegram_id = $1 FOR UPDATE`,
-        [request.telegram_id]
-      );
-
-      if (!userResult.rows.length) {
-        await client.query('ROLLBACK');
-        await bot.answerCallbackQuery(query.id, { text: 'User wallet not found.', show_alert: true });
-        return;
-      }
-
-      const amount = Number(request.amount);
-      const balance = Number(userResult.rows[0].balance);
-      const reviewAction = action === 'approve' ? 'approve' : 'reject';
-
-      if (reviewAction === 'approve') {
-        if (request.request_type === 'deposit') {
-          await client.query(
-            `UPDATE users SET balance = balance + $1 WHERE telegram_id = $2`,
-            [amount, request.telegram_id]
-          );
-        } else {
-          const pendingResult = await client.query(
-            `SELECT COALESCE(SUM(amount), 0) AS pending_total
-             FROM wallet_requests
-             WHERE telegram_id = $1 AND request_type = 'withdraw' AND status = 'pending' AND id <> $2`,
-            [request.telegram_id, request.id]
-          );
-          const otherPending = Number(pendingResult.rows[0].pending_total);
-          if (amount > balance - otherPending) {
-            await client.query('ROLLBACK');
-            await bot.answerCallbackQuery(query.id, { text: 'Insufficient available balance to approve withdrawal.', show_alert: true });
-            return;
-          }
-          await client.query(
-            `UPDATE users SET balance = balance - $1 WHERE telegram_id = $2`,
-            [amount, request.telegram_id]
-          );
-        }
-      }
-
-      const newStatus = reviewAction === 'approve' ? 'approved' : 'rejected';
-
-      await client.query(
-        `UPDATE wallet_requests SET status = $1, reviewed_at = NOW(), admin_note = $2 WHERE id = $3`,
-        [newStatus, 'Processed via Telegram Bot Button', request.id]
-      );
-
-      await client.query('COMMIT');
-
-      await bot.answerCallbackQuery(query.id, { text: `Request #${requestId} ${newStatus} successfully!` });
-      await bot.editMessageText(
-        query.message.text + `\n\n🟢 **Status: ${newStatus.toUpperCase()}**`,
-        {
-          chat_id: chatId,
-          message_id: query.message.message_id,
-          parse_mode: 'Markdown',
-          reply_markup: { inline_keyboard: [] }
-        }
-      );
-    } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
-      console.error('Telegram callback error:', err.message);
-      await bot.answerCallbackQuery(query.id, { text: 'Error processing action.', show_alert: true });
-    } finally {
-      client.release();
-    }
-  });
-
   bot.on('polling_error', (err) => {
     console.error('Telegram polling error:', err.message);
   });
@@ -185,15 +71,15 @@ const pool = new Pool({
 // Wallet routes initialized with notifyAdmin callback
 const walletRoutes = require('./routes/wallet')(pool, {
   notifyAdmin: async (message, keyboard) => {
-    if (!bot) return;
-    try {
-      await bot.sendMessage(ADMIN_ID, message, {
-        reply_markup: keyboard,
-        parse_mode: 'HTML'
-      });
-    } catch (err) {
-      console.error('Admin notification send error:', err.message);
+    if (!bot) {
+      throw new Error('Telegram bot is not initialized');
     }
+
+    await bot.sendMessage(
+      String(process.env.ADMIN_TELEGRAM_ID || '686733543'),
+      message,
+      { reply_markup: keyboard, parse_mode: 'HTML' }
+    );
   }
 });
 
@@ -277,6 +163,81 @@ io.on('connection', (socket) => {
     console.log(`ተጫዋች ወጥቷል: ${socket.id}`);
   });
 });
+
+// --- TELEGRAM ADMIN CALLBACK QUERY HANDLER ---
+if (bot) {
+  bot.on('callback_query', async (query) => {
+    const adminId = String(
+      process.env.ADMIN_TELEGRAM_ID || '686733543'
+    );
+
+    if (String(query.from.id) !== adminId) {
+      await bot.answerCallbackQuery(query.id, {
+        text: 'You are not authorized.',
+        show_alert: true
+      });
+      return;
+    }
+
+    const match = /^wallet:(approve|reject):(\d+)$/.exec(
+      query.data || ''
+    );
+
+    if (!match) {
+      await bot.answerCallbackQuery(query.id, {
+        text: 'Unknown action.'
+      });
+      return;
+    }
+
+    const action = match[1];
+    const requestId = match[2];
+    const port = process.env.PORT || 10000;
+
+    try {
+      const response = await fetch(
+        `http://127.0.0.1:${port}/api/wallet/admin/requests/${requestId}/review`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.ADMIN_API_TOKEN}`
+          },
+          body: JSON.stringify({ action })
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        await bot.answerCallbackQuery(query.id, {
+          text: result.error || 'Could not review request.',
+          show_alert: true
+        });
+        return;
+      }
+
+      await bot.answerCallbackQuery(query.id, {
+        text: action === 'approve' ? 'Approved' : 'Rejected'
+      });
+
+      await bot.editMessageText(
+        `${query.message.text}\n\n${action === 'approve' ? '✅ APPROVED' : '❌ REJECTED'}\nRequest ID: ${requestId}`,
+        {
+          chat_id: query.message.chat.id,
+          message_id: query.message.message_id
+        }
+      );
+    } catch (err) {
+      console.error('Wallet callback error:', err.message);
+
+      await bot.answerCallbackQuery(query.id, {
+        text: 'Server error. Please try again.',
+        show_alert: true
+      }).catch(() => {});
+    }
+  });
+}
 
 /*
  * ONE-TIME TEST CREDIT
