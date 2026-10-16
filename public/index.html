@@ -503,11 +503,11 @@
         <div style="display: flex; align-items: center; gap: 15px;">
           <div class="promo-car-container">
             <img
-  src="/images/byd-seagull.png"
-  alt="BYD Seagull"
-  class="real-byd-img"
-  loading="eager"
-/>
+              src="/images/byd-seagull.png"
+              alt="BYD Seagull"
+              class="real-byd-img"
+              loading="eager"
+            />
           </div>
           <div>
             <span class="promo-badge">✦ BYD መኪና ዕጣ</span>
@@ -673,10 +673,21 @@
 
           <form id="moneyRequestForm">
             <label for="moneyAmount">Amount (ETB)</label>
-            <input id="moneyAmount" type="number" min="1" max="100000"
-                   step="0.01" required placeholder="ለምሳሌ 100">
+            <input id="moneyAmount" type="number" min="50" max="100000"
+                   step="0.01" required placeholder="ቢያንስ 50 ብር">
 
             <div id="depositOptions">
+              <div style="padding:14px; margin:10px 0; border-radius:12px; background:#f2f8f5; color:#153c2b;">
+                <strong>Telebirr Deposit</strong>
+                <p style="margin:8px 0;">የባለቤት ስም፦ Ayesh</p>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                  <strong id="telebirrNumber">0901494600</strong>
+                  <button type="button" class="wallet-action"
+                    onclick="copyTelebirrNumber()" style="margin-top:0; padding:8px 12px; font-size:13px; width:auto;">📋 Copy Number</button>
+                </div>
+                <p id="copyMessage" role="status" style="margin-bottom:0; margin-top:6px; font-size:12px;"></p>
+              </div>
+
               <label for="paymentMethod">የክፍያ ዘዴ</label>
               <select id="paymentMethod">
                 <option value="Telebirr">Telebirr</option>
@@ -841,6 +852,30 @@
       document.getElementById('moneyMessage').textContent = '';
     }
 
+    async function copyTelebirrNumber() {
+      const number = '0901494600';
+      const message = document.getElementById('copyMessage');
+
+      try {
+        await navigator.clipboard.writeText(number);
+        message.textContent = 'ቁጥሩ ተቀድቷል!';
+      } catch (error) {
+        const field = document.createElement('textarea');
+        field.value = number;
+        field.style.position = 'fixed';
+        field.style.opacity = '0';
+        document.body.appendChild(field);
+        field.select();
+
+        const copied = document.execCommand('copy');
+        field.remove();
+
+        message.textContent = copied
+          ? 'ቁጥሩ ተቀድቷል!'
+          : 'ቁጥሩን በእጅ ኮፒ አድርግ፦ ' + number;
+      }
+    }
+
     document.getElementById('moneyRequestForm').addEventListener('submit', async function(event) {
       event.preventDefault();
 
@@ -853,8 +888,8 @@
         return;
       }
 
-      if (!Number.isFinite(amount) || amount < 1 || amount > 100000) {
-        message.textContent = 'ከ1 እስከ 100,000 ETB ያለ ትክክለኛ መጠን ያስገቡ።';
+      if (!Number.isFinite(amount) || amount < 50 || amount > 100000) {
+        message.textContent = 'ከ50 እስከ 100,000 ETB ያለ ትክክለኛ መጠን ያስገቡ።';
         return;
       }
 
