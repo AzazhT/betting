@@ -35,6 +35,32 @@ app.use('/api/bingo', bingoRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/betting', bettingRoutes);
 
+// --- BINGO SHARED WALLET API ---
+// Uses the same public.users table and telegram_id key as /api/wallet/sync.
+app.post('/api/place-bet', async (req, res) => {
+  const identifier = String(req.body?.identifier || '').trim();
+  const amount = Number(req.body?.amount);
+  if (!identifier || !Number.isFinite(amount) || amount <= 0 || amount > 10000) {
+    return res.status(400).json({ success: false, message: 'Invalid player or bet amount.' });
+  }
+  try {
+    const result = await pool.query(
+      `UPDATE public.users SET balance = balance - $1, updated_at = NOW()
+       WHERE telegram_id = $2 AND balance >= $1
+       RETURNING balance`, [amount, identifier]
+    );
+    if (!result.rowCount) {
+      const user = await pool.query('SELECT id FROM public.users WHERE telegram_id = $1', [identifier]);
+      return res.status(user.rowCount ? 400 : 404).json({ success: false, message: user.rowCount ? 'Insufficient wallet balance.' : 'User not found. Open wallet first.' });
+    }
+    return res.json({ success: true, newBalance: Number(result.rows[0].balance) });
+  } catch (err) {
+    console.error('Bingo place-bet error:', err.message);
+    return res.status(500).json({ success: false, message: 'Could not place bet.' });
+  }
+});
+// --- END BINGO SHARED WALLET API ---
+
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -114,7 +140,6 @@ app.post('/api/admin/test-credit', async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // A fixed reference prevents this test credit being applied twice.
     const reference = 'test-credit-686733543-v1';
 
     const previous = await client.query(
