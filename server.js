@@ -13,7 +13,16 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = String(process.env.ADMIN_TELEGRAM_ID || '686733543');
 const ADMIN_API_TOKEN = process.env.ADMIN_API_TOKEN;
 const WEB_APP_URL = process.env.WEB_APP_URL;
-
+const keyboard = {
+  inline_keyboard: [[
+    {
+      text: '🎮 Open App',
+      web_app: {
+        url: 'https://betting-1-wsrp.onrender.com'
+      }
+    }
+  ]]
+};
 let bot = null;
 
 if (BOT_TOKEN) {
