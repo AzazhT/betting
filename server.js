@@ -30,7 +30,7 @@ if (BOT_TOKEN) {
         }
       : {
           inline_keyboard: [[
-            { text: '🎮 Open App', url: 'https://example.com' }
+            { text: '🎮 Open App', url: 'https://betting-1-wsrp.onrender.com' }
           ]]
         };
 
