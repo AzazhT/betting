@@ -93,7 +93,7 @@
       font-weight: 800;
     }
 
-    /* Promotional Slider Banner with Actual BYD Seagull Image */
+    /* Promotional Slider Banner */
     .promo-slider {
       position: relative;
       background: linear-gradient(135deg, #2c163b, #151029, #0d1b24);
@@ -331,7 +331,7 @@
       box-shadow: 0 5px 16px #ffd16620;
     }
 
-    /* Fixed Bottom Navigation Bar */
+    /* Fixed Bottom Navigation Bar & Modals */
     .bottom-nav {
       position: fixed;
       bottom: 0;
@@ -340,11 +340,11 @@
       background: rgba(10, 29, 25, 0.95);
       backdrop-filter: blur(10px);
       border-top: 1px solid var(--border);
-      padding: 10px 16px;
+      padding: 10px 5px;
       display: flex;
       align-items: center;
       justify-content: space-around;
-      gap: 10px;
+      gap: 4px;
       z-index: 1000;
     }
 
@@ -357,6 +357,9 @@
       font-size: 11px;
       gap: 4px;
       transition: color 0.2s;
+      flex: 1;
+      min-width: 0;
+      text-align: center;
     }
 
     .nav-item:hover, .nav-item.active {
@@ -367,18 +370,83 @@
       font-size: 18px;
     }
 
-    .deposit-pill {
-      background: var(--green);
-      color: #05251a;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-weight: 900;
-      font-size: 13px;
-      text-decoration: none;
+    .app-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: rgba(0,0,0,.78);
       display: flex;
       align-items: center;
-      gap: 4px;
-      box-shadow: 0 4px 15px rgba(32,214,139,0.3);
+      justify-content: center;
+      padding: 16px;
+      overflow-y: auto;
+    }
+
+    .app-modal-card {
+      position: relative;
+      width: 100%;
+      max-width: 440px;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: #102a25;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 20px;
+      padding: 22px;
+    }
+
+    .modal-close {
+      float: right;
+      background: #263d36;
+      border: 0;
+      color: white;
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    .wallet-action {
+      width: 100%;
+      margin-top: 12px;
+      padding: 13px;
+      border: 0;
+      border-radius: 12px;
+      background: #20d68b;
+      color: #05251a;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .withdraw-action {
+      background: #263d36;
+      color: #f3fff9;
+      border: 1px solid rgba(255,255,255,.12);
+    }
+
+    .app-modal-card label {
+      display: block;
+      margin-top: 13px;
+      margin-bottom: 6px;
+      color: #b6d0c6;
+      font-size: 13px;
+    }
+
+    .app-modal-card input,
+    .app-modal-card select {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.15);
+      background: #071b18;
+      color: white;
+      font-size: 15px;
+    }
+
+    #moneyMessage {
+      font-size: 13px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
     }
 
     .footer {
@@ -429,15 +497,18 @@
       </div>
     </section>
 
-    <!-- Promotional Slider Banner with Actual BYD Seagull Image -->
+    <!-- Promotional Slider Banner -->
     <section class="promo-slider">
       <div class="promo-slide active">
         <div style="display: flex; align-items: center; gap: 15px;">
           <div class="promo-car-container">
-            <!-- Exact BYD Seagull Car Image provided -->
-            <img src="https://www.byd.com.et/vehicles/byd/seagull/images/seagull.png" 
-                 onerror="this.onerror=null; this.src='https://www.meraev.com/assets/images/byd-seagull.png';" 
-                 alt="BYD Seagull" class="real-byd-img" />
+            <img
+              src="https://www.byd.com.et/vehicles/byd/seagull/images/seagull.png"
+              alt="BYD Seagull electric car"
+              class="real-byd-img"
+              loading="eager"
+              onerror="this.onerror=null;this.src='https://www.meraev.com/assets/images/byd-seagull.png';"
+            />
           </div>
           <div>
             <span class="promo-badge">✦ BYD መኪና ዕጣ</span>
@@ -573,26 +644,112 @@
     </footer>
   </main>
 
+  <!-- Wallet / Sections Modal -->
+  <div id="appModal" class="app-modal" style="display:none">
+    <div class="app-modal-card">
+      <button class="modal-close" onclick="closeSection()">✕</button>
+
+      <div id="sectionWallet" style="display:none">
+        <h2>👛 My Wallet</h2>
+
+        <div class="wallet">
+          <div class="wallet-label">Cash Balance</div>
+          <div class="wallet-value"><span id="modalCash">0.00</span> ETB</div>
+        </div>
+
+        <div class="wallet">
+          <div class="wallet-label">Bonus Balance</div>
+          <div class="wallet-value"><span id="modalBonus">0.00</span> ETB</div>
+        </div>
+
+        <button class="wallet-action" onclick="showTransaction('deposit')">
+          ＋ Deposit
+        </button>
+        <button class="wallet-action withdraw-action" onclick="showTransaction('withdraw')">
+          ↗ Withdraw
+        </button>
+
+        <div id="transactionForm" style="display:none">
+          <h3 id="transactionTitle">Deposit</h3>
+
+          <form id="moneyRequestForm">
+            <label for="moneyAmount">Amount (ETB)</label>
+            <input id="moneyAmount" type="number" min="1" max="100000"
+                   step="0.01" required placeholder="ለምሳሌ 100">
+
+            <div id="depositOptions">
+              <label for="paymentMethod">የክፍያ ዘዴ</label>
+              <select id="paymentMethod">
+                <option value="Telebirr">Telebirr</option>
+                <option value="Bank">Bank Transfer</option>
+              </select>
+
+              <label for="paymentReference">የክፍያ Reference</label>
+              <input id="paymentReference" maxlength="200"
+                     placeholder="የክፍያ ማረጋገጫ ቁጥር">
+            </div>
+
+            <div id="withdrawOptions" style="display:none">
+              <label for="withdrawMethod">የመቀበያ ዘዴ</label>
+              <select id="withdrawMethod">
+                <option value="Telebirr">Telebirr</option>
+                <option value="Bank">Bank Transfer</option>
+              </select>
+
+              <label for="withdrawAccount">የመቀበያ መለያ</label>
+              <input id="withdrawAccount" maxlength="100"
+                     placeholder="የስልክ ወይም የባንክ መለያ">
+            </div>
+
+            <button class="wallet-action" type="submit" id="moneySubmit">
+              Send Request
+            </button>
+            <p id="moneyMessage" role="status"></p>
+          </form>
+        </div>
+      </div>
+
+      <div id="sectionLeaderboard" style="display:none">
+        <h2>🏆 Leaderboard</h2>
+        <p>የተጫዋቾች ደረጃ ዝርዝር ከBackend ጋር ሲገናኝ ይታያል።</p>
+      </div>
+
+      <div id="sectionSupport" style="display:none">
+        <h2>🎧 Support</h2>
+        <p>ለእርዳታ የSupport መረጃዎን እዚህ ማስገባት ይችላሉ።</p>
+        <p>የእርዳታ ሊንክ ከሌለዎት እስካሁን አልተገናኘም።</p>
+      </div>
+
+      <div id="sectionProfile" style="display:none">
+        <h2>👤 Profile</h2>
+        <p>Telegram: <strong id="profileName">—</strong></p>
+        <p>User ID: <span id="profileId">—</span></p>
+        <p>Cash: <strong><span id="profileCash">0.00</span> ETB</strong></p>
+        <p>Bonus: <strong><span id="profileBonus">0.00</span> ETB</strong></p>
+      </div>
+    </div>
+  </div>
+
   <!-- Fixed Bottom Navigation Bar -->
   <nav class="bottom-nav">
-    <a href="#" class="nav-item active">
-      <span class="nav-icon">📊</span>
+    <a href="#" class="nav-item" onclick="openSection('leaderboard');return false;">
+      <span class="nav-icon">🏆</span>
       <span>Leaderboard</span>
     </a>
-    <a href="#" class="nav-item">
-      <span class="nav-icon">🎁</span>
-      <span>Promo</span>
+
+    <a href="#" class="nav-item" onclick="openSection('wallet');return false;">
+      <span class="nav-icon">👛</span>
+      <span>Wallet</span>
     </a>
-    <a href="#" class="nav-item">
+
+    <a href="#" class="nav-item" onclick="openSection('support');return false;">
       <span class="nav-icon">🎧</span>
       <span>Support</span>
     </a>
-    <a href="#" class="nav-item">
+
+    <a href="#" class="nav-item" onclick="openSection('profile');return false;">
       <span class="nav-icon">👤</span>
       <span>Profile</span>
-    </a>
-    <a href="#" class="deposit-pill">
-      <span>+ Deposit</span>
     </a>
   </nav>
 
@@ -601,6 +758,9 @@
     const accountEl = document.getElementById('account');
     const cashBalanceEl = document.getElementById('cashBalance');
     const bonusBalanceEl = document.getElementById('bonusBalance');
+
+    let currentMoneyAction = 'deposit';
+    let telegramUser = null;
 
     function showMoney(value) {
       const amount = Number(value);
@@ -634,6 +794,79 @@
       showSlide(slideIndex + 1);
     }, 5000);
 
+    function openSection(section) {
+      const modal = document.getElementById('appModal');
+      modal.style.display = 'flex';
+
+      ['Wallet', 'Leaderboard', 'Support', 'Profile'].forEach(name => {
+        document.getElementById('section' + name).style.display = 'none';
+      });
+
+      const sectionName = section.charAt(0).toUpperCase() + section.slice(1);
+      const target = document.getElementById('section' + sectionName);
+
+      if (target) target.style.display = 'block';
+
+      if (section === 'wallet') {
+        document.getElementById('modalCash').textContent =
+          document.getElementById('cashBalance').textContent;
+        document.getElementById('modalBonus').textContent =
+          document.getElementById('bonusBalance').textContent;
+      }
+
+      if (section === 'profile') {
+        document.getElementById('profileName').textContent =
+          telegramUser?.first_name || 'Telegram User';
+        document.getElementById('profileId').textContent =
+          telegramUser?.id ? String(telegramUser.id) : 'Not connected';
+        document.getElementById('profileCash').textContent =
+          document.getElementById('cashBalance').textContent;
+        document.getElementById('profileBonus').textContent =
+          document.getElementById('bonusBalance').textContent;
+      }
+    }
+
+    function closeSection() {
+      document.getElementById('appModal').style.display = 'none';
+    }
+
+    function showTransaction(action) {
+      currentMoneyAction = action;
+      document.getElementById('transactionForm').style.display = 'block';
+      document.getElementById('transactionTitle').textContent =
+        action === 'deposit' ? '＋ Deposit Request' : '↗ Withdraw Request';
+      document.getElementById('depositOptions').style.display =
+        action === 'deposit' ? 'block' : 'none';
+      document.getElementById('withdrawOptions').style.display =
+        action === 'withdraw' ? 'block' : 'none';
+      document.getElementById('moneyMessage').textContent = '';
+    }
+
+    document.getElementById('moneyRequestForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+
+      const message = document.getElementById('moneyMessage');
+      const button = document.getElementById('moneySubmit');
+      const amount = Number(document.getElementById('moneyAmount').value);
+
+      if (!telegramUser?.id) {
+        message.textContent = 'እባክዎ በTelegram Web App ውስጥ ይክፈቱ።';
+        return;
+      }
+
+      if (!Number.isFinite(amount) || amount < 1 || amount > 100000) {
+        message.textContent = 'ከ1 እስከ 100,000 ETB ያለ ትክክለኛ መጠን ያስገቡ።';
+        return;
+      }
+
+      message.textContent =
+        'የጥያቄ መቀበያ Backend ገና አልተገናኘም። ገንዘብ አልተንቀሳቀሰም።';
+    });
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') closeSection();
+    });
+
     async function connectTelegram() {
       if (!tg) {
         accountEl.textContent = 'Browser Preview';
@@ -644,6 +877,7 @@
       tg.expand();
 
       const user = tg.initDataUnsafe?.user;
+      telegramUser = user || null;
 
       if (!user?.id) {
         accountEl.textContent = 'Telegram user unavailable';
