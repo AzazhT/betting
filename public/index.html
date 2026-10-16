@@ -769,7 +769,7 @@
     const cashBalanceEl = document.getElementById('cashBalance');
     const bonusBalanceEl = document.getElementById('bonusBalance');
 
-    let currentMoneyAction = 'deposit';
+    let currentTransactionType = 'deposit';
     let telegramUser = null;
 
     function showMoney(value) {
@@ -840,15 +840,15 @@
       document.getElementById('appModal').style.display = 'none';
     }
 
-    function showTransaction(action) {
-      currentMoneyAction = action;
+    function showTransaction(type) {
+      currentTransactionType = type;
       document.getElementById('transactionForm').style.display = 'block';
       document.getElementById('transactionTitle').textContent =
-        action === 'deposit' ? '＋ Deposit Request' : '↗ Withdraw Request';
+        type === 'deposit' ? '＋ Deposit Request' : '↗ Withdraw Request';
       document.getElementById('depositOptions').style.display =
-        action === 'deposit' ? 'block' : 'none';
+        type === 'deposit' ? 'block' : 'none';
       document.getElementById('withdrawOptions').style.display =
-        action === 'withdraw' ? 'block' : 'none';
+        type === 'withdraw' ? 'block' : 'none';
       document.getElementById('moneyMessage').textContent = '';
     }
 
@@ -879,76 +879,4 @@
     document.getElementById('moneyRequestForm').addEventListener('submit', async function(event) {
       event.preventDefault();
 
-      const message = document.getElementById('moneyMessage');
-      const button = document.getElementById('moneySubmit');
-      const amount = Number(document.getElementById('moneyAmount').value);
-
-      if (!telegramUser?.id) {
-        message.textContent = 'እባክዎ በTelegram Web App ውስጥ ይክፈቱ።';
-        return;
-      }
-
-      if (!Number.isFinite(amount) || amount < 50 || amount > 100000) {
-        message.textContent = 'ከ50 እስከ 100,000 ETB ያለ ትክክለኛ መጠን ያስገቡ።';
-        return;
-      }
-
-      message.textContent =
-        'የጥያቄ መቀበያ Backend ገና አልተገናኘም። ገንዘብ አልተንቀሳቀሰም።';
-    });
-
-    document.addEventListener('keydown', event => {
-      if (event.key === 'Escape') closeSection();
-    });
-
-    async function connectTelegram() {
-      if (!tg) {
-        accountEl.textContent = 'Browser Preview';
-        return;
-      }
-
-      tg.ready();
-      tg.expand();
-
-      const user = tg.initDataUnsafe?.user;
-      telegramUser = user || null;
-
-      if (!user?.id) {
-        accountEl.textContent = 'Telegram user unavailable';
-        return;
-      }
-
-      accountEl.textContent = user.first_name || 'Telegram User';
-
-      try {
-        const response = await fetch('/api/wallet/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            telegram_id: String(user.id),
-            name: user.first_name || '',
-            username: user.username || '',
-            phone: null
-          })
-        });
-
-        if (!response.ok) {
-          console.warn('Wallet sync returned:', response.status);
-          return;
-        }
-
-        const result = await response.json();
-
-        if (result.success && result.user) {
-          cashBalanceEl.textContent = showMoney(result.user.balance);
-          bonusBalanceEl.textContent = showMoney(result.user.bonus_balance);
-        }
-      } catch (error) {
-        console.error('Wallet sync failed:', error);
-      }
-    }
-
-    connectTelegram();
-  </script>
-</body>
-</html>
+      const message = document.
