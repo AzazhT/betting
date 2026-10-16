@@ -1,8 +1,8 @@
 const express = require('express');
+
 module.exports = function (pool, options = {}) {
-  const notifyAdmin = options.notifyAdmin;
-module.exports = function (pool) {
   const router = express.Router();
+  const notifyAdmin = options.notifyAdmin;
 
   const MIN_AMOUNT = 50;
   const MAX_AMOUNT = 100000;
