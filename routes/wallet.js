@@ -310,5 +310,197 @@ module.exports = function (pool) {
     }
   });
 
+  // Admin authentication: keep this token secret on the server.
+  function requireAdmin(req, res, next) {
+    const configuredToken = process.env.ADMIN_API_TOKEN;
+    const authHeader = req.headers.authorization || '';
+    const suppliedToken = authHeader.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : '';
+
+    if (!configuredToken || !suppliedToken ||
+        suppliedToken !== configuredToken) {
+      return res.status(403).json({
+        success: false,
+        error: 'Admin access denied'
+      });
+    }
+
+    next();
+  }
+
+  // List pending deposit and withdrawal requests for the admin.
+  router.get('/admin/requests', requireAdmin, async (req, res) => {
+    try {
+      await ensureRequestsTable();
+
+      const result = await pool.query(`
+        SELECT id, telegram_id, request_type, amount,
+               payment_method, reference, account_details,
+               status, created_at
+        FROM wallet_requests
+        WHERE status = 'pending'
+        ORDER BY created_at ASC
+        LIMIT 200
+      `);
+
+      return res.json({
+        success: true,
+        requests: result.rows
+      });
+    } catch (err) {
+      console.error('Admin request list error:', err.message);
+      return res.status(500).json({
+        success: false,
+        error: 'Could not load pending requests'
+      });
+    }
+  });
+
+  // Approve or reject one request.
+  router.post('/admin/requests/:id/review', requireAdmin, async (req, res) => {
+    const requestId = req.params.id;
+    const { action, admin_note } = req.body || {};
+
+    if (!/^\d+$/.test(requestId) ||
+        !['approve', 'reject'].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid request ID or action'
+      });
+    }
+
+    const client = await pool.connect();
+
+    try {
+      await ensureRequestsTable();
+      await client.query('BEGIN');
+
+      const requestResult = await client.query(
+        `SELECT *
+         FROM wallet_requests
+         WHERE id = $1
+         FOR UPDATE`,
+        [requestId]
+      );
+
+      if (!requestResult.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({
+          success: false,
+          error: 'Request not found'
+        });
+      }
+
+      const request = requestResult.rows[0];
+
+      if (request.status !== 'pending') {
+        await client.query('ROLLBACK');
+        return res.status(409).json({
+          success: false,
+          error: 'This request has already been reviewed'
+        });
+      }
+
+      const userResult = await client.query(
+        `SELECT telegram_id, balance
+         FROM users
+         WHERE telegram_id = $1
+         FOR UPDATE`,
+        [request.telegram_id]
+      );
+
+      if (!userResult.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({
+          success: false,
+          error: 'Wallet user not found'
+        });
+      }
+
+      const amount = Number(request.amount);
+      const balance = Number(userResult.rows[0].balance);
+
+      if (action === 'approve') {
+        if (request.request_type === 'deposit') {
+          await client.query(
+            `UPDATE users
+             SET balance = balance + $1
+             WHERE telegram_id = $2`,
+            [amount, request.telegram_id]
+          );
+        } else {
+          // Recheck funds while the user's wallet row is locked.
+          const pendingResult = await client.query(
+            `SELECT COALESCE(SUM(amount), 0) AS pending_total
+             FROM wallet_requests
+             WHERE telegram_id = $1
+               AND request_type = 'withdraw'
+               AND status = 'pending'
+               AND id <> $2`,
+            [request.telegram_id, request.id]
+          );
+
+          const otherPending = Number(
+            pendingResult.rows[0].pending_total
+          );
+
+          if (amount > balance - otherPending) {
+            await client.query('ROLLBACK');
+            return res.status(409).json({
+              success: false,
+              error: 'Insufficient available balance to approve withdrawal'
+            });
+          }
+
+          await client.query(
+            `UPDATE users
+             SET balance = balance - $1
+             WHERE telegram_id = $2`,
+            [amount, request.telegram_id]
+          );
+        }
+      }
+
+      const newStatus = action === 'approve' ? 'approved' : 'rejected';
+
+      await client.query(
+        `UPDATE wallet_requests
+         SET status = $1,
+             reviewed_at = NOW(),
+             admin_note = $2
+         WHERE id = $3`,
+        [
+          newStatus,
+          typeof admin_note === 'string'
+            ? admin_note.slice(0, 500)
+            : null,
+          request.id
+        ]
+      );
+
+      await client.query('COMMIT');
+
+      return res.json({
+        success: true,
+        message: action === 'approve'
+          ? 'Request approved and wallet updated'
+          : 'Request rejected',
+        request_id: request.id,
+        status: newStatus
+      });
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      console.error('Admin review error:', err.message);
+
+      return res.status(500).json({
+        success: false,
+        error: 'Could not review wallet request'
+      });
+    } finally {
+      client.release();
+    }
+  });
+
   return router;
 };
