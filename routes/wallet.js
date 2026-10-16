@@ -1,5 +1,6 @@
 const express = require('express');
-
+module.exports = function (pool, options = {}) {
+  const notifyAdmin = options.notifyAdmin;
 module.exports = function (pool) {
   const router = express.Router();
 
