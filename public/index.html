@@ -23,11 +23,10 @@
 
     body {
       margin: 0;
-      padding: 20px;
+      padding: 20px 20px 90px 20px;
       font-family: Arial, sans-serif;
       color: var(--text);
-      background:
-        radial-gradient(ellipse at top, #143b30 0%, var(--bg) 58%);
+      background: radial-gradient(ellipse at top, #143b30 0%, var(--bg) 58%);
       min-height: 100vh;
     }
 
@@ -42,7 +41,7 @@
       justify-content: space-between;
       flex-wrap: wrap;
       gap: 14px;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
 
     .brand {
@@ -68,29 +67,143 @@
       font-size: 13px;
     }
 
+    /* Wallets Section at Top */
     .wallets {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 14px;
-      margin-bottom: 28px;
+      margin-bottom: 20px;
     }
 
     .wallet {
       background: linear-gradient(135deg, #163b30, #10271f);
       border: 1px solid var(--border);
       border-radius: 18px;
-      padding: 20px;
+      padding: 18px;
     }
 
     .wallet-label {
       color: var(--muted);
       font-size: 13px;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
     .wallet-value {
-      font-size: 27px;
+      font-size: 26px;
       font-weight: 800;
+    }
+
+    /* Promotional Slider Banner with Actual BYD Seagull Image */
+    .promo-slider {
+      position: relative;
+      background: linear-gradient(135deg, #2c163b, #151029, #0d1b24);
+      border: 1px solid rgba(255, 209, 102, 0.4);
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 24px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+
+    .promo-slide {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+    }
+
+    .promo-slide.active {
+      display: flex;
+      animation: fadeIn 0.5s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .promo-car-container {
+      width: 120px;
+      height: 80px;
+      flex-shrink: 0;
+      background: radial-gradient(circle, rgba(255, 209, 102, 0.3) 0%, transparent 75%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+      padding: 4px;
+    }
+
+    .real-byd-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 6px 12px rgba(0,0,0,0.6));
+    }
+
+    .promo-content h3 {
+      margin: 0 0 6px;
+      font-size: 20px;
+      color: #ffe1a0;
+      font-weight: 900;
+    }
+
+    .promo-content p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .promo-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #ffe7a1, #d99b2b);
+      color: #382500;
+      font-size: 11px;
+      font-weight: 900;
+      padding: 4px 10px;
+      border-radius: 20px;
+      margin-bottom: 8px;
+    }
+
+    .slider-arrow {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid var(--border);
+      color: #fff;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+
+    .slider-arrow:hover {
+      background: rgba(255,255,255,0.25);
+    }
+
+    .slider-dots {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .dot-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      cursor: pointer;
+      transition: background 0.3s, width 0.3s;
+    }
+
+    .dot-indicator.active {
+      background: #ffd166;
+      width: 20px;
+      border-radius: 4px;
     }
 
     .section-title {
@@ -218,6 +331,56 @@
       box-shadow: 0 5px 16px #ffd16620;
     }
 
+    /* Fixed Bottom Navigation Bar */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(10, 29, 25, 0.95);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      gap: 10px;
+      z-index: 1000;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 11px;
+      gap: 4px;
+      transition: color 0.2s;
+    }
+
+    .nav-item:hover, .nav-item.active {
+      color: var(--green);
+    }
+
+    .nav-icon {
+      font-size: 18px;
+    }
+
+    .deposit-pill {
+      background: var(--green);
+      color: #05251a;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: 900;
+      font-size: 13px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      box-shadow: 0 4px 15px rgba(32,214,139,0.3);
+    }
+
     .footer {
       text-align: center;
       margin-top: 32px;
@@ -230,7 +393,7 @@
     }
 
     @media (max-width: 480px) {
-      body { padding: 14px; }
+      body { padding: 14px 14px 90px 14px; }
       .brand { font-size: 21px; }
       .games { gap: 10px; }
       .game { padding: 14px; min-height: 210px; }
@@ -238,6 +401,8 @@
       .game p { font-size: 12px; }
       .wallet { padding: 15px; }
       .wallet-value { font-size: 22px; }
+      .promo-slider { padding: 16px; }
+      .promo-content h3 { font-size: 17px; }
     }
   </style>
 </head>
@@ -252,6 +417,7 @@
       <div class="account" id="account">Connecting to Telegram…</div>
     </header>
 
+    <!-- Wallets Section at Top -->
     <section class="wallets">
       <div class="wallet">
         <div class="wallet-label">Cash Balance</div>
@@ -260,6 +426,50 @@
       <div class="wallet">
         <div class="wallet-label">Bonus Balance</div>
         <div class="wallet-value"><span id="bonusBalance">0.00</span> ETB</div>
+      </div>
+    </section>
+
+    <!-- Promotional Slider Banner with Actual BYD Seagull Image -->
+    <section class="promo-slider">
+      <div class="promo-slide active">
+        <div style="display: flex; align-items: center; gap: 15px;">
+          <div class="promo-car-container">
+            <!-- Exact BYD Seagull Car Image provided -->
+            <img src="https://www.byd.com.et/vehicles/byd/seagull/images/seagull.png" 
+                 onerror="this.onerror=null; this.src='https://www.meraev.com/assets/images/byd-seagull.png';" 
+                 alt="BYD Seagull" class="real-byd-img" />
+          </div>
+          <div>
+            <span class="promo-badge">✦ BYD መኪና ዕጣ</span>
+            <div class="promo-content">
+              <h3>1000 ብር = 1 ቲኬት</h3>
+              <p>አዲስ ዘመናዊ BYD መኪና የማሸነፍ እድልዎን አሁኑኑ ቲኬት በመቁረጥ ይጀምሩ!</p>
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <button class="slider-arrow" onclick="changeSlide(-1)">❮</button>
+          <button class="slider-arrow" onclick="changeSlide(1)">❯</button>
+        </div>
+      </div>
+
+      <div class="promo-slide">
+        <div>
+          <span class="promo-badge">🏆 DAILY TOURNAMENT</span>
+          <div class="promo-content">
+            <h3>የዕለቱ ከፍተኛ ተሸላሚዎች</h3>
+            <p>1ኛ: 20,000 ብር | 2ኛ: 10,000 ብር | 3ኛ: 5,000 ብር</p>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <button class="slider-arrow" onclick="changeSlide(-1)">❮</button>
+          <button class="slider-arrow" onclick="changeSlide(1)">❯</button>
+        </div>
+      </div>
+
+      <div class="slider-dots">
+        <span class="dot-indicator active" onclick="currentSlide(0)"></span>
+        <span class="dot-indicator" onclick="currentSlide(1)"></span>
       </div>
     </section>
 
@@ -363,6 +573,29 @@
     </footer>
   </main>
 
+  <!-- Fixed Bottom Navigation Bar -->
+  <nav class="bottom-nav">
+    <a href="#" class="nav-item active">
+      <span class="nav-icon">📊</span>
+      <span>Leaderboard</span>
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">🎁</span>
+      <span>Promo</span>
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">🎧</span>
+      <span>Support</span>
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">👤</span>
+      <span>Profile</span>
+    </a>
+    <a href="#" class="deposit-pill">
+      <span>+ Deposit</span>
+    </a>
+  </nav>
+
   <script>
     const tg = window.Telegram?.WebApp;
     const accountEl = document.getElementById('account');
@@ -373,6 +606,33 @@
       const amount = Number(value);
       return Number.isFinite(amount) ? amount.toFixed(2) : '0.00';
     }
+
+    /* Slider Carousel Script */
+    let slideIndex = 0;
+    const slides = document.querySelectorAll('.promo-slide');
+    const dots = document.querySelectorAll('.dot-indicator');
+
+    function showSlide(n) {
+      slides.forEach(slide => slide.classList.remove('active'));
+      dots.forEach(dot => dot.classList.remove('active'));
+      
+      slideIndex = (n + slides.length) % slides.length;
+      slides[slideIndex].classList.add('active');
+      dots[slideIndex].classList.add('active');
+    }
+
+    function changeSlide(n) {
+      showSlide(slideIndex + n);
+    }
+
+    function currentSlide(n) {
+      showSlide(n);
+    }
+
+    // Auto-slide every 5 seconds
+    setInterval(() => {
+      showSlide(slideIndex + 1);
+    }, 5000);
 
     async function connectTelegram() {
       if (!tg) {
