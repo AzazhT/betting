@@ -265,10 +265,52 @@ module.exports = function (pool, options = {}) {
 
       await client.query('COMMIT');
 
+      const request = result.rows[0];
+
+      if (typeof notifyAdmin === 'function') {
+        const details = request_type === 'deposit'
+          ? `Payment reference: ${String(reference || '').trim()}`
+          : `Withdrawal account: ${String(account_details || '').trim()}`;
+
+        const message = [
+          '💳 NEW WALLET REQUEST',
+          '',
+          `Request ID: ${request.id}`,
+          `Type: ${request_type.toUpperCase()}`,
+          `Amount: ${Number(amount).toFixed(2)} ETB`,
+          `Telegram ID: ${telegram_id}`,
+          `Method: ${payment_method}`,
+          details
+        ].join('\n');
+
+        const keyboard = {
+          inline_keyboard: [[
+            {
+              text: '✅ Approve',
+              callback_data: `wallet:approve:${request.id}`
+            },
+            {
+              text: '❌ Reject',
+              callback_data: `wallet:reject:${request.id}`
+            }
+          ]]
+        };
+
+        try {
+          await notifyAdmin(message, keyboard);
+        } catch (notifyError) {
+          // The request is already saved; don't report it as failed.
+          console.error(
+            'Admin Telegram notification failed:',
+            notifyError.message
+          );
+        }
+      }
+
       return res.status(201).json({
         success: true,
         message: 'Request submitted. It is pending review.',
-        request: result.rows[0]
+        request
       });
     } catch (err) {
       await client.query('ROLLBACK').catch(() => {});
