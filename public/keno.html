@@ -5,8 +5,8 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 :root{--bg:#0a120e;--panel:#121e17;--panel2:#1a2a21;--muted:#819e8f;--text:#f2f7f4;--gold:#f3bc3d;--gold-light:#ffe6a0;--gold-dark:#c19220;--green:#20d68b;--green-glow:#00ff88;--red:#ff5c5c;--line:#223b2e}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,var(--panel),var(--bg));color:var(--text);font:12px/1.3 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding-bottom:10px;overflow-x:hidden}
-.app{width:min(100%,480px);margin:auto;padding:6px 10px 10px}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,var(--panel),var(--bg));color:var(--text);font:12px/1.3 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:6px 10px 80px 10px;overflow-x:hidden}
+.app{width:min(100%,480px);margin:auto}
 .topbar,.wallet,.head,.stake-row{display:flex;align-items:center;justify-content:space-between;gap:6px}
 .topbar{margin-bottom:6px}.brand{display:flex;align-items:center;gap:6px;color:var(--text);text-decoration:none}
 .logo{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:#171203;font-weight:900;box-shadow:0 3px 10px rgba(243,188,61,0.3)}
@@ -66,8 +66,15 @@
 .won{color:var(--green);font-weight:800}
 .lost{color:var(--red);font-weight:800}
 .empty{text-align:center;padding:10px 0;color:var(--muted)}
-.notice{position:fixed;left:50%;bottom:15px;transform:translateX(-50%);width:max-content;max-width:90vw;background:#ffe6a0;color:#171203;border-radius:8px;padding:8px 12px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:1000;font-weight:800;text-align:center;box-shadow:0 5px 20px rgba(0,0,0,0.5)}
+.notice{position:fixed;left:50%;bottom:75px;transform:translateX(-50%);width:max-content;max-width:90vw;background:#ffe6a0;color:#171203;border-radius:8px;padding:8px 12px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:1000;font-weight:800;text-align:center;box-shadow:0 5px 20px rgba(0,0,0,0.5)}
 .notice.show{opacity:1}.notice.error{background:var(--red);color:#fff}
+
+/* Fixed Bottom Navigation Bar */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(10,29,25,0.95);backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:8px 16px;display:flex;align-items:center;justify-content:space-around;gap:8px;z-index:1000}
+.nav-item{display:flex;flex-direction:column;align-items:center;color:var(--muted);text-decoration:none;font-size:10px;gap:3px;transition:color 0.2s}
+.nav-item:hover,.nav-item.active{color:var(--green)}
+.nav-icon{font-size:16px}
+.deposit-pill{background:var(--green);color:#05251a;padding:6px 14px;border-radius:18px;font-weight:900;font-size:12px;text-decoration:none;display:flex;align-items:center;gap:4px;box-shadow:0 4px 15px rgba(32,214,139,0.3)}
 </style></head>
 <body><main class="app">
 <header class="topbar"><a href="/" class="brand"><div class="logo">K</div><div><strong>FAST KENO</strong><small>Ethio Lottery Style</small></div></a><a href="/" class="home">↩️ መመለሻ</a></header>
@@ -119,6 +126,25 @@
 </nav>
 
 <section class="card"><div class="head"><h2 id="listTitle">የእርስዎ ቲኬቶች እና ተጫዋቾች (Active)</h2><span class="pill" id="listCount">0</span></div><div id="ticketList"><div class="empty">ቲኬቶች እየተጫኑ ነው...</div></div></section></main><div class="notice" id="notice" role="status" aria-live="polite"></div>
+
+<!-- Fixed Bottom Navigation Bar -->
+<nav class="bottom-nav">
+  <a href="/" class="nav-item">
+    <span class="nav-icon">🏠</span>
+    <span>Home</span>
+  </a>
+  <a href="/keno.html" class="nav-item active">
+    <span class="nav-icon">🎯</span>
+    <span>Game</span>
+  </a>
+  <a href="#" class="deposit-pill">
+    <span>+ Deposit</span>
+  </a>
+  <a href="#" class="nav-item">
+    <span class="nav-icon">👤</span>
+    <span>Profile</span>
+  </a>
+</nav>
 
 <script>
 (() => {
