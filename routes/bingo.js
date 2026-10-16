@@ -15,8 +15,6 @@ module.exports = function(pool, io) {
     }
 
     let activeRooms = {};
-    // Wallet settlement is guarded per room so a round cannot pay twice.
-
 
     function getActivePlayersCount(room) {
         let activeSocketIds = new Set();
@@ -49,8 +47,6 @@ module.exports = function(pool, io) {
                 status: 'waiting',
                 players: new Set(),
                 playerNames: {},
-                playerTelegramIds: {},
-                payoutDone: false,
                 selectedBoards: {},
                 tempSelections: {},
                 drawnNumbers: [],
@@ -70,8 +66,6 @@ module.exports = function(pool, io) {
         if (!room) return;
 
         room.drawnNumbers = [];
-        room.payoutDone = false;
-        room.playerTelegramIds = {};
         room.selectedBoards = {};
         room.tempSelections = {};
         room.status = 'waiting';
@@ -227,49 +221,30 @@ module.exports = function(pool, io) {
         });
 
         socket.on('startPlayerGame', (data) => {
-            const { roomId, boardNumber, name, identifier } = data;
+            const { roomId, boardNumber, name } = data;
             let room = activeRooms[roomId];
             if (room && room.status === 'waiting' && !room.selectedBoards[boardNumber]) {
                 room.selectedBoards[boardNumber] = socket.id;
                 room.playerNames[socket.id] = name || 'Player';
-                if (identifier !== undefined && identifier !== null) room.playerTelegramIds[socket.id] = String(identifier);
                 io.to(roomId).emit('boardSelected', { boardNumber, socketId: socket.id });
                 socket.emit('gameJoinSuccess', { boardNumber });
             }
         });
 
-        socket.on('claimBingo', async (data) => {
-            const { roomId, boardNumber } = data || {};
+        socket.on('claimBingo', (data) => {
+            const { roomId, boardNumber } = data;
             let room = activeRooms[roomId];
-            // Only the socket that owns the selected board can claim it.
-            if (!room || room.status !== 'playing' || room.payoutDone || String(room.selectedBoards[boardNumber]) !== String(socket.id)) return;
-            room.status = 'ended';
-            room.payoutDone = true;
-            if (room.gameInterval) clearInterval(room.gameInterval);
-            const winAmount = calculatePrizePool(room);
-            const identifier = room.playerTelegramIds[socket.id];
-            let walletPaid = false;
-            try {
-                // users.telegram_id is the shared-wallet key used by routes/wallet.js.
-                if (identifier && Number.isFinite(Number(winAmount)) && Number(winAmount) > 0) {
-                    const result = await pool.query(
-                        'UPDATE users SET balance = COALESCE(balance, 0) + $1 WHERE telegram_id = $2 RETURNING balance',
-                        [winAmount, identifier]
-                    );
-                    walletPaid = result.rowCount === 1;
-                    if (!walletPaid) console.error('Bingo wallet payout skipped: user not found for Telegram ID');
-                }
-            } catch (err) {
-                console.error('Bingo wallet payout failed:', err.message);
+            if (room && room.status === 'playing') {
+                room.status = 'ended';
+                if (room.gameInterval) clearInterval(room.gameInterval);
+                io.to(roomId).emit('gameOver', {
+                    subtitle: 'አሸናፊ ተገኝቷል!',
+                    winnerName: room.playerNames[socket.id] || 'Player',
+                    boardNumber: boardNumber,
+                    winAmount: calculatePrizePool(room)
+                });
+                setTimeout(() => resetRoomForNextGame(roomId), 3000);
             }
-            io.to(roomId).emit('gameOver', {
-                subtitle: 'አሸናፊ ተገኝቷል!',
-                winnerName: room.playerNames[socket.id] || 'Player',
-                boardNumber: boardNumber,
-                winAmount: winAmount,
-                walletPaid: walletPaid
-            });
-            setTimeout(() => resetRoomForNextGame(roomId), 3000);
         });
     });
 
