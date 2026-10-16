@@ -164,18 +164,24 @@ io.on('connection', (socket) => {
   });
 });
 
-// --- TELEGRAM ADMIN CALLBACK QUERY HANDLER ---
+/* --- TELEGRAM ADMIN APPROVE / REJECT --- */
 if (bot) {
   bot.on('callback_query', async (query) => {
+    // Telegram የሚሽከረከረው ምልክት እንዲቆም ወዲያውኑ መልስ
+    try {
+      await bot.answerCallbackQuery(query.id, {
+        text: 'ጥያቄዎ ተቀብሏል። እየተሰራ ነው...'
+      });
+    } catch (err) {
+      console.error('Callback acknowledgement error:', err.message);
+    }
+
     const adminId = String(
       process.env.ADMIN_TELEGRAM_ID || '686733543'
     );
 
     if (String(query.from.id) !== adminId) {
-      await bot.answerCallbackQuery(query.id, {
-        text: 'You are not authorized.',
-        show_alert: true
-      });
+      console.warn('Unauthorized wallet callback:', query.from.id);
       return;
     }
 
@@ -184,60 +190,100 @@ if (bot) {
     );
 
     if (!match) {
-      await bot.answerCallbackQuery(query.id, {
-        text: 'Unknown action.'
-      });
+      console.warn('Unknown Telegram callback:', query.data);
       return;
     }
 
     const action = match[1];
     const requestId = match[2];
-    const port = process.env.PORT || 10000;
+    const port = Number(process.env.PORT) || 10000;
 
     try {
+      if (!ADMIN_API_TOKEN) {
+        throw new Error('ADMIN_API_TOKEN is missing');
+      }
+
       const response = await fetch(
         `http://127.0.0.1:${port}/api/wallet/admin/requests/${requestId}/review`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.ADMIN_API_TOKEN}`
+            'Authorization': `Bearer ${ADMIN_API_TOKEN}`
           },
-          body: JSON.stringify({ action })
+          body: JSON.stringify({ action }),
+          signal: AbortSignal.timeout(15000)
         }
       );
 
-      const result = await response.json();
+      const raw = await response.text();
+      let result;
+
+      try {
+        result = JSON.parse(raw);
+      } catch {
+        result = { message: raw || 'Invalid API response' };
+      }
 
       if (!response.ok || !result.success) {
-        await bot.answerCallbackQuery(query.id, {
-          text: result.error || 'Could not review request.',
-          show_alert: true
+        const reason =
+          result.error ||
+          result.message ||
+          `HTTP ${response.status}`;
+
+        console.error('Wallet review failed:', {
+          requestId,
+          action,
+          status: response.status,
+          reason
         });
+
+        await bot.sendMessage(
+          adminId,
+          `⚠️ Wallet request ${requestId} ማስኬድ አልተሳካም።\nምክንያት: ${String(reason).slice(0, 700)}`
+        );
         return;
       }
 
-      await bot.answerCallbackQuery(query.id, {
-        text: action === 'approve' ? 'Approved' : 'Rejected'
-      });
+      const statusText = action === 'approve'
+        ? '✅ APPROVED'
+        : '❌ REJECTED';
 
-      await bot.editMessageText(
-        `${query.message.text}\n\n${action === 'approve' ? '✅ APPROVED' : '❌ REJECTED'}\nRequest ID: ${requestId}`,
-        {
-          chat_id: query.message.chat.id,
-          message_id: query.message.message_id
-        }
+      if (query.message) {
+        const oldText = query.message.text || 'Wallet request';
+
+        await bot.editMessageText(
+          `${oldText}\n\n${statusText}\nRequest ID: ${requestId}`,
+          {
+            chat_id: query.message.chat.id,
+            message_id: query.message.message_id
+          }
+        ).catch(async (err) => {
+          console.error('Could not update Telegram message:', err.message);
+
+          await bot.sendMessage(
+            adminId,
+            `${statusText}\nRequest ID: ${requestId}`
+          );
+        });
+      }
+
+      console.log(
+        `Wallet request ${requestId}: ${action} successful`
       );
     } catch (err) {
       console.error('Wallet callback error:', err.message);
 
-      await bot.answerCallbackQuery(query.id, {
-        text: 'Server error. Please try again.',
-        show_alert: true
-      }).catch(() => {});
+      await bot.sendMessage(
+        adminId,
+        `⚠️ የWallet ጥያቄ ${requestId} ላይ ስህተት ተፈጥሯል።\n${String(err.message).slice(0, 700)}`
+      ).catch((sendErr) => {
+        console.error('Could not notify admin:', sendErr.message);
+      });
     }
   });
 }
+/* --- END TELEGRAM ADMIN APPROVE / REJECT --- */
 
 /*
  * ONE-TIME TEST CREDIT
