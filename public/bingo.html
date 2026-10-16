@@ -501,6 +501,8 @@
         });
 
         socket.on('gameOver', (data) => {
+            // Refresh the shared wallet balance after the server settles the round.
+            setTimeout(() => fetchUserData(), 500);
             document.getElementById('winnerSubText').innerText = data.subtitle || "አሸናፊ ተገኝቷል!";
             document.getElementById('modalWinnerName').innerText = data.winnerName || "Winner";
             document.getElementById('modalBoardNumText').innerText = `Board ${data.boardNumber || selectedCardId}`;
@@ -605,7 +607,7 @@
             if (!data.success) return alert(data.message);
             userWallet = data.newBalance;
 
-            socket.emit('startPlayerGame', { roomId: currentRoomId, boardNumber: selectedCardId, name: currentUser.first_name });
+            socket.emit('startPlayerGame', { roomId: currentRoomId, boardNumber: selectedCardId, name: currentUser.first_name, identifier: currentUser.id });
             updateHeaderStats();
 
             const calledGrid = document.getElementById('calledGrid');
