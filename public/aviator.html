@@ -56,6 +56,12 @@ input:focus{border-color:#24d18b}
 .info{background:#0a1725;border:1px solid #203449;border-radius:11px;padding:10px}.info strong{display:block;margin-top:5px;font-size:14px}
 .note{font-size:11px;line-height:1.55;color:var(--muted);margin:13px 2px 5px}
 button{cursor:pointer;transition:filter .15s,transform .15s}button:active{transform:scale(.985)}button:disabled{cursor:not-allowed}
+
+.bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(680px,100%);z-index:30;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:9px 12px calc(9px + env(safe-area-inset-bottom));background:#081522f2;border-top:1px solid #294055;backdrop-filter:blur(16px)}
+.bottom-nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-decoration:none;color:#9aadc1;font-size:10px;font-weight:700;padding:6px 2px;border-radius:10px;min-height:43px}
+.bottom-nav a span:first-child{font-size:18px;line-height:1}
+.bottom-nav a.active{color:#24d18b;background:#17352f}
+body{padding-bottom:82px;scroll-padding-bottom:90px}
 @media(max-width:420px){.bet-card{padding:10px}.bet-card .quick{gap:4px}.bet-card .quick button{font-size:11px;padding:9px 2px}.bet-card input{padding:10px}.bet-card .primary{font-size:12px;padding:11px 4px}.info-grid{gap:5px}.info{padding:7px}.info strong{font-size:12px}}
 @media(max-width:400px){.wrap{padding:11px}.stage{height:280px}.mult{top:75px}.status{top:137px}.brand{font-size:21px}}
 </style>
@@ -66,6 +72,7 @@ button{cursor:pointer;transition:filter .15s,transform .15s}button:active{transf
     <div><div class="brand">✈️ <em>AVIATOR</em></div><div class="muted">Telegram Web App · ETB</div></div>
     <div style="text-align:right"><div class="muted">ዋና ዋሌት</div><div id="balance" class="balance">— ETB</div><div class="pill" style="margin-top:6px">● የተገናኘ ዋሌት</div></div>
   </div>
+  <div class="panel"><div class="row"><span class="section-title">የቀደሙ ዙሮች</span><span class="muted">Recent results</span></div><div id="history" class="hist"><span class="muted">ውጤቶች በመጫን ላይ…</span></div></div>
   <div id="stage" class="stage">
     <div class="cloud" style="top:18%"></div><div class="cloud c2"></div><div class="cloud c3"></div><div id="countdown" class="countdown">3</div>
     <div class="stage-top"><span class="live"><i class="dot"></i> LIVE ROUND</span><span class="pill" id="roundLabel">ROUND LIVE</span></div>
@@ -80,9 +87,14 @@ button{cursor:pointer;transition:filter .15s,transform .15s}button:active{transf
     <section class="panel bet-card" style="flex:1;min-width:0;margin-top:0"><div class="row"><b>BET 1</b><span class="pill">SLOT 01</span></div><label class="muted" for="amount1">ውርርድ መጠን (ETB)</label><input id="amount1" type="number" min="1" max="10000" step="0.01" value="10" inputmode="decimal"><div class="quick"><button data-target="amount1" data-a="10">10</button><button data-target="amount1" data-a="50">50</button><button data-target="amount1" data-a="100">100</button></div><button id="bet1" class="primary">✦ BET 1</button><button id="cash1" class="primary cash" disabled>⚡ CASH OUT 1</button><div class="info-grid"><div class="info"><span class="muted">ውርርድ</span><strong id="stake1">— ETB</strong></div><div class="info"><span class="muted">ክፍያ</span><strong id="pay1">— ETB</strong></div></div></section>
     <section class="panel bet-card" style="flex:1;min-width:0;margin-top:0"><div class="row"><b>BET 2</b><span class="pill">SLOT 02</span></div><label class="muted" for="amount2">ውርርድ መጠን (ETB)</label><input id="amount2" type="number" min="1" max="10000" step="0.01" value="20" inputmode="decimal"><div class="quick"><button data-target="amount2" data-a="20">20</button><button data-target="amount2" data-a="100">100</button><button data-target="amount2" data-a="500">500</button></div><button id="bet2" class="primary">✦ BET 2</button><button id="cash2" class="primary cash" disabled>⚡ CASH OUT 2</button><div class="info-grid"><div class="info"><span class="muted">ውርርድ</span><strong id="stake2">— ETB</strong></div><div class="info"><span class="muted">ክፍያ</span><strong id="pay2">— ETB</strong></div></div></section>
   </div><div id="msg" class="msg" role="status"></div>
-  <div class="panel"><div class="row"><span class="section-title">የቀደሙ ዙሮች</span><span class="muted">Recent results</span></div><div id="history" class="hist"><span class="muted">ውጤቶች በመጫን ላይ…</span></div></div>
   <div class="note">እውነተኛ የዋሌት ገንዘብ ይጠቀማል። ውርርድ ሲገባ ገንዘብ ይቀነሳል፤ Cash Out በserver ሲረጋገጥ ክፍያው ወደ ዋሌት ይገባል። አውሮፕላኑ ከመቋረጡ በፊት Cash Out ካላደረጉ ውርርዱን ሊያጡ ይችላሉ። የሚታየው ውጤትና ክፍያ በserver መወሰን አለበት።</div>
 </div>
+<nav class="bottom-nav" aria-label="Main navigation">
+  <a href="/" aria-label="Home"><span>⌂</span><span>HOME</span></a>
+  <a href="/car-lottery.html" aria-label="Car Lottery"><span>🚘</span><span>CAR LOTTERY</span></a>
+  <a href="/wallet.html" aria-label="Wallet and deposit"><span>👛</span><span>WALLET</span></a>
+  <a href="/profile.html" aria-label="Profile"><span>👤</span><span>PROFILE</span></a>
+</nav>
 <script>
 'use strict';
 const tg=window.Telegram?.WebApp;tg?.ready();tg?.expand();
