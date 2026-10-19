@@ -139,7 +139,7 @@
     /* ሙሉ የ BYD መኪና ምስል ማሳያ */
     .car-scene {
       margin: 16px auto;
-      max-width: 100%;
+      width: 100%;
       height: 280px;
       border-radius: 16px;
       background: #08120d;
@@ -149,18 +149,54 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      isolation: isolate;
     }
-    .car-scene img {
+
+    .car-scene .main-car {
+      position: relative;
+      z-index: 2;
       width: 100%;
       height: 100%;
       object-fit: cover;
       object-position: center;
+      animation: mainCarMotion 5s ease-in-out infinite;
     }
+
+    .car-motion {
+      position: absolute;
+      width: 135px;
+      height: 76px;
+      object-fit: cover;
+      border-radius: 10px;
+      opacity: 0.6;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .car-motion.left {
+      left: -150px;
+      top: 15%;
+      animation: carFromLeft 6s linear infinite;
+    }
+
+    .car-motion.right {
+      right: -150px;
+      bottom: 15%;
+      animation: carFromRight 7s linear infinite;
+    }
+
+    .car-motion.top {
+      top: -90px;
+      left: 55%;
+      animation: carFromTop 8s linear infinite;
+    }
+
     .car-badge {
       position: absolute;
+      z-index: 3;
       bottom: 12px;
       left: 12px;
-      background: rgba(0,0,0,0.8);
+      background: rgba(0,0,0,.82);
       border: 1px solid var(--gold);
       padding: 6px 14px;
       border-radius: 8px;
@@ -168,6 +204,32 @@
       font-weight: 800;
       font-size: 12px;
       backdrop-filter: blur(6px);
+    }
+
+    @keyframes mainCarMotion {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.035); }
+    }
+
+    @keyframes carFromLeft {
+      0% { transform: translateX(0) rotate(4deg); }
+      100% { transform: translateX(1100px) rotate(4deg); }
+    }
+
+    @keyframes carFromRight {
+      0% { transform: translateX(0) rotate(-4deg); }
+      100% { transform: translateX(-1100px) rotate(-4deg); }
+    }
+
+    @keyframes carFromTop {
+      0% { transform: translateY(0) rotate(8deg); }
+      100% { transform: translateY(500px) rotate(8deg); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .main-car, .car-motion {
+        animation: none !important;
+      }
     }
 
     .meta-badges {
@@ -389,7 +451,7 @@
   <!-- የማስታወቂያ የሚንቀሳቀስ ባነር -->
   <div class="marquee-container">
     <div class="marquee-text">
-      🔥 እንኳን ደስ አላችሁ! የ BYD ዘመናዊ ኤሌክትሪክ መኪና (የግምት ዋጋ 3,000,000 ብር) ዕጣ ቁጥር መምረጥ ጀምር። 1 ቲኬት 1000 ብር ብቻ! ዕጣው የሚወጣበት ቀን በ 29 ነው! ፈጥነው ዕድልዎን ይሞክሩ! 🚗✨
+      🔥 እንኳን ደስ አላችሁ! የ BYD ዘመናዊ ኤሌክትሪክ መኪና (የግምት ዋጋ 3,300,000 ብር) ዕጣ ቁጥር መምረጥ ጀምር። 1 ቲኬት 1,100 ብር ብቻ! ዕጣው የሚወጣበት ቀን ጥቅምት 29 በ 9:00 ነው! ፈጥነው ዕድልዎን ይሞክሩ! 🚗✨
     </div>
   </div>
 
@@ -407,19 +469,43 @@
       <h1>BYD GRAND <span>CAR LOTTERY</span></h1>
 
       <p class="subtitle">
-        አጠቃላይ ግምታዊ ዋጋው <b>3,000,000 ETB (ሶስት ሚሊዮን ብር)</b> የሆነውን የዘመኑን እጅግ ውብ እና ዘመናዊ የ BYD መኪና በ 1000 ብር ብቻ ባለቤት ይሁኑ!
+        አጠቃላይ ግምታዊ ዋጋው <b>3,300,000 ETB (ሶስት ሚሊዮን ሶስት መቶ ሺህ ብር)</b> የሆነውን የዘመኑን እጅግ ውብ እና ዘመናዊ የ BYD መኪና በ 1,100 ብር ብቻ ባለቤት ይሁኑ!
       </p>
 
       <div class="car-scene">
-        <!-- ሙሉ የ BYD መኪና ፎቶ -->
-        <img src="https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=1200&q=80" alt="BYD Luxury Electric Car">
-        <div class="car-badge">🚘 BYD Flagship Electric Car · 3,000,000 ETB</div>
+        <img
+          class="main-car"
+          src="https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA2eu0xk.img?w=1280&h=720&m=4&q=87"
+          alt="Lottery prize car"
+        >
+
+        <img
+          class="car-motion left"
+          src="https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA2eu0xk.img?w=1280&h=720&m=4&q=87"
+          alt=""
+        >
+
+        <img
+          class="car-motion right"
+          src="https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA2eu0xk.img?w=1280&h=720&m=4&q=87"
+          alt=""
+        >
+
+        <img
+          class="car-motion top"
+          src="https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA2eu0xk.img?w=1280&h=720&m=4&q=87"
+          alt=""
+        >
+
+        <div class="car-badge">
+          🚘 GRAND PRIZE · 3,300,000 ETB
+        </div>
       </div>
 
       <div class="meta-badges">
-        <div class="meta-tag">🎫 1 ቲኬት = 1,000 ብር</div>
+        <div class="meta-tag">🎫 1 ቲኬት = 1,100 ብር</div>
         <div class="meta-tag">🔢 ከ 1 እስከ 3000 ቁጥሮች</div>
-        <div class="meta-tag">📅 ዕጣ የሚወጣበት: 29</div>
+        <div class="meta-tag">📅 ዕጣ: ጥቅምት 29 · 9:00</div>
       </div>
     </section>
 
@@ -445,7 +531,7 @@
           <small>የመረጡት ቁጥር:</small>
           <strong id="selectedLabel">ምንም አልተመረጠም</strong>
         </div>
-        <button class="buy-btn" id="buyButton" disabled>ቲኬት ግዛ (1,000 ብር)</button>
+        <button class="buy-btn" id="buyButton" disabled>ቲኬት ግዛ (1,100 ብር)</button>
       </div>
     </section>
 
@@ -531,7 +617,7 @@
             document.querySelectorAll('.num-btn.selected').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
             selectedNum = i;
-            selectedLabel.textContent = `ቁጥር #${i} (1,000 ETB)`;
+            selectedLabel.textContent = `ቁጥር #${i} (1,100 ETB)`;
             buyButton.disabled = false;
           });
         }
