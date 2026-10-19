@@ -1,600 +1,103 @@
-
 <!doctype html>
 <html lang="am">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="theme-color" content="#040914">
-<title>Aviator | Ethiopia Betting</title>
+<title>Aviator</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-:root{
-  color-scheme:dark;
-  --bg:#040914;--card:#081426;--card2:#050c18;
-  --pink:#ff1593;--red:#ff174d;--blue:#168aff;
-  --green:#00d987;--gold:#ffc532;--muted:#91a8ca;
-  --border:#1b2b49;
-}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+:root{color-scheme:dark;--bg:#07111d;--card:#101f30;--green:#24d18b;--red:#ff435f;--muted:#9aadc1;--gold:#ffcf57}
 *{box-sizing:border-box}
-html{min-height:100%;background:var(--bg)}
-body{
-  margin:0;background:radial-gradient(ellipse at 50% 25%,#081a31 0,#040914 68%);
-  color:#f8faff;font-family:Arial,Helvetica,sans-serif;
-  min-height:100vh;padding-bottom:95px;
-}
-button,input{font:inherit}
-button{cursor:pointer;-webkit-tap-highlight-color:transparent}
-button:disabled{opacity:.42;cursor:not-allowed}
-a{color:inherit;text-decoration:none}
-.app{max-width:760px;margin:auto;padding:0 13px}
-header{
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-  padding:17px 0 15px;border-bottom:1px solid #17223a;
-}
-.brand{display:flex;align-items:center;gap:8px;min-width:0}
-.brand-plane{font-size:35px;filter:drop-shadow(0 0 9px #ff174d66)}
-.brand-name{font-size:clamp(21px,5vw,31px);font-weight:1000;font-style:italic;color:#ff174d;letter-spacing:-1.3px}
-.brand-sub{font-size:9px;font-weight:bold;color:#a6b8d6;letter-spacing:1.5px;margin-top:2px}
-.wallet{
-  display:flex;align-items:center;gap:10px;padding:10px 13px;
-  border:1px solid #243557;border-radius:20px;background:linear-gradient(140deg,#0b162b,#050a16);
-  min-width:0;
-}
-.wallet-icon{
-  width:37px;height:37px;border:1px solid #82265e;border-radius:50%;
-  display:grid;place-items:center;color:#ff2ca6;font-size:19px;
-  background:#1b0b24;flex-shrink:0;
-}
-.wallet-label{font-size:11px;color:#c4d0e5}
-.balance{font-size:clamp(13px,3.7vw,19px);font-weight:900;margin-top:4px;white-space:nowrap}
-.history-strip{display:flex;gap:7px;overflow-x:auto;padding:14px 0 12px;scrollbar-width:none}
-.history-strip::-webkit-scrollbar{display:none}
-.chip{
-  flex-shrink:0;padding:8px 12px;border-radius:22px;
-  background:#08172c;border:1px solid #172b49;color:#168dff;
-  font-size:12px;font-weight:900;min-width:68px;text-align:center;
-}
-.chip.high{color:#ff42b9;background:#1b0b25;border-color:#50234f}
-.chip.mid{color:#bc4bff;background:#170d2b;border-color:#3b2467}
-.stage{
-  height:clamp(300px,78vw,420px);max-height:420px;position:relative;
-  overflow:hidden;isolation:isolate;border-radius:24px;
-  border:1px solid #263b60;
-  background:radial-gradient(ellipse at 48% 55%,#07345b 0,#06172e 40%,#030812 78%);
-  box-shadow:inset 0 0 35px #001126,0 12px 30px #0005;
-}
-.stage:before{
-  content:"";position:absolute;inset:0;z-index:-1;opacity:.55;
-  background:repeating-conic-gradient(from 250deg at 50% 65%,#0a2946 0deg,#0a2946 5deg,transparent 5deg,transparent 12deg);
-  mask-image:linear-gradient(to bottom,#000,transparent 95%);
-}
-.stage:after{
-  content:"";position:absolute;inset:0;z-index:-1;
-  background:linear-gradient(0deg,#030812 0%,transparent 25%);
-}
-.stage-top{position:absolute;left:14px;right:14px;top:15px;display:flex;align-items:center;justify-content:space-between;z-index:4}
-.live{font-size:12px;color:#ff2457;font-weight:900;display:flex;align-items:center;gap:8px}
-.dot{width:10px;height:10px;border-radius:50%;background:#ff174d;box-shadow:0 0 13px #ff174d;animation:pulse 1s infinite}
-@keyframes pulse{50%{opacity:.45}}
-.round{border:1px solid #243557;background:#060e1e;padding:7px 10px;border-radius:20px;color:#9fb4d6;font-size:10px;font-weight:bold}
-.mult{
-  position:absolute;top:32%;left:0;right:0;text-align:center;z-index:3;
-  font-size:clamp(55px,15vw,100px);font-weight:1000;letter-spacing:-3px;
-  text-shadow:0 0 25px #ffffff24;pointer-events:none;
-}
-.mult.crashed{color:#ff2457}
-.status{
-  position:absolute;top:58%;left:10px;right:10px;text-align:center;
-  font-size:12px;color:#b0c2dc;z-index:3;
-}
-#flightSvg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
-#flightArea{fill:url(#areaFill)}
-#flightPath{fill:none;stroke:#ff174d;stroke-width:4;stroke-linecap:round;filter:url(#glow)}
-#planeIcon{
-  position:absolute;left:8%;bottom:9%;font-size:42px;
-  transform:rotate(-22deg);z-index:2;filter:drop-shadow(0 0 10px #ff174d);
-  transition:left .15s linear,bottom .15s linear;
-}
-.stage.crashed{border-color:#70233d;box-shadow:inset 0 0 50px #ff174d12}
-.stage.crashed #flightPath{stroke:#ff174d}
-.panel{
-  margin-top:13px;padding:14px;border:1px solid #1a2b49;border-radius:22px;
-  background:linear-gradient(145deg,#091426,#050b17);
-}
-.tabs{
-  display:flex;padding:4px;border:1px solid #1b2b49;border-radius:30px;
-  background:#050b17;max-width:390px;margin:0 auto 13px;
-}
-.tab{width:50%;padding:10px;border:0;border-radius:25px;background:transparent;color:var(--muted);font-weight:bold}
-.tab.active{background:linear-gradient(100deg,#461346,#7e145f);color:white}
-.bet-layout{display:grid;grid-template-columns:1fr 1.1fr;gap:10px}
-.stake-control{
-  display:flex;align-items:center;justify-content:space-between;gap:8px;
-  border:1px solid #253757;background:#050b17;border-radius:20px;padding:7px;
-}
-.round-btn{
-  flex-shrink:0;width:35px;height:35px;border:0;border-radius:50%;
-  background:#172743;color:white;font-size:25px;font-weight:bold;
-}
-#amount{
-  width:100%;min-width:0;text-align:center;border:0;outline:none;
-  background:transparent;color:white;font-size:26px;font-weight:900;
-}
-.quick{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}
-.quick button{
-  border:1px solid #253757;background:#07101f;color:white;
-  border-radius:22px;padding:10px 4px;font-size:13px;font-weight:800;
-}
-.quick button:active{border-color:var(--pink)}
-.primary{
-  width:100%;min-height:110px;border:2px solid #20f0a0;border-radius:22px;
-  background:linear-gradient(145deg,#00e98c,#00b66b);
-  color:#fff;font-size:25px;font-weight:1000;
-  box-shadow:0 6px 0 #003b2b,0 0 18px #00d98713;
-}
-.primary small{display:block;font-size:20px;margin-top:5px}
-.primary:disabled{box-shadow:none}
-.bet-caption{font-size:11px;color:#b5c5df;margin:12px 0 7px}
+body{margin:0;background:radial-gradient(ellipse at top,#132941 0,#07111d 48%);color:#f4f7fb;font-family:Inter,Arial,sans-serif;min-height:100vh}
+.wrap{max-width:680px;margin:auto;padding:15px}
+.top,.row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{font-size:23px;font-weight:900;letter-spacing:.3px}.brand em{font-style:normal;color:var(--red)}
+.muted{color:var(--muted);font-size:12px}.balance{font-size:20px;font-weight:900;color:var(--green);margin-top:4px}
+.pill{border:1px solid #2b435a;border-radius:30px;padding:7px 10px;color:#c9d8e8;font-size:11px;background:#0b1927}
+.stage{position:relative;isolation:isolate;overflow:hidden;background:radial-gradient(ellipse at 80% 95%,#15384a 0,#0a1a29 43%,#07111d 76%);height:300px;border:1px solid #284158;border-radius:20px;margin-top:15px;box-shadow:0 14px 38px #0005}
+.stage:before,.stage:after{content:"";position:absolute;inset:0;pointer-events:none;z-index:-1}
+.cloud{position:absolute;left:-45%;width:70%;height:54px;border-radius:60px;background:radial-gradient(ellipse at 25% 70%,#b5cce51f 0 22%,transparent 24%),radial-gradient(ellipse at 48% 42%,#b5cce51c 0 32%,transparent 34%),radial-gradient(ellipse at 68% 65%,#b5cce51a 0 25%,transparent 27%);filter:blur(2px);pointer-events:none;z-index:0;animation:cloudDrift 24s linear infinite}.cloud.c2{top:36%;width:56%;animation-duration:31s;animation-delay:-13s;opacity:.8}.cloud.c3{top:66%;width:78%;animation-duration:38s;animation-delay:-21s;opacity:.6}@keyframes cloudDrift{from{transform:translateX(0)}to{transform:translateX(220%)}}
+.countdown{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:8;font-size:clamp(70px,20vw,120px);font-weight:900;color:#fff;text-shadow:0 0 32px #ff435f99;pointer-events:none}.countdown.show{display:flex;animation:countPop .7s ease both}@keyframes countPop{0%{transform:scale(1.5);opacity:0}25%{opacity:1}100%{transform:scale(1);opacity:0}}
+.stage:before{background-image:radial-gradient(#5b7b94 1px,transparent 1.5px);background-size:43px 39px;opacity:.22;mask-image:linear-gradient(90deg,transparent,#000)}
+.stage:after{background:linear-gradient(0deg,#07111d 0%,transparent 35%)}
+.skyline{position:absolute;bottom:0;left:0;right:0;height:52px;opacity:.35;background:linear-gradient(90deg,transparent 0 4%,#183347 4% 7%,transparent 7% 10%,#183347 10% 16%,transparent 16% 20%,#183347 20% 24%,transparent 24% 29%,#183347 29% 35%,transparent 35% 40%,#183347 40% 46%,transparent 46% 53%,#183347 53% 58%,transparent 58% 63%,#183347 63% 70%,transparent 70% 77%,#183347 77% 84%,transparent 84% 90%,#183347 90% 96%,transparent 96%)}
+.stage-top{position:absolute;left:14px;right:14px;top:13px;display:flex;justify-content:space-between;align-items:center}
+.live{display:flex;align-items:center;gap:6px;font-size:11px;color:#ff8293;font-weight:bold;letter-spacing:1px}.dot{width:7px;height:7px;background:var(--red);border-radius:50%;box-shadow:0 0 12px var(--red);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.35;transform:scale(.8)}}
+.mult{position:absolute;top:72px;left:0;right:0;text-align:center;font-size:clamp(44px,11vw,62px);font-weight:1000;letter-spacing:-2px;text-shadow:0 4px 24px #0008;z-index:3}
+.mult.flying{color:#fff}.mult.crashed{color:var(--red)}
+.status{position:absolute;top:139px;left:0;right:0;text-align:center;color:#b8c8d7;font-size:12px;z-index:3}
+.flight{position:absolute;inset:0;overflow:hidden}
+.flightline{position:absolute;width:130%;height:2px;left:-15%;bottom:12px;background:linear-gradient(90deg,transparent,#ff435f77,#ff435f);transform:rotate(-24deg);transform-origin:left center;opacity:0;transition:opacity .2s;box-shadow:0 0 14px #ff435f66}
+#planeWrap{position:absolute;left:13%;bottom:35px;width:90px;height:70px;z-index:2;transform:translate(0,0) rotate(-20deg);transition:transform .18s linear;filter:drop-shadow(0 0 12px #ff3e5d55)}
+#plane{font-size:53px;display:block;transform:rotate(-7deg);line-height:1}
+.trail{position:absolute;right:54px;top:29px;width:90px;height:15px;border-radius:100%;background:linear-gradient(90deg,transparent,#ff273f33,#ff4a61cc);filter:blur(7px);transform:rotate(22deg)}
+.smoke{position:absolute;width:11px;height:11px;border-radius:50%;background:#ff435f;filter:blur(2px);opacity:0;left:12%;bottom:58px;z-index:1}
+.smoke:nth-child(2){width:17px;height:17px;background:#ff725e}.smoke:nth-child(3){width:9px;height:9px;background:#ffcf57}.smoke:nth-child(4){width:22px;height:22px;background:#a62a48;filter:blur(5px)}
+.stage.flying .flightline{opacity:.9}
+.stage.flying .trail{animation:trailPulse .55s infinite alternate}
+@keyframes trailPulse{to{opacity:.5;transform:rotate(22deg) scaleX(.75)}}
+.stage.crashed{box-shadow:inset 0 0 50px #ff243222,0 14px 38px #0005;border-color:#793344}
+.stage.crashed .flightline{background:linear-gradient(90deg,transparent,#ff435f,#ff435f);opacity:.8}
+@keyframes floatSmoke{0%{opacity:0;transform:translate(0,0) scale(.5)}20%{opacity:.8}100%{opacity:0;transform:translate(-100px,28px) scale(2.5)}}
+.panel{background:linear-gradient(145deg,#122338,#0d1a29);border:1px solid #243a50;border-radius:17px;padding:14px;margin-top:13px;box-shadow:0 8px 25px #0002}
+input,button{font:inherit;border-radius:11px;padding:13px;border:0}
+input{background:#07111d;color:white;width:100%;border:1px solid #30475c;margin:11px 0 10px;outline:none}
+input:focus{border-color:#24d18b}
+.quick{display:flex;gap:8px}.quick button{flex:1;background:#20364b;color:#e6eef7;border:1px solid #304a61;padding:10px 5px;font-weight:bold}
+.primary{width:100%;background:linear-gradient(135deg,#2ae49a,#16b978);color:#04140e;margin-top:10px;font-weight:900;box-shadow:0 5px 16px #24d18b22}
+.cash{background:linear-gradient(135deg,#ffdb69,#ffb62f);color:#261900;box-shadow:0 5px 16px #ffce5722}
+.primary:disabled{opacity:.4;box-shadow:none}
+.msg{padding:10px 12px;border-radius:10px;margin-top:10px;background:#213448;display:none;font-size:13px;line-height:1.45}
+.hist{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.chip{padding:7px 10px;border-radius:20px;background:#203348;border:1px solid #2d465d;font-size:12px;font-weight:bold}.chip.high{color:#d8a6ff;border-color:#73569a;background:#2a2040}.chip.mid{color:#69e4b0;border-color:#286c55}.chip.low{color:#ff8b9b;border-color:#70404a}
+.section-title{font-size:14px;font-weight:800}
 .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
-.info{
-  display:flex;align-items:center;gap:10px;padding:12px 10px;
-  border:1px solid #1c2b48;background:#050b17;border-radius:17px;min-width:0;
-}
-.info-icon{font-size:23px;color:#ff2aa1}
-.info-icon.green{color:#00efa1}
-.info-label{font-size:11px;color:#91a8ca}
-.info strong{display:block;font-size:15px;margin-top:5px;overflow-wrap:anywhere}
-.cash{
-  margin-top:12px;width:100%;border:2px solid #ffdf46;border-radius:18px;
-  padding:15px 8px;background:linear-gradient(100deg,#ffc12c,#ffdb55,#ffb928);
-  color:#251700;font-size:17px;font-weight:1000;
-}
-.cash span{font-size:12px;margin-left:8px;font-weight:800}
-.cash:disabled{filter:saturate(.5)}
-.message{display:none;padding:11px;margin-top:10px;border:1px solid #20c987;border-radius:12px;background:#071b1b;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
-.section-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.section-title{font-size:14px;font-weight:900}
-.muted{color:var(--muted);font-size:11px}
-.bottom-nav{
-  position:fixed;z-index:10;bottom:0;left:0;right:0;
-  display:grid;grid-template-columns:repeat(4,1fr);
-  padding:10px max(8px,env(safe-area-inset-left)) calc(9px + env(safe-area-inset-bottom));
-  background:rgba(4,9,20,.97);border-top:1px solid #1b2a45;
-  backdrop-filter:blur(15px);
-}
-.nav-item{
-  position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;
-  padding:4px 2px;color:#91a8ca;font-size:11px;font-weight:700;
-}
-.nav-icon{font-size:24px;line-height:1.2}
-.nav-item.active{color:#ff2da5}
-.nav-item.active:after{content:"";position:absolute;bottom:-9px;width:65%;height:3px;border-radius:3px;background:#ff2da5}
-@media(min-width:600px){
-  .app{padding-left:20px;padding-right:20px}
-  .panel{padding:18px}
-  .stage{height:390px}
-}
-@media(max-width:380px){
-  .app{padding-left:9px;padding-right:9px}
-  header{gap:6px}
-  .brand-plane{font-size:28px}
-  .brand-sub{font-size:8px;letter-spacing:.8px}
-  .wallet{padding:8px;gap:6px;border-radius:15px}
-  .wallet-icon{width:30px;height:30px}
-  .panel{padding:10px}
-  .stage{height:290px}
-  .primary{font-size:21px;min-height:100px}
-  .primary small{font-size:17px}
-  .info{padding:9px 7px;gap:6px}
-  .info strong{font-size:12px}
-}
+.info{background:#0a1725;border:1px solid #203449;border-radius:11px;padding:10px}.info strong{display:block;margin-top:5px;font-size:14px}
+.note{font-size:11px;line-height:1.55;color:var(--muted);margin:13px 2px 5px}
+button{cursor:pointer;transition:filter .15s,transform .15s}button:active{transform:scale(.985)}button:disabled{cursor:not-allowed}
+@media(max-width:420px){.bet-card{padding:10px}.bet-card .quick{gap:4px}.bet-card .quick button{font-size:11px;padding:9px 2px}.bet-card input{padding:10px}.bet-card .primary{font-size:12px;padding:11px 4px}.info-grid{gap:5px}.info{padding:7px}.info strong{font-size:12px}}
+@media(max-width:400px){.wrap{padding:11px}.stage{height:280px}.mult{top:75px}.status{top:137px}.brand{font-size:21px}}
 </style>
 </head>
 <body>
-<div class="app">
-  <header>
-    <a class="brand" href="/index.html" aria-label="Ethiopia Betting Home">
-      <span class="brand-plane">✈</span>
-      <span>
-        <span class="brand-name">Aviator</span>
-        <span class="brand-sub" style="display:block">ETHIOPIA BETTING</span>
-      </span>
-    </a>
-    <div class="wallet">
-      <div class="wallet-icon">▣</div>
-      <div>
-        <div class="wallet-label">ዋሌት</div>
-        <div id="balance" class="balance">— ETB</div>
-      </div>
-    </div>
-  </header>
-
-  <div id="historyStrip" class="history-strip" aria-label="የቀደሙ ውጤቶች">
-    <span class="muted">ውጤቶች በመጫን ላይ…</span>
+<div class="wrap">
+  <div class="top">
+    <div><div class="brand">✈️ <em>AVIATOR</em></div><div class="muted">Telegram Web App · ETB</div></div>
+    <div style="text-align:right"><div class="muted">ዋና ዋሌት</div><div id="balance" class="balance">— ETB</div><div class="pill" style="margin-top:6px">● የተገናኘ ዋሌት</div></div>
   </div>
-
-  <section id="stage" class="stage">
-    <div class="stage-top">
-      <span class="live"><i class="dot"></i> LIVE ROUND</span>
-      <span id="roundLabel" class="round">CONNECTING</span>
-    </div>
-
+  <div id="stage" class="stage">
+    <div class="cloud" style="top:18%"></div><div class="cloud c2"></div><div class="cloud c3"></div><div id="countdown" class="countdown">3</div>
+    <div class="stage-top"><span class="live"><i class="dot"></i> LIVE ROUND</span><span class="pill" id="roundLabel">ROUND LIVE</span></div>
     <div id="mult" class="mult">1.00x</div>
     <div id="status" class="status">ግንኙነት በመጠበቅ ላይ…</div>
-
-    <svg id="flightSvg" viewBox="0 0 600 400" preserveAspectRatio="none" aria-label="የአውሮፕላን በረራ ግራፍ">
-      <defs>
-        <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#ff174d" stop-opacity=".35"/>
-          <stop offset="100%" stop-color="#ff174d" stop-opacity="0"/>
-        </linearGradient>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="3" result="blur"/>
-          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-      </defs>
-      <path id="flightArea" d="M0 395 L600 395 L600 395 Z"/>
-      <path id="flightPath" d="M0 395 L600 395"/>
-    </svg>
-    <div id="planeIcon">✈</div>
-  </section>
-
-  <section class="panel">
-    <div class="tabs">
-      <button id="betTab" class="tab active" type="button">Bet</button>
-      <button id="autoTab" class="tab" type="button">Auto</button>
-    </div>
-
-    <div class="bet-layout">
-      <div>
-        <div class="stake-control">
-          <button id="minus" class="round-btn" type="button" aria-label="መጠን ቀንስ">−</button>
-          <input id="amount" type="number" min="1" max="10000" step="1" value="10" inputmode="decimal" aria-label="Bet amount">
-          <button id="plus" class="round-btn" type="button" aria-label="መጠን ጨምር">+</button>
-        </div>
-        <div class="quick">
-          <button data-a="10" type="button">10</button>
-          <button data-a="50" type="button">50</button>
-          <button data-a="100" type="button">100</button>
-          <button data-a="500" type="button">500</button>
-        </div>
-      </div>
-      <div>
-        <button id="bet" class="primary" type="button">
-          Bet
-          <small id="betAmountLabel">10.00 ETB</small>
-        </button>
-      </div>
-    </div>
-
-    <div class="info-grid">
-      <div class="info">
-        <span class="info-icon">▤</span>
-        <div>
-          <div class="info-label">Your Bet</div>
-          <strong id="myStake">— ETB</strong>
-        </div>
-      </div>
-      <div class="info">
-        <span class="info-icon green">↗</span>
-        <div>
-          <div class="info-label">Potential Win</div>
-          <strong id="potential">— ETB</strong>
-        </div>
-      </div>
-    </div>
-
-    <button id="cash" class="cash" type="button" disabled>
-      ⚡ Cash Out <span id="cashLabel">—</span>
-    </button>
-    <div id="msg" class="message" role="status" aria-live="polite"></div>
-  </section>
-
-  <section class="panel">
-    <div class="section-head">
-      <span class="section-title">የቀደሙ ዙሮች</span>
-      <span class="muted">Recent results</span>
-    </div>
-    <div id="history" class="history-strip">
-      <span class="muted">ውጤቶች በመጫን ላይ…</span>
-    </div>
-  </section>
+    <div class="flight"><div class="flightline"></div><div class="trail"></div>
+      <div id="planeWrap"><span id="plane">✈</span></div>
+      <span class="smoke"></span><span class="smoke"></span><span class="smoke"></span><span class="smoke"></span>
+    </div><div class="skyline"></div>
+  </div>
+  <div class="row" style="margin-top:13px;align-items:stretch;gap:10px">
+    <section class="panel bet-card" style="flex:1;min-width:0;margin-top:0"><div class="row"><b>BET 1</b><span class="pill">SLOT 01</span></div><label class="muted" for="amount1">ውርርድ መጠን (ETB)</label><input id="amount1" type="number" min="1" max="10000" step="0.01" value="10" inputmode="decimal"><div class="quick"><button data-target="amount1" data-a="10">10</button><button data-target="amount1" data-a="50">50</button><button data-target="amount1" data-a="100">100</button></div><button id="bet1" class="primary">✦ BET 1</button><button id="cash1" class="primary cash" disabled>⚡ CASH OUT 1</button><div class="info-grid"><div class="info"><span class="muted">ውርርድ</span><strong id="stake1">— ETB</strong></div><div class="info"><span class="muted">ክፍያ</span><strong id="pay1">— ETB</strong></div></div></section>
+    <section class="panel bet-card" style="flex:1;min-width:0;margin-top:0"><div class="row"><b>BET 2</b><span class="pill">SLOT 02</span></div><label class="muted" for="amount2">ውርርድ መጠን (ETB)</label><input id="amount2" type="number" min="1" max="10000" step="0.01" value="20" inputmode="decimal"><div class="quick"><button data-target="amount2" data-a="20">20</button><button data-target="amount2" data-a="100">100</button><button data-target="amount2" data-a="500">500</button></div><button id="bet2" class="primary">✦ BET 2</button><button id="cash2" class="primary cash" disabled>⚡ CASH OUT 2</button><div class="info-grid"><div class="info"><span class="muted">ውርርድ</span><strong id="stake2">— ETB</strong></div><div class="info"><span class="muted">ክፍያ</span><strong id="pay2">— ETB</strong></div></div></section>
+  </div><div id="msg" class="msg" role="status"></div>
+  <div class="panel"><div class="row"><span class="section-title">የቀደሙ ዙሮች</span><span class="muted">Recent results</span></div><div id="history" class="hist"><span class="muted">ውጤቶች በመጫን ላይ…</span></div></div>
+  <div class="note">እውነተኛ የዋሌት ገንዘብ ይጠቀማል። ውርርድ ሲገባ ገንዘብ ይቀነሳል፤ Cash Out በserver ሲረጋገጥ ክፍያው ወደ ዋሌት ይገባል። አውሮፕላኑ ከመቋረጡ በፊት Cash Out ካላደረጉ ውርርዱን ሊያጡ ይችላሉ። የሚታየው ውጤትና ክፍያ በserver መወሰን አለበት።</div>
 </div>
-
-<nav class="bottom-nav" aria-label="Main navigation">
-  <a class="nav-item" href="/index.html">
-    <span class="nav-icon">⌂</span><span>Home</span>
-  </a>
-  <a class="nav-item" href="/index.html#games">
-    <span class="nav-icon">♧</span><span>Games</span>
-  </a>
-  <a class="nav-item" href="/index.html#wallet">
-    <span class="nav-icon">▣</span><span>Wallet</span>
-  </a>
-  <a class="nav-item" href="/index.html#profile">
-    <span class="nav-icon">♙</span><span>Profile</span>
-  </a>
-</nav>
-
 <script>
 'use strict';
-
-const tg = window.Telegram?.WebApp;
-tg?.ready();
-tg?.expand();
-
-const initData = tg?.initData || '';
-const $ = id => document.getElementById(id);
-
-let phase = '';
-let myBet = null;
-let refreshBusy = false;
-let lastRenderedHistory = '';
-let autoMode = false;
-
-function money(value) {
-  const n = Number(value);
-  return (Number.isFinite(n) ? n : 0).toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
-}
-
-function showMessage(text, bad = false) {
-  $('msg').style.display = 'block';
-  $('msg').textContent = text;
-  $('msg').style.borderColor = bad ? '#ff3159' : '#00d987';
-}
-
-function clearMessage() {
-  $('msg').style.display = 'none';
-  $('msg').textContent = '';
-}
-
-async function api(path, body) {
-  const response = await fetch('/api/aviator/' + path, {
-    method: body !== undefined ? 'POST' : 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Telegram-Init-Data': initData
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-    cache: 'no-store'
-  });
-
-  let data;
-  try {
-    data = await response.json();
-  } catch {
-    throw new Error('Server ምላሽ አልተረዳም።');
-  }
-
-  if (!response.ok || !data.success) {
-    throw new Error(data.error || 'ጥያቄው አልተሳካም።');
-  }
-  return data;
-}
-
-/* The backend may return stake or amount depending on its response shape. */
-function betStake(bet) {
-  return Number(bet?.stake ?? bet?.amount ?? 0);
-}
-
-function drawFlight(multiplier) {
-  const stage = $('stage');
-  const plane = $('planeIcon');
-  const path = $('flightPath');
-  const area = $('flightArea');
-
-  if (phase !== 'flying') {
-    plane.style.left = '8%';
-    plane.style.bottom = '9%';
-    path.setAttribute('d', 'M0 395 L600 395');
-    area.setAttribute('d', 'M0 395 L600 395 L600 395 Z');
-    return;
-  }
-
-  const progress = Math.min(
-    1,
-    Math.max(0, Math.log(Math.max(1, multiplier)) / Math.log(15))
-  );
-
-  const endX = 65 + progress * 31;
-  const endY = 80 - progress * 53;
-
-  plane.style.left = Math.min(83, 8 + progress * 75) + '%';
-  plane.style.bottom = Math.min(67, 9 + progress * 52) + '%';
-
-  const curve = `M0 395 C120 395 220 ${360-progress*95} 330 ${300-progress*130} S${endX*6} ${endY*4} ${endX*6} ${endY*4}`;
-  path.setAttribute('d', curve);
-  area.setAttribute('d', curve + ' L600 400 L0 400 Z');
-
-  stage.classList.add('flying');
-}
-
-function renderHistory(items, targetId) {
-  const target = $(targetId);
-  const history = Array.isArray(items) ? items : [];
-
-  if (!history.length) {
-    target.innerHTML = '<span class="muted">ገና የቀደመ ውጤት የለም።</span>';
-    return;
-  }
-
-  target.innerHTML = history.map(item => {
-    const value = Number(item.multiplier ?? item.crash_multiplier ?? 1);
-    const safeValue = Number.isFinite(value) ? value : 1;
-    const type = safeValue >= 10 ? 'high' : safeValue >= 2 ? 'mid' : '';
-    return `<span class="chip ${type}">${safeValue.toFixed(2)}x</span>`;
-  }).join('');
-}
-
-function render(data) {
-  $('balance').textContent = money(data.balance) + ' ETB';
-
-  const round = data.round || {};
-  phase = round.phase || '';
-  myBet = data.myBet || null;
-
-  const multiplier = Math.max(1, Number(round.multiplier || 1));
-  $('mult').textContent = multiplier.toFixed(2) + 'x';
-  $('mult').className = 'mult' + (phase === 'crashed' ? ' crashed' : '');
-
-  $('stage').classList.toggle('crashed', phase === 'crashed');
-  $('stage').classList.toggle('flying', phase === 'flying');
-
-  $('roundLabel').textContent =
-    phase === 'betting' ? 'NEXT ROUND' :
-    phase === 'flying' ? 'ROUND LIVE' :
-    phase === 'crashed' ? 'CRASHED' : 'CONNECTING';
-
-  $('status').textContent =
-    phase === 'betting' ? 'ውርርድ ይቀበላል' :
-    phase === 'flying' ? 'አውሮፕላኑ እየበረረ ነው' :
-    phase === 'crashed' ? 'ዙሩ ተቋርጧል' :
-    'ግንኙነት በመጠበቅ ላይ…';
-
-  drawFlight(multiplier);
-
-  const activeBet = myBet?.status === 'ACTIVE';
-  const hasBetThisRound = Boolean(myBet);
-
-  $('bet').disabled = !(phase === 'betting' && !hasBetThisRound);
-  $('cash').disabled = !(phase === 'flying' && activeBet);
-
-  const stake = betStake(myBet);
-  $('myStake').textContent = myBet ? money(stake) + ' ETB' : '— ETB';
-
-  if (activeBet) {
-    $('potential').textContent = money(stake * multiplier) + ' ETB';
-    $('cashLabel').textContent =
-      multiplier.toFixed(2) + 'x · ' + money(stake * multiplier) + ' ETB';
-  } else if (myBet?.status === 'CASHED_OUT') {
-    $('potential').textContent = money(myBet.payout) + ' ETB';
-    $('cashLabel').textContent =
-      Number(myBet.multiplier || multiplier).toFixed(2) + 'x · ' +
-      money(myBet.payout) + ' ETB';
-  } else {
-    $('potential').textContent = '— ETB';
-    $('cashLabel').textContent = '—';
-  }
-
-  const history = round.history || [];
-  const historyKey = JSON.stringify(history);
-  if (historyKey !== lastRenderedHistory) {
-    lastRenderedHistory = historyKey;
-    renderHistory(history, 'history');
-    renderHistory(history, 'historyStrip');
-  }
-
-  if (myBet?.status === 'CASHED_OUT') {
-    $('cashLabel').textContent = money(myBet.payout) + ' ETB';
-  }
-  if (myBet?.status === 'LOST') {
-    showMessage('ዙሩ ተቋርጧል፤ ይህ ውርርድ ተሸንፏል።', true);
-  }
-}
-
-async function refresh() {
-  if (refreshBusy) return;
-
-  if (!initData) {
-    $('status').textContent = 'ይህን ገጽ ከTelegram Bot ውስጥ ይክፈቱ።';
-    $('bet').disabled = true;
-    $('cash').disabled = true;
-    $('balance').textContent = '— ETB';
-    return;
-  }
-
-  refreshBusy = true;
-  try {
-    const data = await api('state');
-    render(data);
-  } catch (error) {
-    $('status').textContent = 'Server ግንኙነት በመጠበቅ ላይ';
-    showMessage(error.message, true);
-  } finally {
-    refreshBusy = false;
-  }
-}
-
-function setAmount(value) {
-  const amount = Math.max(1, Math.min(10000, Number(value) || 1));
-  $('amount').value = amount;
-  $('betAmountLabel').textContent = money(amount) + ' ETB';
-}
-
-$('amount').addEventListener('input', () => {
-  $('betAmountLabel').textContent =
-    money(Math.max(0, Number($('amount').value) || 0)) + ' ETB';
-});
-
-$('minus').addEventListener('click', () => {
-  setAmount((Number($('amount').value) || 1) - 1);
-});
-
-$('plus').addEventListener('click', () => {
-  setAmount((Number($('amount').value) || 1) + 1);
-});
-
-document.querySelectorAll('[data-a]').forEach(button => {
-  button.addEventListener('click', () => setAmount(button.dataset.a));
-});
-
-$('betTab').addEventListener('click', () => {
-  autoMode = false;
-  $('betTab').classList.add('active');
-  $('autoTab').classList.remove('active');
-  showMessage('የBet ሁነታ ተመርጧል።');
-});
-
-$('autoTab').addEventListener('click', () => {
-  autoMode = true;
-  $('autoTab').classList.add('active');
-  $('betTab').classList.remove('active');
-  showMessage('Auto ዲዛይን ተመርጧል፤ የራስ-ሰር ውርርድ ከserver ጋር አልተገናኘም።');
-});
-
-$('bet').addEventListener('click', async () => {
-  const amount = Number($('amount').value);
-
-  if (!Number.isFinite(amount) || amount < 1 || amount > 10000) {
-    showMessage('ከ1 እስከ 10,000 ETB ያለ መጠን ያስገቡ።', true);
-    return;
-  }
-
-  $('bet').disabled = true;
-  clearMessage();
-
-  try {
-    const result = await api('bet', { amount });
-    showMessage(result.message || 'ውርርድ ተቀብሏል።');
-    await refresh();
-  } catch (error) {
-    showMessage(error.message, true);
-    await refresh();
-  }
-});
-
-$('cash').addEventListener('click', async () => {
-  $('cash').disabled = true;
-  clearMessage();
-
-  try {
-    const result = await api('cashout', {});
-    showMessage(
-      `Cash Out ${Number(result.multiplier || 1).toFixed(2)}x · ${money(result.payout)} ETB`
-    );
-    await refresh();
-  } catch (error) {
-    showMessage(error.message, true);
-    await refresh();
-  }
-});
-
-setAmount(10);
-refresh();
-setInterval(refresh, 700);
-</script>
-</body>
-</html>
+const tg=window.Telegram?.WebApp;tg?.ready();tg?.expand();
+const initData=tg?.initData||'';const $=id=>document.getElementById(id);
+let phase='',myBets=[null,null],lastRoundId=null,countdownSeenRound=null,refreshBusy=false;
+function money(n){return Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function note(t,bad=false){$('msg').style.display='block';$('msg').textContent=t;$('msg').style.border=bad?'1px solid #ff4c69':'1px solid #24d18b'}function clearNote(){$('msg').style.display='none'}
+async function api(path,body){const r=await fetch('/api/aviator/'+path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json','X-Telegram-Init-Data':initData},body:body?JSON.stringify(body):undefined,cache:'no-store'});let d;try{d=await r.json()}catch{throw Error('Server ምላሽ አልተረዳም።')}if(!r.ok||!d.success)throw Error(d.error||'ጥያቄው አልተሳካም።');return d}
+function animatePlane(mult){const m=Math.max(1,Number(mult)||1),progress=Math.min(1,Math.log(m+.2)/Math.log(20));$('planeWrap').style.transform=phase==='crashed'?`translate(${Math.min(380,progress*240+80)}px,-${Math.min(210,progress*160+30)}px) rotate(-28deg) scale(.88)`:`translate(${progress*64}px,-${progress*148}px) rotate(-20deg)`;document.querySelectorAll('.smoke').forEach((s,i)=>{s.style.left=(12+progress*45-i*3)+'%';s.style.bottom=(58+progress*125-i*7)+'px';s.style.animation=phase==='flying'?`floatSmoke ${.65+i*.13}s infinite`:'none';s.style.opacity=phase==='flying'?String(.65-i*.1):'0'})}
+function countdown(round){const id=String(round.id||'');const el=$('countdown');if(phase!=='betting'){el.className='countdown';return}const ms=Number(round.bettingEndsAt||0)-Date.now();if(ms>0&&ms<=3200){const n=Math.max(1,Math.ceil(ms/1000));const key=id+':'+n;if(countdownSeenRound!==key){countdownSeenRound=key;el.textContent=String(n);el.className='countdown show';setTimeout(()=>{if(el.textContent===String(n))el.className='countdown'},680)}}else if(ms>3200){el.className='countdown'} }
+function render(d){$('balance').textContent=money(d.balance)+' ETB';const round=d.round||{};phase=round.phase||'';myBets=Array.isArray(d.myBets)?d.myBets:[d.myBet||null,null];const mult=Number(round.multiplier||1);$('mult').textContent=mult.toFixed(2)+'x';$('mult').className='mult'+(phase==='flying'?' flying':phase==='crashed'?' crashed':'');$('stage').className='stage'+(phase==='flying'?' flying':phase==='crashed'?' crashed':'');$('roundLabel').textContent=phase==='betting'?'NEXT ROUND':phase==='flying'?'ROUND LIVE':phase==='crashed'?'CRASHED':'CONNECTING';$('status').textContent=phase==='betting'?'ውርርድ ይቀበላል':phase==='flying'?'አውሮፕላኑ እየበረረ ነው':'ዙሩ አልቋል';countdown(round);animatePlane(mult);
+ for(let i=0;i<2;i++){const b=myBets[i],slot=i+1,stake=Number(b?.stake??b?.amount??0),status=b?.status;const betBtn=$('bet'+slot),cashBtn=$('cash'+slot);betBtn.disabled=!(phase==='betting'&&!b);cashBtn.disabled=!(phase==='flying'&&status==='ACTIVE');betBtn.textContent=b?(status==='LOST'?'BET LOST':status==='CASHED_OUT'?'✓ CASHED OUT':'✓ BET PLACED'):`✦ BET ${slot}`;$('stake'+slot).textContent=b?money(stake)+' ETB':'— ETB';$('pay'+slot).textContent=status==='CASHED_OUT'?money(b.payout)+' ETB':status==='ACTIVE'?money(stake*mult)+' ETB':'— ETB';if(status==='CASHED_OUT')note(`BET ${slot}: Cash Out ${Number(b.multiplier||mult).toFixed(2)}x · ${money(b.payout)} ETB`);else if(status==='LOST')note(`BET ${slot}: ዙሩ ተቋርጧል፤ ውርርዱ ተሸንፏል።`,true)}
+ const hist=round.history||[];$('history').innerHTML=hist.length?hist.map(x=>{const v=Number(x.multiplier)||1;return `<span class="chip ${v>=10?'high':v>=2?'mid':'low'}">${v.toFixed(2)}x</span>`}).join(''):'<span class="muted">ገና የቀደመ ውጤት የለም።</span>'}
+async function refresh(){if(refreshBusy)return;if(!initData){$('status').textContent='ይህን ገጽ ከTelegram Bot ውስጥ ይክፈቱ።';$('bet1').disabled=$('bet2').disabled=$('cash1').disabled=$('cash2').disabled=true;return}refreshBusy=true;try{render(await api('state'))}catch(e){$('status').textContent='Server ግንኙነት በመጠበቅ ላይ';note(e.message,true)}finally{refreshBusy=false}}
+document.querySelectorAll('[data-a]').forEach(b=>b.addEventListener('click',()=>{$(b.dataset.target).value=b.dataset.a}));
+for(let slot=1;slot<=2;slot++){$('bet'+slot).addEventListener('click',async()=>{const amount=Number($('amount'+slot).value);if(!Number.isFinite(amount)||amount<1||amount>10000){note('ከ1 እስከ 10,000 ETB ያለ መጠን ያስገቡ።',true);return}$('bet'+slot).disabled=true;clearNote();try{const d=await api('bet',{amount,slot});note(d.message||`BET ${slot} ተቀብሏል።`);await refresh()}catch(e){note(e.message,true);await refresh()}});$('cash'+slot).addEventListener('click',async()=>{$('cash'+slot).disabled=true;clearNote();try{const d=await api('cashout',{slot});note(`BET ${slot}: Cash Out ${Number(d.multiplier||1).toFixed(2)}x · ${money(d.payout)} ETB`);await refresh()}catch(e){note(e.message,true);await refresh()}})}
+refresh();setInterval(refresh,350);
+</script></body></html>
