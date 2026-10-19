@@ -479,7 +479,7 @@
   <main class="container">
     <header class="header">
       <div>
-        <div class="brand">ESHETU <span>GAMES</span></div>
+        <div class="brand">ETHIOPIA <span>GAMES</span></div>
         <div class="subtitle">Your games, one platform.</div>
       </div>
       <div class="account" id="account">Connecting to Telegram…</div>
@@ -1003,6 +1003,18 @@
     }
 
     connectTelegram();
+
+    // Open Wallet/Profile modal when returning from another game page.
+    // Supported URLs: /?open=wallet and /?open=profile
+    (function openRequestedSection() {
+      const params = new URLSearchParams(window.location.search);
+      const section = params.get('open');
+      if (section === 'wallet' || section === 'profile') {
+        openSection(section);
+        // Remove the query parameter so refresh does not reopen the modal.
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    })();
   </script>
 </body>
 </html>
