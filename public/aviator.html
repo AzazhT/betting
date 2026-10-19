@@ -1,4 +1,731 @@
+<!doctype html>
+<html lang="am">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#040914">
+<title>Aviator | Ethiopia Betting</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#040914;--card:#081426;--card2:#050c18;
+  --pink:#ff1593;--red:#ff174d;--blue:#168aff;
+  --green:#00d987;--gold:#ffc532;--muted:#91a8ca;
+  --border:#1b2b49;
+}
+*{box-sizing:border-box}
+html{min-height:100%;background:var(--bg)}
+body{
+  margin:0;background:radial-gradient(ellipse at 50% 25%,#081a31 0,#040914 68%);
+  color:#f8faff;font-family:Arial,Helvetica,sans-serif;
+  min-height:100vh;padding-bottom:95px;
+}
+button,input{font:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:disabled{opacity:.42;cursor:not-allowed}
+a{color:inherit;text-decoration:none}
+.app{max-width:760px;margin:auto;padding:0 13px}
+header{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:17px 0 15px;border-bottom:1px solid #17223a;
+}
+.brand{display:flex;align-items:center;gap:8px;min-width:0}
+.brand-plane{font-size:35px;filter:drop-shadow(0 0 9px #ff174d66)}
+.brand-name{font-size:clamp(21px,5vw,31px);font-weight:1000;font-style:italic;color:#ff174d;letter-spacing:-1.3px}
+.brand-sub{font-size:9px;font-weight:bold;color:#a6b8d6;letter-spacing:1.5px;margin-top:2px}
+.wallet{
+  display:flex;align-items:center;gap:10px;padding:10px 13px;
+  border:1px solid #243557;border-radius:20px;background:linear-gradient(140deg,#0b162b,#050a16);
+  min-width:0;
+}
+.wallet-icon{
+  width:37px;height:37px;border:1px solid #82265e;border-radius:50%;
+  display:grid;place-items:center;color:#ff2ca6;font-size:19px;
+  background:#1b0b24;flex-shrink:0;
+}
+.wallet-label{font-size:11px;color:#c4d0e5}
+.balance{font-size:clamp(13px,3.7vw,19px);font-weight:900;margin-top:4px;white-space:nowrap}
+.history-strip{display:flex;gap:7px;overflow-x:auto;padding:14px 0 12px;scrollbar-width:none}
+.history-strip::-webkit-scrollbar{display:none}
+.chip{
+  flex-shrink:0;padding:8px 12px;border-radius:22px;
+  background:#08172c;border:1px solid #172b49;color:#168dff;
+  font-size:12px;font-weight:900;min-width:68px;text-align:center;
+}
+.chip.high{color:#ff42b9;background:#1b0b25;border-color:#50234f}
+.chip.mid{color:#bc4bff;background:#170d2b;border-color:#3b2467}
+.stage{
+  height:clamp(300px,78vw,420px);max-height:420px;position:relative;
+  overflow:hidden;isolation:isolate;border-radius:24px;
+  border:1px solid #263b60;
+  background:radial-gradient(ellipse at 48% 55%,#07345b 0,#06172e 40%,#030812 78%);
+  box-shadow:inset 0 0 35px #001126,0 12px 30px #0005;
+}
+.stage:before{
+  content:"";position:absolute;inset:0;z-index:-1;opacity:.55;
+  background:repeating-conic-gradient(from 250deg at 50% 65%,#0a2946 0deg,#0a2946 5deg,transparent 5deg,transparent 12deg);
+  mask-image:linear-gradient(to bottom,#000,transparent 95%);
+}
+.stage:after{
+  content:"";position:absolute;inset:0;z-index:-1;
+  background:linear-gradient(0deg,#030812 0%,transparent 25%);
+}
+.stage-top{position:absolute;left:14px;right:14px;top:15px;display:flex;align-items:center;justify-content:space-between;z-index:4}
+.live{font-size:12px;color:#ff2457;font-weight:900;display:flex;align-items:center;gap:8px}
+.dot{width:10px;height:10px;border-radius:50%;background:#ff174d;box-shadow:0 0 13px #ff174d;animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.45}}
+.round{border:1px solid #243557;background:#060e1e;padding:7px 10px;border-radius:20px;color:#9fb4d6;font-size:10px;font-weight:bold}
+.mult{
+  position:absolute;top:32%;left:0;right:0;text-align:center;z-index:3;
+  font-size:clamp(55px,15vw,100px);font-weight:1000;letter-spacing:-3px;
+  text-shadow:0 0 25px #ffffff24;pointer-events:none;
+}
+.mult.crashed{color:#ff2457}
+.status{
+  position:absolute;top:58%;left:10px;right:10px;text-align:center;
+  font-size:12px;color:#b0c2dc;z-index:3;
+}
+#flightSvg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+#flightArea{fill:url(#areaFill)}
+#flightPath{fill:none;stroke:#ff174d;stroke-width:4;stroke-linecap:round;filter:url(#glow)}
 
+.flight {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  --flight-progress: 0;
+}
+
+.flightline {
+  position: absolute;
+  left: 4%;
+  bottom: 9%;
+  width: 96%;
+  height: 76%;
+  opacity: 0;
+  overflow: hidden;
+  clip-path: polygon(0 100%, 100% 0, 100% 100%);
+  background:
+    linear-gradient(135deg,
+      transparent 40%,
+      rgba(255, 39, 80, .08) 58%,
+      rgba(255, 39, 80, .22) 100%);
+  transition: opacity .35s ease;
+}
+
+.flightline::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 150%;
+  height: 4px;
+  border-radius: 50%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #ff244f 40%,
+    #ff6680 70%,
+    #ff244f
+  );
+  box-shadow:
+    0 0 8px #ff244f,
+    0 0 20px #ff244f,
+    0 0 42px rgba(255, 36, 79, .65);
+  transform: rotate(-28deg);
+  transform-origin: left center;
+}
+
+#planeWrap {
+  position: absolute;
+  left: 7%;
+  bottom: 8%;
+  width: 76px;
+  height: 64px;
+  z-index: 4;
+  transform: translate3d(0, 0, 0) rotate(-20deg);
+  transform-origin: center;
+  will-change: transform;
+  transition: filter .25s ease;
+  filter:
+    drop-shadow(0 0 5px #ff3459)
+    drop-shadow(0 0 16px rgba(255, 40, 85, .8));
+}
+
+#plane {
+  display: block;
+  font-size: 51px;
+  line-height: 1;
+  transform-origin: center;
+  animation: planeBob 1.1s ease-in-out infinite alternate;
+}
+
+.trail {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100px;
+  height: 10px;
+  border-radius: 100%;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 39, 80, .5),
+    #ff3459
+  );
+  filter: blur(6px);
+  transform: rotate(-18deg);
+  transform-origin: right center;
+}
+
+@keyframes planeBob {
+  from { margin-top: -1px; }
+  to   { margin-top: 3px; }
+}
+
+@keyframes trailPulse {
+  from {
+    opacity: .55;
+    filter: blur(5px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(9px);
+  }
+}
+
+.stage.flying .flightline {
+  opacity: 1;
+}
+
+.stage.flying .trail {
+  opacity: 1;
+  animation: trailPulse .45s ease-in-out infinite alternate;
+}
+
+.stage.flying #planeWrap {
+  filter:
+    drop-shadow(0 0 7px #ff3459)
+    drop-shadow(0 0 19px rgba(255, 40, 85, .95));
+}
+
+.stage.crashed #plane {
+  animation: none;
+}
+
+.stage.crashed #planeWrap {
+  filter:
+    grayscale(.25)
+    drop-shadow(0 0 12px #ff244f);
+}
+
+.stage.crashed .flightline {
+  opacity: .9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #plane,
+  .stage.flying .trail {
+    animation: none;
+  }
+}
+
+.stage.crashed{border-color:#70233d;box-shadow:inset 0 0 50px #ff174d12}
+.stage.crashed #flightPath{stroke:#ff174d}
+.panel{
+  margin-top:13px;padding:14px;border:1px solid #1a2b49;border-radius:22px;
+  background:linear-gradient(145deg,#091426,#050b17);
+}
+.tabs{
+  display:flex;padding:4px;border:1px solid #1b2b49;border-radius:30px;
+  background:#050b17;max-width:390px;margin:0 auto 13px;
+}
+.tab{width:50%;padding:10px;border:0;border-radius:25px;background:transparent;color:var(--muted);font-weight:bold}
+.tab.active{background:linear-gradient(100deg,#461346,#7e145f);color:white}
+.bet-layout{display:grid;grid-template-columns:1fr 1.1fr;gap:10px}
+.stake-control{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  border:1px solid #253757;background:#050b17;border-radius:20px;padding:7px;
+}
+.round-btn{
+  flex-shrink:0;width:35px;height:35px;border:0;border-radius:50%;
+  background:#172743;color:white;font-size:25px;font-weight:bold;
+}
+#amount{
+  width:100%;min-width:0;text-align:center;border:0;outline:none;
+  background:transparent;color:white;font-size:26px;font-weight:900;
+}
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}
+.quick button{
+  border:1px solid #253757;background:#07101f;color:white;
+  border-radius:22px;padding:10px 4px;font-size:13px;font-weight:800;
+}
+.quick button:active{border-color:var(--pink)}
+.primary{
+  width:100%;min-height:110px;border:2px solid #20f0a0;border-radius:22px;
+  background:linear-gradient(145deg,#00e98c,#00b66b);
+  color:#fff;font-size:25px;font-weight:1000;
+  box-shadow:0 6px 0 #003b2b,0 0 18px #00d98713;
+}
+.primary small{display:block;font-size:20px;margin-top:5px}
+.primary:disabled{box-shadow:none}
+.bet-caption{font-size:11px;color:#b5c5df;margin:12px 0 7px}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.info{
+  display:flex;align-items:center;gap:10px;padding:12px 10px;
+  border:1px solid #1c2b48;background:#050b17;border-radius:17px;min-width:0;
+}
+.info-icon{font-size:23px;color:#ff2aa1}
+.info-icon.green{color:#00efa1}
+.info-label{font-size:11px;color:#91a8ca}
+.info strong{display:block;font-size:15px;margin-top:5px;overflow-wrap:anywhere}
+.cash{
+  margin-top:12px;width:100%;border:2px solid #ffdf46;border-radius:18px;
+  padding:15px 8px;background:linear-gradient(100deg,#ffc12c,#ffdb55,#ffb928);
+  color:#251700;font-size:17px;font-weight:1000;
+}
+.cash span{font-size:12px;margin-left:8px;font-weight:800}
+.cash:disabled{filter:saturate(.5)}
+.message{display:none;padding:11px;margin-top:10px;border:1px solid #20c987;border-radius:12px;background:#071b1b;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.section-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.section-title{font-size:14px;font-weight:900}
+.muted{color:var(--muted);font-size:11px}
+.bottom-nav{
+  position:fixed;z-index:10;bottom:0;left:0;right:0;
+  display:grid;grid-template-columns:repeat(4,1fr);
+  padding:10px max(8px,env(safe-area-inset-left)) calc(9px + env(safe-area-inset-bottom));
+  background:rgba(4,9,20,.97);border-top:1px solid #1b2a45;
+  backdrop-filter:blur(15px);
+}
+.nav-item{
+  position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;
+  padding:4px 2px;color:#91a8ca;font-size:11px;font-weight:700;
+}
+.nav-icon{font-size:24px;line-height:1.2}
+.nav-item.active{color:#ff2da5}
+.nav-item.active:after{content:"";position:absolute;bottom:-9px;width:65%;height:3px;border-radius:3px;background:#ff2da5}
+@media(min-width:600px){
+  .app{padding-left:20px;padding-right:20px}
+  .panel{padding:18px}
+  .stage{height:390px}
+}
+@media(max-width:380px){
+  .app{padding-left:9px;padding-right:9px}
+  header{gap:6px}
+  .brand-plane{font-size:28px}
+  .brand-sub{font-size:8px;letter-spacing:.8px}
+  .wallet{padding:8px;gap:6px;border-radius:15px}
+  .wallet-icon{width:30px;height:30px}
+  .panel{padding:10px}
+  .stage{height:290px}
+  .primary{font-size:21px;min-height:100px}
+  .primary small{font-size:17px}
+  .info{padding:9px 7px;gap:6px}
+  .info strong{font-size:12px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <a class="brand" href="/index.html" aria-label="Ethiopia Betting Home">
+      <span class="brand-plane">✈</span>
+      <span>
+        <span class="brand-name">Aviator</span>
+        <span class="brand-sub" style="display:block">ETHIOPIA BETTING</span>
+      </span>
+    </a>
+    <div class="wallet">
+      <div class="wallet-icon">▣</div>
+      <div>
+        <div class="wallet-label">ዋሌት</div>
+        <div id="balance" class="balance">— ETB</div>
+      </div>
+    </div>
+  </header>
+
+  <div id="historyStrip" class="history-strip" aria-label="የቀደሙ ውጤቶች">
+    <span class="muted">ውጤቶች በመጫን ላይ…</span>
+  </div>
+
+  <section id="stage" class="stage">
+    <div class="stage-top">
+      <span class="live"><i class="dot"></i> LIVE ROUND</span>
+      <span id="roundLabel" class="round">CONNECTING</span>
+    </div>
+
+    <div id="mult" class="mult">1.00x</div>
+    <div id="status" class="status">ግንኙነት በመጠበቅ ላይ…</div>
+
+    <div class="flight">
+      <div class="flightline"></div>
+      <div class="trail"></div>
+      <div id="planeWrap">
+        <span id="plane">✈</span>
+      </div>
+    </div>
+
+    <svg id="flightSvg" viewBox="0 0 600 400" preserveAspectRatio="none" aria-label="የአውሮፕላን በረራ ግራፍ">
+      <defs>
+        <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#ff174d" stop-opacity=".35"/>
+          <stop offset="100%" stop-color="#ff174d" stop-opacity="0"/>
+        </linearGradient>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <path id="flightArea" d="M0 395 L600 395 L600 395 Z"/>
+      <path id="flightPath" d="M0 395 L600 395"/>
+    </svg>
+  </section>
+
+  <section class="panel">
+    <div class="tabs">
+      <button id="betTab" class="tab active" type="button">Bet</button>
+      <button id="autoTab" class="tab" type="button">Auto</button>
+    </div>
+
+    <div class="bet-layout">
+      <div>
+        <div class="stake-control">
+          <button id="minus" class="round-btn" type="button" aria-label="መጠን ቀንስ">−</button>
+          <input id="amount" type="number" min="1" max="10000" step="1" value="10" inputmode="decimal" aria-label="Bet amount">
+          <button id="plus" class="round-btn" type="button" aria-label="መጠን ጨምር">+</button>
+        </div>
+        <div class="quick">
+          <button data-a="10" type="button">10</button>
+          <button data-a="50" type="button">50</button>
+          <button data-a="100" type="button">100</button>
+          <button data-a="500" type="button">500</button>
+        </div>
+      </div>
+      <div>
+        <button id="bet" class="primary" type="button">
+          Bet
+          <small id="betAmountLabel">10.00 ETB</small>
+        </button>
+      </div>
+    </div>
+
+    <div class="info-grid">
+      <div class="info">
+        <span class="info-icon">▤</span>
+        <div>
+          <div class="info-label">Your Bet</div>
+          <strong id="myStake">— ETB</strong>
+        </div>
+      </div>
+      <div class="info">
+        <span class="info-icon green">↗</span>
+        <div>
+          <div class="info-label">Potential Win</div>
+          <strong id="potential">— ETB</strong>
+        </div>
+      </div>
+    </div>
+
+    <button id="cash" class="cash" type="button" disabled>
+      ⚡ Cash Out <span id="cashLabel">—</span>
+    </button>
+    <div id="msg" class="message" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="panel">
+    <div class="section-head">
+      <span class="section-title">የቀደሙ ዙሮች</span>
+      <span class="muted">Recent results</span>
+    </div>
+    <div id="history" class="history-strip">
+      <span class="muted">ውጤቶች በመጫን ላይ…</span>
+    </div>
+  </section>
+</div>
+
+<nav class="bottom-nav" aria-label="Main navigation">
+  <a class="nav-item" href="/index.html">
+    <span class="nav-icon">⌂</span><span>Home</span>
+  </a>
+  <a class="nav-item" href="/index.html#games">
+    <span class="nav-icon">♧</span><span>Games</span>
+  </a>
+  <a class="nav-item" href="/index.html#wallet">
+    <span class="nav-icon">▣</span><span>Wallet</span>
+  </a>
+  <a class="nav-item" href="/index.html#profile">
+    <span class="nav-icon">♙</span><span>Profile</span>
+  </a>
+</nav>
+
+<script>
+'use strict';
+
+const tg = window.Telegram?.WebApp;
+tg?.ready();
+tg?.expand();
+
+const initData = tg?.initData || '';
+const $ = id => document.getElementById(id);
+
+let phase = '';
+let myBet = null;
+let refreshBusy = false;
+let lastRenderedHistory = '';
+let autoMode = false;
+
+function money(value) {
+  const n = Number(value);
+  return (Number.isFinite(n) ? n : 0).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function showMessage(text, bad = false) {
+  $('msg').style.display = 'block';$('msg').textContent = text;
+  $('msg').style.borderColor = bad ? '#ff3159' : '#00d987';
+}
+
+function clearMessage() {
+  $('msg').style.display = 'none';$('msg').textContent = '';
+}
+
+async function api(path, body) {
+  const response = await fetch('/api/aviator/' + path, {
+    method: body !== undefined ? 'POST' : 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Telegram-Init-Data': initData
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+    cache: 'no-store'
+  });
+
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error('Server ምላሽ አልተረዳም።');
+  }
+
+  if (!response.ok || !data.success) {
+    throw new Error(data.error || 'ጥያቄው አልተሳካም።');
+  }
+  return data;
+}
+
+function animatePlane(mult) {
+  const m = Math.max(1, Number(mult) || 1);
+
+  const progress = Math.min(
+    1,
+    Math.max(0, Math.log(m) / Math.log(20))
+  );
+
+  const stage = $('stage');
+  const planeWrap = $('planeWrap');
+
+  const width = stage.clientWidth;
+  const height = stage.clientHeight;
+
+  const maxX = Math.max(0, width * 0.69);
+  const maxY = Math.max(0, height * 0.48);
+
+  const x = progress * maxX;
+  const y = progress * maxY;
+
+  planeWrap.style.transform =
+    `translate3d(${x}px, -${y}px, 0) rotate(-20deg)`;
+
+  const trail = document.querySelector('.trail');
+
+  if (trail) {
+    trail.style.left = `${Math.max(0, x - 70)}px`;
+    trail.style.top = `${Math.max(35, height - 75 - y)}px`;
+    trail.style.opacity = phase === 'flying' ? '1' : '0';
+  }
+}
+
+function renderHistory(items, targetId) {
+  const target = $(targetId);
+  const history = Array.isArray(items) ? items : [];
+
+  if (!history.length) {
+    target.innerHTML = '<span class="muted">ገና የቀደመ ውጤት የለም።</span>';
+    return;
+  }
+
+  target.innerHTML = history.map(item => {
+    const value = Number(item.multiplier ?? item.crash_multiplier ?? 1);
+    const safeValue = Number.isFinite(value) ? value : 1;
+    const type = safeValue >= 10 ? 'high' : safeValue >= 2 ? 'mid' : '';
+    return `<span class="chip ${type}">${safeValue.toFixed(2)}x</span>`;
+  }).join('');
+}
+
+function render(data) {
+  $('balance').textContent = money(data.balance) + ' ETB';
+
+  const round = data.round || {};
+  phase = round.phase || '';
+  myBet = data.myBet || null;
+
+  const multiplier = Math.max(1, Number(round.multiplier || 1));
+  $('mult').textContent = multiplier.toFixed(2) + 'x';$('mult').className = 'mult' + (phase === 'crashed' ? ' crashed' : '');
+
+  $('stage').classList.toggle('crashed', phase === 'crashed');$('stage').classList.toggle('flying', phase === 'flying');
+
+  $('roundLabel').textContent =
+    phase === 'betting' ? 'NEXT ROUND' :
+    phase === 'flying' ? 'ROUND LIVE' :
+    phase === 'crashed' ? 'CRASHED' : 'CONNECTING';
+
+  $('status').textContent =
+    phase === 'betting' ? 'ውርርድ ይቀበላል' :
+    phase === 'flying' ? 'አውሮፕላኑ እየበረረ ነው' :
+    phase === 'crashed' ? 'ዙሩ ተቋርጧል' :
+    'ግንኙነት በመጠበቅ ላይ…';
+
+  animatePlane(multiplier);
+
+  const activeBet = myBet?.status === 'ACTIVE';
+  const hasBetThisRound = Boolean(myBet);
+
+  $('bet').disabled = !(phase === 'betting' && !hasBetThisRound);$('cash').disabled = !(phase === 'flying' && activeBet);
+
+  const stake = Number(myBet?.stake ?? myBet?.amount ?? 0);
+  $('myStake').textContent = myBet ? money(stake) + ' ETB' : '— ETB';
+
+  if (activeBet) {
+    $('potential').textContent = money(stake * multiplier) + ' ETB';$('cashLabel').textContent =
+      multiplier.toFixed(2) + 'x · ' + money(stake * multiplier) + ' ETB';
+  } else if (myBet?.status === 'CASHED_OUT') {
+    $('potential').textContent = money(myBet.payout) + ' ETB';$('cashLabel').textContent =
+      Number(myBet.multiplier || multiplier).toFixed(2) + 'x · ' +
+      money(myBet.payout) + ' ETB';
+  } else {
+    $('potential').textContent = '— ETB';$('cashLabel').textContent = '—';
+  }
+
+  const history = round.history || [];
+  const historyKey = JSON.stringify(history);
+  if (historyKey !== lastRenderedHistory) {
+    lastRenderedHistory = historyKey;
+    renderHistory(history, 'history');
+    renderHistory(history, 'historyStrip');
+  }
+
+  if (myBet?.status === 'CASHED_OUT') {
+    $('cashLabel').textContent = money(myBet.payout) + ' ETB';
+  }
+  if (myBet?.status === 'LOST') {
+    showMessage('ዙሩ ተቋርጧል፤ ይህ ውርርድ ተሸንፏል።', true);
+  }
+}
+
+async function refresh() {
+  if (refreshBusy) return;
+
+  if (!initData) {
+    $('status').textContent = 'ይህን ገጽ ከTelegram Bot ውስጥ ይክፈቱ።';
+    $('bet').disabled = true;
+    $('cash').disabled = true;
+    $('balance').textContent = '— ETB';
+    return;
+  }
+
+  refreshBusy = true;
+  try {
+    const data = await api('state');
+    render(data);
+  } catch (error) {
+    $('status').textContent = 'Server ግንኙነት በመጠበቅ ላይ';
+    showMessage(error.message, true);
+  } finally {
+    refreshBusy = false;
+  }
+}
+
+function setAmount(value) {
+  const amount = Math.max(1, Math.min(10000, Number(value) || 1));
+  $('amount').value = amount;
+  $('betAmountLabel').textContent = money(amount) + ' ETB';
+}
+
+$('amount').addEventListener('input', () => {$('betAmountLabel').textContent =
+    money(Math.max(0, Number($('amount').value) || 0)) + ' ETB';
+});
+
+$('minus').addEventListener('click', () => {
+  setAmount((Number($('amount').value) || 1) - 1);
+});
+
+$('plus').addEventListener('click', () => {
+  setAmount((Number($('amount').value) || 1) + 1);
+});
+
+document.querySelectorAll('[data-a]').forEach(button => {
+  button.addEventListener('click', () => setAmount(button.dataset.a));
+});
+
+$('betTab').addEventListener('click', () => {
+  autoMode = false;
+  $('betTab').classList.add('active');$('autoTab').classList.remove('active');
+  showMessage('የBet ሁነታ ተመርጧል።');
+});
+
+$('autoTab').addEventListener('click', () => {
+  autoMode = true;
+  $('autoTab').classList.add('active');$('betTab').classList.remove('active');
+  showMessage('Auto ዲዛይን ተመርጧል፤ የራስ-ሰር ውርርድ ከserver ጋር አልተገናኘም።');
+});
+
+$('bet').addEventListener('click', async () => {
+  const amount = Number($('amount').value);
+
+  if (!Number.isFinite(amount) || amount < 1 || amount > 10000) {
+    showMessage('ከ1 እስከ 10,000 ETB ያለ መጠን ያስገቡ።', true);
+    return;
+  }
+
+  $('bet').disabled = true;
+  clearMessage();
+
+  try {
+    const result = await api('bet', { amount });
+    showMessage(result.message || 'ውርርድ ተቀብሏል።');
+    await refresh();
+  } catch (error) {
+    showMessage(error.message, true);
+    await refresh();
+  }
+});
+
+$('cash').addEventListener('click', async () => {$('cash').disabled = true;
+  clearMessage();
+
+  try {
+    const result = await api('cashout', {});
+    showMessage(
+      `Cash Out ${Number(result.multiplier || 1).toFixed(2)}x · ${money(result.payout)} ETB`
+    );
+    await refresh();
+  } catch (error) {
+    showMessage(error.message, true);
+    await refresh();
+  }
+});
+
+setAmount(10);
+refresh();
+setInterval(refresh, 700);
+</script>
+</body>
+</html>
 <!doctype html>
 <html lang="am">
 <head>
