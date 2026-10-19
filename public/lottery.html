@@ -2,710 +2,1007 @@
 <html lang="am">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>BYD Car Lottery | Ethiopia Games</title>
-  <meta name="theme-color" content="#10251d">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#071b18">
+  <title>Eshetu Games</title>
+
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
   <style>
     :root {
-      --bg: #0b1512;
-      --panel: #14241d;
-      --panel2: #1c3228;
-      --gold: #f6c453;
-      --gold-light: #ffe9a6;
-      --gold-dark: #c89a32;
-      --muted: #b4c0b8;
-      --border: #344b3d;
-      --red: #e5484d;
-      --text: #fff;
+      --bg: #071b18;
+      --panel: #102a25;
+      --panel2: #16352e;
+      --green: #20d68b;
+      --text: #f3fff9;
+      --muted: #9bb7ad;
+      --border: rgba(255,255,255,.09);
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; }
 
     body {
-      font-family: Arial, Helvetica, sans-serif;
-      background:
-        radial-gradient(ellipse at top, #274a34 0%, transparent 48%),
-        var(--bg);
+      margin: 0;
+      padding: 20px 20px 90px 20px;
+      font-family: Arial, sans-serif;
       color: var(--text);
+      background: radial-gradient(ellipse at top, #143b30 0%, var(--bg) 58%);
       min-height: 100vh;
-      padding-bottom: 100px;
-    }
-
-    /* Top Marquee Banner */
-    .marquee-container {
-      background: linear-gradient(90deg, #382905, #634b0a, #382905);
-      border-bottom: 1px solid var(--gold);
-      overflow: hidden;
-      padding: 9px 0;
-      white-space: nowrap;
-      box-shadow: 0 4px 15px rgba(246, 196, 83, 0.15);
-      margin-bottom: 18px;
-    }
-    .marquee-text {
-      display: inline-block;
-      animation: marquee 20s linear infinite;
-      color: var(--gold-light);
-      font-weight: 800;
-      font-size: 13px;
-      letter-spacing: 0.5px;
-    }
-    @keyframes marquee {
-      0% { transform: translateX(100%); }
-      100% { transform: translateX(-100%); }
     }
 
     .container {
-      width: min(100% - 24px, 850px);
-      margin: auto;
+      max-width: 1100px;
+      margin: 0 auto;
     }
 
-    .topbar {
+    .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      flex-wrap: wrap;
+      gap: 14px;
       margin-bottom: 20px;
     }
 
     .brand {
-      font-size: 19px;
-      font-weight: 900;
-      color: var(--gold-light);
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: .2px;
     }
 
-    /* Wallet Balance Topbar Style */
-    .wallet-balance {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 5px;
-      padding: 9px 12px;
-      background: #14241d;
-      border: 1px solid #c89a32;
-      border-radius: 12px;
-      white-space: nowrap;
-    }
-
-    .wallet-balance span {
-      font-size: 11px;
-      color: #b4c0b8;
-    }
-
-    .wallet-balance strong {
-      font-size: 15px;
-      color: #f6c453;
-    }
-
-    /* Hero Section */
-    .hero {
-      text-align: center;
-      padding: 24px 16px;
-      border: 1px solid #b98c3d;
-      border-radius: 22px;
-      background:
-        radial-gradient(ellipse at top, #f6c45320, transparent 55%),
-        linear-gradient(145deg, #1d3326, #101b16);
-      position: relative;
-      overflow: hidden;
-      margin-bottom: 20px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-    }
-
-    .eyebrow {
-      display: inline-block;
-      padding: 6px 14px;
-      border: 1px solid #80642d;
-      border-radius: 30px;
-      color: var(--gold-light);
-      background: #f6c45315;
-      font-size: 11px;
-      font-weight: 900;
-      letter-spacing: 1.5px;
-      margin-bottom: 12px;
-    }
-
-    h1 {
-      font-size: clamp(26px, 5vw, 42px);
-      margin: 6px 0 10px;
-      line-height: 1.1;
-    }
-
-    h1 span {
-      color: var(--gold);
-    }
+    .brand span { color: var(--green); }
 
     .subtitle {
       color: var(--muted);
-      line-height: 1.6;
-      max-width: 600px;
-      margin: 0 auto 18px;
+      font-size: 13px;
+      margin-top: 6px;
+    }
+
+    .account {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: 12px 16px;
+      border-radius: 14px;
+      color: var(--muted);
       font-size: 13px;
     }
 
-    /* Car Showcase & Slides Styles */
-    .car-scene {
-      margin: 16px auto;
-      width: 100%;
-      border-radius: 16px;
-      background: #08120d;
-      border: 1px solid #3b503b;
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      isolation: isolate;
-    }
-
-    .car-showcase {
-      height: 300px;
-    }
-
-    .car-slides,
-    .car-slide {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-    }
-
-    .car-slide {
-      opacity: 0;
-      visibility: hidden;
-      transform: scale(1.04);
-      transition: opacity 1s ease, transform 1.4s ease,
-                  visibility 1s;
-    }
-
-    .car-slide.active {
-      opacity: 1;
-      visibility: visible;
-      transform: scale(1);
-      z-index: 2;
-    }
-
-    .car-slide img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      object-position: center;
-    }
-
-    .car-slide span {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      padding: 8px 11px;
-      border-radius: 9px;
-      background: rgba(0, 0, 0, .75);
-      color: #ffe9a6;
-      font-size: 11px;
-      font-weight: 800;
-      z-index: 3;
-    }
-
-    .car-badge {
-      position: absolute;
-      z-index: 3;
-      bottom: 12px;
-      left: 12px;
-      background: rgba(0,0,0,.82);
-      border: 1px solid var(--gold);
-      padding: 6px 14px;
-      border-radius: 8px;
-      color: var(--gold-light);
-      font-weight: 800;
-      font-size: 12px;
-      backdrop-filter: blur(6px);
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .car-slide {
-        transition: none;
-      }
-    }
-
-    .meta-badges {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 14px;
-    }
-    .meta-tag {
-      background: var(--panel2);
-      border: 1px solid var(--border);
-      padding: 8px 14px;
-      border-radius: 10px;
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--gold);
-    }
-
-    /* Main Grid Panel */
-    .panel {
-      background: linear-gradient(145deg, #172920, #111e17);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 20px;
+    /* Wallets Section at Top */
+    .wallets {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
       margin-bottom: 20px;
     }
 
-    .panel h2 {
-      font-size: 18px;
-      margin-bottom: 6px;
-      color: var(--gold-light);
+    .wallet {
+      background: linear-gradient(135deg, #163b30, #10271f);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
     }
 
-    .description {
+    .wallet-label {
       color: var(--muted);
       font-size: 13px;
-      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+
+    .wallet-value {
+      font-size: 26px;
+      font-weight: 800;
+    }
+
+    /* Promotional Slider Banner */
+    .promo-slider {
+      position: relative;
+      background: linear-gradient(135deg, #2c163b, #151029, #0d1b24);
+      border: 1px solid rgba(255, 209, 102, 0.4);
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 24px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+
+    .promo-slide {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+    }
+
+    .promo-slide.active {
+      display: flex;
+      animation: fadeIn 0.5s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .promo-car-container {
+      width: 120px;
+      height: 80px;
+      flex-shrink: 0;
+      background: radial-gradient(circle, rgba(255, 209, 102, 0.3) 0%, transparent 75%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+      padding: 4px;
+    }
+
+    .real-byd-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 6px 12px rgba(0,0,0,0.6));
+    }
+
+    .promo-content h3 {
+      margin: 0 0 6px;
+      font-size: 20px;
+      color: #ffe1a0;
+      font-weight: 900;
+    }
+
+    .promo-content p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .promo-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #ffe7a1, #d99b2b);
+      color: #382500;
+      font-size: 11px;
+      font-weight: 900;
+      padding: 4px 10px;
+      border-radius: 20px;
+      margin-bottom: 8px;
+    }
+
+    .slider-arrow {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid var(--border);
+      color: #fff;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+
+    .slider-arrow:hover {
+      background: rgba(255,255,255,0.25);
+    }
+
+    .slider-dots {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .dot-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      cursor: pointer;
+      transition: background 0.3s, width 0.3s;
+    }
+
+    .dot-indicator.active {
+      background: #ffd166;
+      width: 20px;
+      border-radius: 4px;
+    }
+
+    .section-title {
+      font-size: 21px;
+      margin: 0 0 6px;
+    }
+
+    .section-description {
+      font-size: 13px;
+      color: var(--muted);
+      margin: 0 0 18px;
+    }
+
+    .games {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .game {
+      display: flex;
+      flex-direction: column;
+      min-height: 220px;
+      padding: 18px;
+      background: linear-gradient(155deg, #15352d, #0d241f);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      color: var(--text);
+      text-decoration: none;
+      transition: transform .18s ease, border-color .18s ease;
+    }
+
+    .game:hover {
+      transform: translateY(-3px);
+      border-color: rgba(32,214,139,.55);
+    }
+
+    .game.featured {
+      border-color: rgba(32,214,139,.65);
+      box-shadow: 0 0 24px rgba(32,214,139,.09);
+    }
+
+    .game-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 52px;
+      height: 52px;
+      border-radius: 15px;
+      background: rgba(32,214,139,.12);
+      font-size: 28px;
       margin-bottom: 16px;
     }
 
-    /* 1 እስከ 3000 ቁጥሮች ሙሉ በሙሉ የሚታዩበት ግሪድ */
-    .filter-box {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 14px;
-    }
-    .search-input {
-      flex: 1;
-      padding: 11px 14px;
-      border-radius: 10px;
-      border: 1px solid #435849;
-      background: #0c1912;
-      color: #fff;
-      outline: none;
-      font-size: 14px;
-    }
-    .search-input:focus { border-color: var(--gold); }
-
-    .numbers-container {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
-      gap: 6px;
-      height: 360px;
-      overflow-y: auto;
-      padding: 6px;
-      background: #0c1711;
-      border: 1px solid var(--border);
-      border-radius: 12px;
+    .game h3 {
+      margin: 0 0 9px;
+      font-size: 17px;
     }
 
-    .num-btn {
-      aspect-ratio: 1.2;
-      background: #14241d;
-      border: 1px solid #283d31;
-      border-radius: 8px;
-      color: #e2ede5;
-      font-weight: 700;
-      font-size: 11px;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.1s ease;
-    }
-    .num-btn:hover:not(.taken) {
-      border-color: var(--gold);
-      background: #1f382c;
-    }
-    .num-btn.taken {
-      background: #2a1515;
-      border-color: #5c2626;
-      color: var(--red);
-      cursor: not-allowed;
-      opacity: 0.8;
-      font-size: 9px;
-    }
-    .num-btn.taken small {
-      font-size: 8px;
-      color: #ff9999;
-    }
-    .num-btn.selected {
-      background: var(--gold);
-      color: #171203;
-      border-color: var(--gold-light);
-      box-shadow: 0 0 12px rgba(246, 196, 83, 0.4);
-    }
-
-    /* Checkout / Action Box */
-    .checkout-box {
-      margin-top: 18px;
-      background: #0f1c16;
-      border: 1px solid #4d3d19;
-      border-radius: 14px;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .selected-summary small { color: var(--muted); display: block; font-size: 11px; }
-    .selected-summary strong { color: var(--gold); font-size: 16px; }
-
-    .buy-btn {
-      padding: 13px 22px;
-      border: 0;
-      border-radius: 11px;
-      background: linear-gradient(100deg, #ffe8a0, #f0b832);
-      color: #2a2008;
-      font-weight: 900;
-      font-size: 14px;
-      cursor: pointer;
-      box-shadow: 0 4px 15px rgba(240, 184, 50, 0.3);
-      white-space: nowrap;
-    }
-    .buy-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    /* Toast Notification */
-    .toast {
-      position: fixed;
-      bottom: 25px;
-      left: 50%;
-      transform: translateX(-50%) translateY(100px);
-      background: #f6c453;
-      color: #171203;
-      padding: 12px 20px;
-      border-radius: 12px;
-      font-weight: 800;
+    .game p {
+      color: var(--muted);
       font-size: 13px;
-      box-shadow: 0 8px 25px rgba(0,0,0,0.5);
-      transition: transform 0.3s ease;
-      z-index: 1000;
-    }
-    .toast.show {
-      transform: translateX(-50%) translateY(0);
-    }
-    .toast.error {
-      background: var(--red);
-      color: #fff;
+      line-height: 1.55;
+      margin: 0 0 20px;
     }
 
-    footer {
-      text-align: center;
-      padding: 20px 10px;
-      color: #87988c;
-      font-size: 12px;
-      line-height: 1.6;
+    .game-bottom { margin-top: auto; }
+
+    .game-button {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 11px 12px;
+      background: var(--green);
+      color: #05251a;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 800;
     }
 
-    /* Fixed Bottom Navigation Styles */
+    .game-button.soon {
+      background: #263d36;
+      color: #a2b9b0;
+    }
+
+    /* BYD Lottery — special gold design */
+    .game.lottery {
+      background:
+        radial-gradient(ellipse at top right, #ffd16624, transparent 55%),
+        linear-gradient(145deg, #29301f, #10271f 75%);
+      border: 1px solid #d9ad50;
+      box-shadow: inset 0 0 0 1px #ffd16612,
+                  0 8px 25px #0002;
+    }
+
+    .game.lottery:hover {
+      transform: translateY(-5px);
+      border-color: #ffe6a0;
+      box-shadow: 0 12px 30px #ffd16620;
+    }
+
+    .game.lottery .game-icon {
+      background: linear-gradient(145deg, #ffe7a1, #d99b2b);
+      color: #382500;
+      border: 1px solid #ffe4a0;
+      box-shadow: 0 5px 18px #ffd16625;
+    }
+
+    .game.lottery h3,
+    .game.lottery .lottery-label {
+      color: #ffe1a0;
+    }
+
+    .lottery-label {
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .8px;
+      margin: -5px 0 9px;
+    }
+
+    .game.lottery .lottery-button {
+      background: linear-gradient(105deg, #ffe8a4, #f4b82e);
+      color: #302006;
+      box-shadow: 0 5px 16px #ffd16620;
+    }
+
+    /* Fixed Bottom Navigation Bar & Modals */
     .bottom-nav {
       position: fixed;
       bottom: 0;
       left: 0;
-      width: 100%;
+      right: 0;
+      background: rgba(10, 29, 25, 0.95);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid var(--border);
+      padding: 10px 5px;
       display: flex;
-      justify-content: space-around;
       align-items: center;
-      padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-      background: rgba(11, 21, 18, 0.97);
-      border-top: 1px solid #344b3d;
-      z-index: 999;
-      backdrop-filter: blur(12px);
+      justify-content: space-around;
+      gap: 4px;
+      z-index: 1000;
     }
 
     .nav-item {
-      flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
-      color: #b4c0b8;
+      color: var(--muted);
       text-decoration: none;
-      font-weight: 700;
-    }
-
-    .nav-item span {
-      font-size: 21px;
-    }
-
-    .nav-item small {
       font-size: 11px;
+      gap: 4px;
+      transition: color 0.2s;
+      flex: 1;
+      min-width: 0;
+      text-align: center;
     }
 
-    .nav-item:hover,
-    .nav-item:active {
-      color: #f6c453;
+    .nav-item:hover, .nav-item.active {
+      color: var(--green);
+    }
+
+    .nav-icon {
+      font-size: 18px;
+    }
+
+    .app-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: rgba(0,0,0,.78);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      overflow-y: auto;
+    }
+
+    .app-modal-card {
+      position: relative;
+      width: 100%;
+      max-width: 440px;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: #102a25;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 20px;
+      padding: 22px;
+    }
+
+    .modal-close {
+      float: right;
+      background: #263d36;
+      border: 0;
+      color: white;
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    .wallet-action {
+      width: 100%;
+      margin-top: 12px;
+      padding: 13px;
+      border: 0;
+      border-radius: 12px;
+      background: #20d68b;
+      color: #05251a;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .withdraw-action {
+      background: #263d36;
+      color: #f3fff9;
+      border: 1px solid rgba(255,255,255,.12);
+    }
+
+    .app-modal-card label {
+      display: block;
+      margin-top: 13px;
+      margin-bottom: 6px;
+      color: #b6d0c6;
+      font-size: 13px;
+    }
+
+    .app-modal-card input,
+    .app-modal-card select {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.15);
+      background: #071b18;
+      color: white;
+      font-size: 15px;
+    }
+
+    #moneyMessage {
+      font-size: 13px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 32px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media (max-width: 850px) {
+      .games { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 480px) {
+      body { padding: 14px 14px 90px 14px; }
+      .brand { font-size: 21px; }
+      .games { gap: 10px; }
+      .game { padding: 14px; min-height: 210px; }
+      .game h3 { font-size: 15px; }
+      .game p { font-size: 12px; }
+      .wallet { padding: 15px; }
+      .wallet-value { font-size: 22px; }
+      .promo-slider { padding: 16px; }
+      .promo-content h3 { font-size: 17px; }
     }
   </style>
 </head>
 
 <body>
+  <main class="container">
+    <header class="header">
+      <div>
+        <div class="brand">ETHIOPIA <span>GAMES</span></div>
+        <div class="subtitle">Your games, one platform.</div>
+      </div>
+      <div class="account" id="account">Connecting to Telegram…</div>
+    </header>
 
-  <!-- የማስታወቂያ የሚንቀሳቀስ ባነር -->
-  <div class="marquee-container">
-    <div class="marquee-text">
-      🔥 እንኳን ደስ አላችሁ! የ BYD ዘመናዊ ኤሌክትሪክ መኪና (የግምት ዋጋ 3,300,000 ብር) ዕጣ ቁጥር መምረጥ ጀምር። 1 ቲኬት 1,100 ብር ብቻ! ዕጣው የሚወጣበት ቀን ጥቅምት 29 በ 9:00 ነው! ፈጥነው ዕድልዎን ይሞክሩ! 🚗✨
+    <!-- Wallets Section at Top -->
+    <section class="wallets">
+      <div class="wallet">
+        <div class="wallet-label">Cash Balance</div>
+        <div class="wallet-value"><span id="cashBalance">0.00</span> ETB</div>
+      </div>
+      <div class="wallet">
+        <div class="wallet-label">Bonus Balance</div>
+        <div class="wallet-value"><span id="bonusBalance">0.00</span> ETB</div>
+      </div>
+    </section>
+
+    <!-- Promotional Slider Banner -->
+    <section class="promo-slider">
+      <div class="promo-slide active">
+        <div style="display: flex; align-items: center; gap: 15px;">
+          <div class="promo-car-container">
+            <img
+              src="/images/byd-seagull.png"
+              alt="BYD Seagull"
+              class="real-byd-img"
+              loading="eager"
+            />
+          </div>
+          <div>
+            <span class="promo-badge">✦ BYD መኪና ዕጣ</span>
+            <div class="promo-content">
+              <h3>1000 ብር = 1 ቲኬት</h3>
+              <p>አዲስ ዘመናዊ BYD መኪና የማሸነፍ እድልዎን አሁኑኑ ቲኬት በመቁረጥ ይጀምሩ!</p>
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <button class="slider-arrow" onclick="changeSlide(-1)">❮</button>
+          <button class="slider-arrow" onclick="changeSlide(1)">❯</button>
+        </div>
+      </div>
+
+      <div class="promo-slide">
+        <div>
+          <span class="promo-badge">🏆 DAILY TOURNAMENT</span>
+          <div class="promo-content">
+            <h3>የዕለቱ ከፍተኛ ተሸላሚዎች</h3>
+            <p>1ኛ: 20,000 ብር | 2ኛ: 10,000 ብር | 3ኛ: 5,000 ብር</p>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <button class="slider-arrow" onclick="changeSlide(-1)">❮</button>
+          <button class="slider-arrow" onclick="changeSlide(1)">❯</button>
+        </div>
+      </div>
+
+      <div class="slider-dots">
+        <span class="dot-indicator active" onclick="currentSlide(0)"></span>
+        <span class="dot-indicator" onclick="currentSlide(1)"></span>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">Choose Your Game</h2>
+      <p class="section-description">
+        Select a game to continue. Aviator is currently available as a demo.
+      </p>
+
+      <div class="games">
+        <!-- 1. Bingo -->
+        <a class="game" href="/bingo.html">
+          <div class="game-icon">🎱</div>
+          <h3>Bingo</h3>
+          <p>Join a room and enjoy the Bingo game.</p>
+          <div class="game-bottom">
+            <div class="game-button">Play Bingo <span>→</span></div>
+          </div>
+        </a>
+
+        <!-- 2. Keno -->
+        <a class="game" href="/keno.html">
+          <div class="game-icon">🎯</div>
+          <h3>Keno</h3>
+          <p>Pick your numbers and try your luck.</p>
+          <div class="game-bottom">
+            <div class="game-button">Play Keno <span>→</span></div>
+          </div>
+        </a>
+
+        <!-- 3. Aviator -->
+        <a class="game featured" href="/aviator.html">
+          <div class="game-icon">✈️</div>
+          <h3>Aviator</h3>
+          <p>Watch the multiplier rise and cash out in time.</p>
+          <div class="game-bottom">
+            <div class="game-button">
+              Play Aviator Demo <span>→</span>
+            </div>
+          </div>
+        </a>
+
+        <!-- 4. BYD Car Lottery -->
+        <a class="game lottery" href="/lottery.html">
+          <div class="game-icon">🚘</div>
+          <div class="lottery-label">✦ GRAND PRIZE DRAW</div>
+          <h3>BYD Car Lottery</h3>
+          <p>Enter the draw for a chance to win a BYD car!</p>
+          <div class="game-bottom">
+            <div class="game-button lottery-button">
+              <span>Enter Lottery</span>
+              <span>→</span>
+            </div>
+          </div>
+        </a>
+
+        <!-- 5. Football Betting -->
+        <a class="game" href="/betting.html">
+          <div class="game-icon">⚽</div>
+          <h3>Football Betting</h3>
+          <p>Explore football events and available markets.</p>
+          <div class="game-bottom">
+            <div class="game-button">Open Betting <span>→</span></div>
+          </div>
+        </a>
+
+        <!-- 6. Mines -->
+        <div class="game">
+          <div class="game-icon">💣</div>
+          <h3>Mines</h3>
+          <p>A new Mines game is planned for a future update.</p>
+          <div class="game-bottom">
+            <div class="game-button soon">Coming Soon <span>•</span></div>
+          </div>
+        </div>
+
+        <!-- 7. High / Low -->
+        <div class="game">
+          <div class="game-icon">📈</div>
+          <h3>High / Low</h3>
+          <p>Guess whether the next result will be higher or lower.</p>
+          <div class="game-bottom">
+            <div class="game-button soon">Coming Soon <span>•</span></div>
+          </div>
+        </div>
+
+        <!-- 8. Jackpot -->
+        <div class="game">
+          <div class="game-icon">🏆</div>
+          <h3>Jackpot</h3>
+          <p>Jackpot games will be available in a future update.</p>
+          <div class="game-bottom">
+            <div class="game-button soon">Coming Soon <span>•</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      Ethiopia Games · Aviator Demo
+    </footer>
+  </main>
+
+  <!-- Wallet / Sections Modal -->
+  <div id="appModal" class="app-modal" style="display:none">
+    <div class="app-modal-card">
+      <button class="modal-close" onclick="closeSection()">✕</button>
+
+      <div id="sectionWallet" style="display:none">
+        <h2>👛 My Wallet</h2>
+
+        <div class="wallet">
+          <div class="wallet-label">Cash Balance</div>
+          <div class="wallet-value"><span id="modalCash">0.00</span> ETB</div>
+        </div>
+
+        <div class="wallet">
+          <div class="wallet-label">Bonus Balance</div>
+          <div class="wallet-value"><span id="modalBonus">0.00</span> ETB</div>
+        </div>
+
+        <button class="wallet-action" onclick="showTransaction('deposit')">
+          ＋ Deposit
+        </button>
+        <button class="wallet-action withdraw-action" onclick="showTransaction('withdraw')">
+          ↗ Withdraw
+        </button>
+
+        <div id="transactionForm" style="display:none">
+          <h3 id="transactionTitle">Deposit</h3>
+
+          <form id="moneyRequestForm">
+            <label for="moneyAmount">Amount (ETB)</label>
+            <input id="moneyAmount" type="number" min="50" max="100000"
+                   step="0.01" required placeholder="ቢያንስ 50 ብር">
+
+            <div id="depositOptions">
+              <div style="padding:14px; margin:10px 0; border-radius:12px; background:#f2f8f5; color:#153c2b;">
+                <strong>Telebirr Deposit</strong>
+                <p style="margin:8px 0;">የባለቤት ስም፦ Ayesh</p>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                  <strong id="telebirrNumber">0901494600</strong>
+                  <button type="button" class="wallet-action"
+                    onclick="copyTelebirrNumber()" style="margin-top:0; padding:8px 12px; font-size:13px; width:auto;">📋 Copy Number</button>
+                </div>
+                <p id="copyMessage" role="status" style="margin-bottom:0; margin-top:6px; font-size:12px;"></p>
+              </div>
+
+              <label for="paymentMethod">የክፍያ ዘዴ</label>
+              <select id="paymentMethod">
+                <option value="Telebirr">Telebirr</option>
+                <option value="Bank">Bank Transfer</option>
+              </select>
+
+              <label for="paymentReference">የክፍያ Reference</label>
+              <input id="paymentReference" maxlength="200"
+                     placeholder="የክፍያ ማረጋገጫ ቁጥር">
+            </div>
+
+            <div id="withdrawOptions" style="display:none">
+              <label for="withdrawMethod">የመቀበያ ዘዴ</label>
+              <select id="withdrawMethod">
+                <option value="Telebirr">Telebirr</option>
+                <option value="Bank">Bank Transfer</option>
+              </select>
+
+              <label for="withdrawAccount">የመቀበያ መለያ</label>
+              <input id="withdrawAccount" maxlength="100"
+                     placeholder="የስልክ ወይም የባንክ መለያ">
+            </div>
+
+            <button class="wallet-action" type="submit" id="moneySubmit">
+              Send Request
+            </button>
+            <p id="moneyMessage" role="status"></p>
+          </form>
+        </div>
+      </div>
+
+      <div id="sectionLeaderboard" style="display:none">
+        <h2>🏆 Leaderboard</h2>
+        <p>የተጫዋቾች ደረጃ ዝርዝር ከBackend ጋር ሲገናኝ ይታያል።</p>
+      </div>
+
+      <div id="sectionSupport" style="display:none">
+        <h2>🎧 Support</h2>
+        <p>ለእርዳታ የSupport መረጃዎን እዚህ ማስገባት ይችላሉ።</p>
+        <p>የእርዳታ ሊንክ ከሌለዎት እስካሁን አልተገናኘም።</p>
+      </div>
+
+      <div id="sectionProfile" style="display:none">
+        <h2>👤 Profile</h2>
+        <p>Telegram: <strong id="profileName">—</strong></p>
+        <p>User ID: <span id="profileId">—</span></p>
+        <p>Cash: <strong><span id="profileCash">0.00</span> ETB</strong></p>
+        <p>Bonus: <strong><span id="profileBonus">0.00</span> ETB</strong></p>
+      </div>
     </div>
   </div>
 
-  <main class="container">
-
-    <header class="topbar">
-      <div class="brand">✦ ETHIOPIA GAMES</div>
-
-      <div class="wallet-balance">
-        <span>👛 ዋሌት</span>
-        <strong id="walletBalance">0.00 ብር</strong>
-      </div>
-    </header>
-
-    <!-- የመኪናው ምስል እና መግለጫ -->
-    <section class="hero">
-      <div class="eyebrow">✦ GRAND PRIZE DRAW ✦</div>
-
-      <h1>BYD GRAND <span>CAR LOTTERY</span></h1>
-
-      <p class="subtitle">
-        አጠቃላይ ግምታዊ ዋጋው <b>3,300,000 ETB (ሶስት ሚሊዮን ሶስት መቶ ሺህ ብር)</b> የሆነውን የዘመኑን እጅግ ውብ እና ዘመናዊ የ BYD መኪና በ 1,100 ብር ብቻ ባለቤት ይሁኑ!
-      </p>
-
-      <div class="car-scene car-showcase">
-        <div class="car-slides">
-          <div class="car-slide active">
-            <img
-              src="https://http2.mlstatic.com/D_NQ_NP_673652-MLB92132104013_092025-O-byd-dolphin-mini-00-5p-electrico-4as.webp"
-              alt="BYD Seagull front view"
-            >
-            <span>FRONT VIEW · የፊት እይታ</span>
-          </div>
-
-          <div class="car-slide">
-            <img
-              src="https://tse1.mm.bing.net/th/id/OIP.BdLrpRoW7tIqXFbjvYAVEAHaFj?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
-              alt="BYD car exterior view"
-            >
-            <span>EXTERIOR VIEW · የውጭ እይታ</span>
-          </div>
-
-          <div class="car-slide">
-            <img
-              src="https://esv6hz7yeij.exactdn.com/wp-content/uploads/2026/06/byd-seagull-electric-vehicle-chinese-ev-rear-three-quarter-driving-view.jpg?strip=all&fit=1023%2C682"
-              alt="BYD Seagull rear view"
-            >
-            <span>REAR VIEW · የኋላ እይታ</span>
-          </div>
-
-          <div class="car-slide">
-            <img
-              src="https://bydauto.ec/wp-content/uploads/2025/01/Catalogo-BYD-SEAGULL.pdf"
-              alt="BYD Seagull catalogue"
-            >
-            <span>BYD SEAGULL · የሎተሪ ሽልማት</span>
-          </div>
-        </div>
-
-        <div class="car-badge">
-          🚘 BYD GRAND PRIZE · 3,300,000 ETB
-        </div>
-      </div>
-
-      <div class="meta-badges">
-        <div class="meta-tag">🎫 1 ቲኬት = 1,100 ብር</div>
-        <div class="meta-tag">🔢 ከ 1 እስከ 3000 ቁጥሮች</div>
-        <div class="meta-tag">📅 ዕጣ: ጥቅምት 29 · 9:00</div>
-      </div>
-    </section>
-
-    <!-- ከ 1 እስከ 3000 ቁጥሮች መምረጫ ፓነል -->
-    <section class="panel">
-      <h2>የዕጣ ቁጥር ይምረጡ (1 እስከ 3000)</h2>
-      <p class="description">
-        ከታች ካሉት ከ 1 እስከ 3000 ከሚገኙ ቁጥሮች መካከል የሚፈልጉትን ይምረጡ። ቀድሞ የተያዙ ቁጥሮች (ለምሳሌ ቁጥር 1500) ሲነኩ <b>«ተይዟል»</b> የሚል ማሳሰቢያ ይሰጣል።
-      </p>
-
-      <div class="filter-box">
-        <input type="number" id="numberSearch" class="search-input" placeholder="ቁጥር ፈልግ (ለምሳሌ: 1500)..." min="1" max="3000">
-      </div>
-
-      <!-- የቁጥሮች ግሪድ ኮንቴይነር (ከ 1 እስከ 3000 የተሟላ) -->
-      <div class="numbers-container" id="numbersGrid">
-        <!-- ጃቫስክሪፕት በዳይናሚክ 3000 ቁጥሮቹን ይጭናል -->
-      </div>
-
-      <!-- የግዢ/ማረጋገጫ ቦታ -->
-      <div class="checkout-box">
-        <div style="display:flex;flex-direction:column;gap:8px;min-width:100%">
-          <label for="lotteryPhone">የስልክ ቁጥር</label>
-          <input id="lotteryPhone" type="tel" autocomplete="tel" placeholder="+2519XXXXXXXX"
-            style="padding:12px;border-radius:10px;border:1px solid #435849;background:#0c1912;color:white">
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px">
-          <div class="selected-summary">
-            <small>የመረጡት ቁጥር:</small>
-            <strong id="selectedLabel">ምንም አልተመረጠም</strong>
-          </div>
-          <button class="buy-btn" id="buyButton" disabled>ቲኬት ግዛ (1,100 ብር)</button>
-        </div>
-      </div>
-    </section>
-
-    <footer>
-      <p>BYD Car Lottery · Ethiopia Games</p>
-      <p>ዕጣው በታማኝነት እና በቁጥጥር የሚካሄድ ይሆናል። መልካም ዕድል!</p>
-    </footer>
-
-  </main>
-
-  <!-- ቶስት ፖፕአፕ ማሳወቂያ -->
-  <div class="toast" id="toast"></div>
-
-  <!-- የታችኛው ናቪጌሽን ባር -->
+  <!-- Fixed Bottom Navigation Bar -->
   <nav class="bottom-nav">
-    <a href="/" class="nav-item">
-      <span>🏠</span>
-      <small>Home</small>
+    <a href="#" class="nav-item" onclick="openSection('leaderboard');return false;">
+      <span class="nav-icon">🏆</span>
+      <span>Leaderboard</span>
     </a>
 
-    <a href="/?open=wallet" class="nav-item">
-      <span>👛</span>
-      <small>Wallet</small>
+    <a href="#" class="nav-item" onclick="openSection('wallet');return false;">
+      <span class="nav-icon">👛</span>
+      <span>Wallet</span>
     </a>
 
-    <a href="/?open=profile" class="nav-item">
-      <span>👤</span>
-      <small>Profile</small>
+    <a href="#" class="nav-item" onclick="openSection('support');return false;">
+      <span class="nav-icon">🎧</span>
+      <span>Support</span>
+    </a>
+
+    <a href="#" class="nav-item" onclick="openSection('profile');return false;">
+      <span class="nav-icon">👤</span>
+      <span>Profile</span>
     </a>
   </nav>
 
   <script>
     const tg = window.Telegram?.WebApp;
-    const gridEl = document.getElementById('numbersGrid');
-    const searchInput = document.getElementById('numberSearch');
-    const selectedLabel = document.getElementById('selectedLabel');
-    const buyButton = document.getElementById('buyButton');
-    const toastEl = document.getElementById('toast');
+    const accountEl = document.getElementById('account');
+    const cashBalanceEl = document.getElementById('cashBalance');
+    const bonusBalanceEl = document.getElementById('bonusBalance');
 
-    let selectedNum = null;
-    const TOTAL_NUMBERS = 3000;
+    let currentTransactionType = 'deposit';
+    let telegramUser = null;
 
-    // Dynamic taken tickets set loaded from backend API
-    const takenSet = new Set();
-
-    function showToast(message, isError = false) {
-      toastEl.textContent = message;
-      toastEl.className = 'toast show' + (isError ? ' error' : '');
-      setTimeout(() => {
-        toastEl.className = 'toast';
-      }, 3000);
+    function showMoney(value) {
+      const amount = Number(value);
+      return Number.isFinite(amount) ? amount.toFixed(2) : '0.00';
     }
 
-    // ከ 1 እስከ 3000 ያሉትን ሁሉንም ቁጥሮች በግሪዱ ላይ መፍጠር
-    function renderGrid(filterQuery = '') {
-      gridEl.replaceChildren();
-      const q = parseInt(filterQuery, 10);
+    /* Slider Carousel Script */
+    let slideIndex = 0;
+    const slides = document.querySelectorAll('.promo-slide');
+    const dots = document.querySelectorAll('.dot-indicator');
 
-      for (let i = 1; i <= TOTAL_NUMBERS; i++) {
-        // የሰርች ማጣሪያ ከገባ ያንን ቁጥር ማዕከል አድርጎ ወይም ፈልጎ ያሳያል
-        if (!isNaN(q) && q > 0 && !String(i).includes(q)) {
-          continue;
-        }
-
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'num-btn';
-        
-        if (takenSet.has(i)) {
-          btn.classList.add('taken');
-          btn.innerHTML = `${i}<small>ተይዟል</small>`;
-          btn.addEventListener('click', () => {
-            showToast(`ቁጥር #${i} አስቀድሞ ተይዟል! እባክዎ ሌላ ቁጥር ይምረጡ።`, true);
-          });
-        } else {
-          btn.textContent = i;
-          if (selectedNum === i) {
-            btn.classList.add('selected');
-          }
-          btn.addEventListener('click', () => {
-            document.querySelectorAll('.num-btn.selected').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            selectedNum = i;
-            selectedLabel.textContent = `ቁጥር #${i} (1,100 ETB)`;
-            buyButton.disabled = false;
-          });
-        }
-
-        gridEl.appendChild(btn);
-      }
+    function showSlide(n) {
+      slides.forEach(slide => slide.classList.remove('active'));
+      dots.forEach(dot => dot.classList.remove('active'));
+      
+      slideIndex = (n + slides.length) % slides.length;
+      slides[slideIndex].classList.add('active');
+      dots[slideIndex].classList.add('active');
     }
 
-    searchInput.addEventListener('input', (e) => {
-      renderGrid(e.target.value);
-    });
+    function changeSlide(n) {
+      showSlide(slideIndex + n);
+    }
 
-    async function lotteryApi(path, options = {}) {
-      const initData = window.Telegram?.WebApp?.initData || '';
-      const response = await fetch('/api/lottery' + path, {
-        ...options,
-        headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': initData, ...(options.headers || {}) }
+    function currentSlide(n) {
+      showSlide(n);
+    }
+
+    // Auto-slide every 5 seconds
+    setInterval(() => {
+      showSlide(slideIndex + 1);
+    }, 5000);
+
+    function openSection(section) {
+      const modal = document.getElementById('appModal');
+      modal.style.display = 'flex';
+
+      ['Wallet', 'Leaderboard', 'Support', 'Profile'].forEach(name => {
+        document.getElementById('section' + name).style.display = 'none';
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.success) throw new Error(data.message || 'ጥያቄው አልተሳካም።');
-      return data;
+
+      const sectionName = section.charAt(0).toUpperCase() + section.slice(1);
+      const target = document.getElementById('section' + sectionName);
+
+      if (target) target.style.display = 'block';
+
+      if (section === 'wallet') {
+        document.getElementById('modalCash').textContent =
+          document.getElementById('cashBalance').textContent;
+        document.getElementById('modalBonus').textContent =
+          document.getElementById('bonusBalance').textContent;
+      }
+
+      if (section === 'profile') {
+        document.getElementById('profileName').textContent =
+          telegramUser?.first_name || 'Telegram User';
+        document.getElementById('profileId').textContent =
+          telegramUser?.id ? String(telegramUser.id) : 'Not connected';
+        document.getElementById('profileCash').textContent =
+          document.getElementById('cashBalance').textContent;
+        document.getElementById('profileBonus').textContent =
+          document.getElementById('bonusBalance').textContent;
+      }
     }
 
-    async function refreshTickets() {
-      const data = await lotteryApi('/tickets');
-      takenSet.clear();
-      (data.taken || []).forEach(n => takenSet.add(Number(n)));
-      renderGrid(searchInput.value);
+    function closeSection() {
+      document.getElementById('appModal').style.display = 'none';
     }
 
-    async function refreshLotteryWallet() {
-      const data = await lotteryApi('/wallet');
-      document.getElementById('walletBalance').textContent = Number(data.balance || 0).toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2}) + ' ብር';
+    function showTransaction(type) {
+      currentTransactionType = type;
+      document.getElementById('transactionForm').style.display = 'block';
+      document.getElementById('transactionTitle').textContent =
+        type === 'deposit' ? '＋ Deposit Request' : '↗ Withdraw Request';
+      document.getElementById('depositOptions').style.display =
+        type === 'deposit' ? 'block' : 'none';
+      document.getElementById('withdrawOptions').style.display =
+        type === 'withdraw' ? 'block' : 'none';
+      document.getElementById('moneyMessage').textContent = '';
     }
 
-    buyButton.addEventListener('click', async () => {
-      if (!selectedNum) return;
-      const phone = document.getElementById('lotteryPhone')?.value?.trim() || '';
-      if (!phone) return showToast('እባክዎ የስልክ ቁጥር ያስገቡ።', true);
-      if (!window.confirm(`BYD Lottery ቲኬት #${selectedNum}\nዋጋ: 1,100 ETB\nስልክ: ${phone}\n\nግዢውን ያረጋግጡ?`)) return;
-      buyButton.disabled = true;
+    async function copyTelebirrNumber() {
+      const number = '0901494600';
+      const message = document.getElementById('copyMessage');
+
       try {
-        const data = await lotteryApi('/purchase', { method:'POST', body:JSON.stringify({ticketNumber:selectedNum,phone}) });
-        showToast(`${data.message} የማረጋገጫ ኮድ: ${data.receiptCode}`);
-        selectedNum = null;
-        selectedLabel.textContent = 'ምንም አልተመረጠም';
-        await Promise.all([refreshTickets(), refreshLotteryWallet()]);
-      } catch (err) {
-        showToast(err.message, true);
-        try { await refreshTickets(); } catch {}
+        await navigator.clipboard.writeText(number);
+        message.textContent = 'ቁጥሩ ተቀድቷል!';
+      } catch (error) {
+        const field = document.createElement('textarea');
+        field.value = number;
+        field.style.position = 'fixed';
+        field.style.opacity = '0';
+        document.body.appendChild(field);
+        field.select();
+
+        const copied = document.execCommand('copy');
+        field.remove();
+
+        message.textContent = copied
+          ? 'ቁጥሩ ተቀድቷል!'
+          : 'ቁጥሩን በእጅ ኮፒ አድርግ፦ ' + number;
+      }
+    }
+
+    document.getElementById('moneyRequestForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+
+      const message = document.getElementById('moneyMessage');
+      const button = document.getElementById('moneySubmit');
+      const amount = Number(document.getElementById('moneyAmount').value);
+
+      const isDeposit = currentTransactionType === 'deposit';
+      const paymentMethod = isDeposit
+        ? document.getElementById('paymentMethod').value
+        : document.getElementById('withdrawMethod').value;
+
+      const reference = isDeposit
+        ? document.getElementById('paymentReference').value.trim()
+        : '';
+
+      const accountDetails = isDeposit
+        ? ''
+        : document.getElementById('withdrawAccount').value.trim();
+
+      if (!telegramUser?.id) {
+        message.textContent = 'እባክዎ በTelegram Web App ውስጥ ይክፈቱ።';
+        return;
+      }
+
+      if (!Number.isFinite(amount) || amount < 50 || amount > 100000) {
+        message.textContent = 'ከ50 እስከ 100,000 ብር ያለ መጠን ያስገቡ።';
+        return;
+      }
+
+      if (isDeposit && !reference) {
+        message.textContent = 'የክፍያ Reference ቁጥር ያስገቡ።';
+        return;
+      }
+
+      if (!isDeposit && !accountDetails) {
+        message.textContent = 'ገንዘቡ የሚላክበትን የTelebirr ወይም የባንክ መለያ ያስገቡ።';
+        return;
+      }
+
+      button.disabled = true;
+      message.textContent = 'ጥያቄውን በመላክ ላይ...';
+
+      try {
+        const response = await fetch('/api/wallet/request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            telegram_id: String(telegramUser.id),
+            request_type: currentTransactionType,
+            amount,
+            payment_method: paymentMethod,
+            reference,
+            account_details: accountDetails
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'ጥያቄው አልተሳካም።');
+        }
+
+        message.textContent = isDeposit
+          ? 'የDeposit ጥያቄዎ ተልኳል። አድሚን እስኪያረጋግጥ ይጠብቁ።'
+          : 'የWithdraw ጥያቄዎ ተልኳል። እስኪጸድቅ ይጠብቁ።';
+
+        document.getElementById('moneyRequestForm').reset();
+      } catch (error) {
+        message.textContent = error.message || 'የኔትወርክ ችግር ተፈጥሯል። እንደገና ይሞክሩ።';
       } finally {
-        buyButton.disabled = !selectedNum;
+        button.disabled = false;
       }
     });
 
-    if (tg) {
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') closeSection();
+    });
+
+    async function connectTelegram() {
+      if (!tg) {
+        accountEl.textContent = 'Browser Preview';
+        return;
+      }
+
       tg.ready();
       tg.expand();
+
+      const user = tg.initDataUnsafe?.user;
+      telegramUser = user || null;
+
+      if (!user?.id) {
+        accountEl.textContent = 'Telegram user unavailable';
+        return;
+      }
+
+      accountEl.textContent = user.first_name || 'Telegram User';
+
+      try {
+        const response = await fetch('/api/wallet/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            telegram_id: String(user.id),
+            name: user.first_name || '',
+            username: user.username || '',
+            phone: null
+          })
+        });
+
+        if (!response.ok) {
+          console.warn('Wallet sync returned:', response.status);
+          return;
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.user) {
+          cashBalanceEl.textContent = showMoney(result.user.balance);
+          bonusBalanceEl.textContent = showMoney(result.user.bonus_balance);
+        }
+      } catch (error) {
+        console.error('Wallet sync failed:', error);
+      }
     }
 
-    Promise.all([refreshTickets(), refreshLotteryWallet()]).catch(err => showToast(err.message, true));
-
-    /* --- Car Showcase Slider Logic --- */
-    const carSlides = document.querySelectorAll('.car-slide');
-    let currentCarSlide = 0;
-
-    setInterval(() => {
-      carSlides[currentCarSlide].classList.remove('active');
-      currentCarSlide = (currentCarSlide + 1) % carSlides.length;
-      carSlides[currentCarslide].classList.add('active');
-    }, 3500);
+    connectTelegram();
   </script>
 </body>
 </html>
