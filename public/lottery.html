@@ -34,7 +34,7 @@
         var(--bg);
       color: var(--text);
       min-height: 100vh;
-      padding-bottom: 50px;
+      padding-bottom: 100px;
     }
 
     /* Top Marquee Banner */
@@ -341,6 +341,46 @@
       font-size: 12px;
       line-height: 1.6;
     }
+
+    /* Fixed Bottom Navigation Styles */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+      background: rgba(11, 21, 18, 0.97);
+      border-top: 1px solid #344b3d;
+      z-index: 999;
+      backdrop-filter: blur(12px);
+    }
+
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: #b4c0b8;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .nav-item span {
+      font-size: 21px;
+    }
+
+    .nav-item small {
+      font-size: 11px;
+    }
+
+    .nav-item:hover,
+    .nav-item:active {
+      color: #f6c453;
+    }
   </style>
 </head>
 
@@ -418,6 +458,24 @@
 
   <!-- ቶስት ፖፕአፕ ማሳወቂያ -->
   <div class="toast" id="toast"></div>
+
+  <!-- የታችኛው ናቪጌሽን ባር -->
+  <nav class="bottom-nav">
+    <a href="/" class="nav-item">
+      <span>🏠</span>
+      <small>Home</small>
+    </a>
+
+    <a href="/?open=wallet" class="nav-item">
+      <span>👛</span>
+      <small>Wallet</small>
+    </a>
+
+    <a href="/?open=profile" class="nav-item">
+      <span>👤</span>
+      <small>Profile</small>
+    </a>
+  </nav>
 
   <script>
     const tg = window.Telegram?.WebApp;
