@@ -346,8 +346,7 @@
       border-radius: 14px;
       padding: 16px;
       display: flex;
-      align-items: center;
-      justify-content: space-between;
+      flex-direction: column;
       gap: 12px;
     }
 
@@ -540,11 +539,18 @@
 
       <!-- የግዢ/ማረጋገጫ ቦታ -->
       <div class="checkout-box">
-        <div class="selected-summary">
-          <small>የመረጡት ቁጥር:</small>
-          <strong id="selectedLabel">ምንም አልተመረጠም</strong>
+        <div style="display:flex;flex-direction:column;gap:8px;min-width:100%">
+          <label for="lotteryPhone">የስልክ ቁጥር</label>
+          <input id="lotteryPhone" type="tel" autocomplete="tel" placeholder="+2519XXXXXXXX"
+            style="padding:12px;border-radius:10px;border:1px solid #435849;background:#0c1912;color:white">
         </div>
-        <button class="buy-btn" id="buyButton" disabled>ቲኬት ግዛ (1,100 ብር)</button>
+        <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px">
+          <div class="selected-summary">
+            <small>የመረጡት ቁጥር:</small>
+            <strong id="selectedLabel">ምንም አልተመረጠም</strong>
+          </div>
+          <button class="buy-btn" id="buyButton" disabled>ቲኬት ግዛ (1,100 ብር)</button>
+        </div>
       </div>
     </section>
 
@@ -587,10 +593,8 @@
     let selectedNum = null;
     const TOTAL_NUMBERS = 3000;
 
-    // ለናሙና የተወሰኑ ቁጥሮች የተያዙ (Taken) እንዲሆኑ (ቁጥር 1500ን ጨምሮ)
-    const takenSet = new Set([
-      1500, 7, 12, 45, 100, 250, 500, 777, 1024, 1200, 1850, 2000, 2222, 2750, 2999
-    ]);
+    // Dynamic taken tickets set loaded from backend API
+    const takenSet = new Set();
 
     function showToast(message, isError = false) {
       toastEl.textContent = message;
@@ -643,11 +647,47 @@
       renderGrid(e.target.value);
     });
 
-    buyButton.addEventListener('click', () => {
+    async function lotteryApi(path, options = {}) {
+      const initData = window.Telegram?.WebApp?.initData || '';
+      const response = await fetch('/api/lottery' + path, {
+        ...options,
+        headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': initData, ...(options.headers || {}) }
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) throw new Error(data.message || 'ጥያቄው አልተሳካም።');
+      return data;
+    }
+
+    async function refreshTickets() {
+      const data = await lotteryApi('/tickets');
+      takenSet.clear();
+      (data.taken || []).forEach(n => takenSet.add(Number(n)));
+      renderGrid(searchInput.value);
+    }
+
+    async function refreshLotteryWallet() {
+      const data = await lotteryApi('/wallet');
+      document.getElementById('walletBalance').textContent = Number(data.balance || 0).toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2}) + ' ብር';
+    }
+
+    buyButton.addEventListener('click', async () => {
       if (!selectedNum) return;
-      showToast(`ቁጥር #${selectedNum} በትክክል ተይዟል! ክፍያ በመፈጸም ላይ...`);
+      const phone = document.getElementById('lotteryPhone')?.value?.trim() || '';
+      if (!phone) return showToast('እባክዎ የስልክ ቁጥር ያስገቡ።', true);
+      if (!window.confirm(`BYD Lottery ቲኬት #${selectedNum}\nዋጋ: 1,100 ETB\nስልክ: ${phone}\n\nግዢውን ያረጋግጡ?`)) return;
       buyButton.disabled = true;
-      // እዚህ ጋር ከ Backend ጋር በመገናኘት ክፍያ ይፈጸማል
+      try {
+        const data = await lotteryApi('/purchase', { method:'POST', body:JSON.stringify({ticketNumber:selectedNum,phone}) });
+        showToast(`${data.message} የማረጋገጫ ኮድ: ${data.receiptCode}`);
+        selectedNum = null;
+        selectedLabel.textContent = 'ምንም አልተመረጠም';
+        await Promise.all([refreshTickets(), refreshLotteryWallet()]);
+      } catch (err) {
+        showToast(err.message, true);
+        try { await refreshTickets(); } catch {}
+      } finally {
+        buyButton.disabled = !selectedNum;
+      }
     });
 
     if (tg) {
@@ -655,7 +695,7 @@
       tg.expand();
     }
 
-    renderGrid();
+    Promise.all([refreshTickets(), refreshLotteryWallet()]).catch(err => showToast(err.message, true));
 
     /* --- Car Showcase Slider Logic --- */
     const carSlides = document.querySelectorAll('.car-slide');
@@ -664,7 +704,7 @@
     setInterval(() => {
       carSlides[currentCarSlide].classList.remove('active');
       currentCarSlide = (currentCarSlide + 1) % carSlides.length;
-      carSlides[currentCarSlide].classList.add('active');
+      carSlides[currentCarslide].classList.add('active');
     }, 3500);
   </script>
 </body>
