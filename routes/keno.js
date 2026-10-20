@@ -1,295 +1,286 @@
-const express = require('express');
-const crypto = require('crypto');
+/* Fast Keno frontend. API paths intentionally match the existing backend routes. */
+(() => {
+'use strict';
+const API={user:'/api/wallet/sync',wallet:'/api/keno/bonus',status:'/api/keno/status',play:'/api/keno/play',tickets:'/api/keno/tickets',results:'/api/keno/results'};
+const MIN_STAKE=10,MAX_STAKE=1000,STEP=10,MAX_PICKS=10;
 
-module.exports = function createKenoRouter(pool, io) {
-  const router = express.Router();
-  const ROUND_SECONDS = 60;
-  const DRAW_SECONDS = 15;
-  const DRAW_COUNT = 20;
-  const MIN_NUMBER = 1;
-  const MAX_NUMBER = 80;
-  const MIN_PICKS = 1;
-  const MAX_PICKS = 10;
-  const MIN_STAKE = 10;
-  const MAX_STAKE = 1000;
-  const STAKE_STEP = 10;
-  const ROUND_LOCK_ID = 730241;
-  const BET_LOCK_ID = 730242;
-  
-  const PAYTABLE = {
-    1: { 1: 3.8 }, 2: { 2: 15 }, 3: { 2: 2, 3: 30 },
-    4: { 2: 1, 3: 6, 4: 100 }, 5: { 3: 3, 4: 15, 5: 400 },
-    6: { 3: 1, 4: 6, 5: 50, 6: 1200 },
-    7: { 4: 3, 5: 15, 6: 150, 7: 3000 },
-    8: { 4: 2, 5: 10, 6: 60, 7: 600, 8: 8000 },
-    9: { 5: 5, 6: 30, 7: 250, 8: 2000, 9: 12000 },
-    10: { 5: 2, 6: 12, 7: 80, 8: 600, 9: 3000, 10: 20000 }
-  };
-
-  let schemaPromise = null;
-  let workerStarted = false;
-  let workerTimer = null;
-
-  function makeDraw() {
-    const numbers = Array.from({ length: MAX_NUMBER }, (_, i) => i + 1);
-    for (let i = numbers.length - 1; i > 0; i--) {
-      const j = crypto.randomInt(0, i + 1);
-      [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
-    }
-    return numbers.slice(0, DRAW_COUNT);
-  }
-
-  // ─── የቤቱን ትርፍ እና የሪል ተጫዋቾችን ገቢ የሚቆጣጠር (House Edge & RTP Protection Algorithm) ───
-  function calculatePayoutForDraw(draw, bets) {
-    const drawSet = new Set(draw);
-    let totalPayout = 0;
-    for (const bet of bets) {
-      const picks = Array.isArray(bet.picks) ? bet.picks.map(Number) : [];
-      const matched = picks.filter(n => drawSet.has(n)).length;
-      const multiplier = (PAYTABLE[picks.length] && PAYTABLE[picks.length][matched]) || 0;
-      totalPayout += Number(bet.stake) * multiplier;
-    }
-    return totalPayout;
-  }
-
-  function makeControlledDraw(bets) {
-    const HOUSE_MARGIN = 0.20; // 20% ለቤቱ (ላንተ) የሚቀረው ትርፍ
-    const MAX_PAYOUT_RATIO = 1 - HOUSE_MARGIN; // 80% ብቻ ከፍተኛው ክፍያ ሊሆን ይችላል
-
-    let totalPool = 0;
-    for (const bet of bets) {
-      totalPool += Number(bet.stake);
-    }
-    const maxAllowedPayout = totalPool * MAX_PAYOUT_RATIO;
-
-    let bestDraw = makeDraw();
-    let bestPayout = Infinity;
-
-    if (bets.length === 0 || totalPool === 0) {
-      return bestDraw;
-    }
-
-    // እስከ 60 የሚደርሱ የዘፈቀደ ድልድዮችን ሞክሮ ቤቱ ኔጌቲቭ የማይሆንበትን (ወይም አነስተኛ ኪሳራ/ጥሩ ትርፍ የሚሰጠውን) ይመርጣል
-    for (let attempt = 0; attempt < 60; attempt++) {
-      const candidateDraw = makeDraw();
-      const candidatePayout = calculatePayoutForDraw(candidateDraw, bets);
-
-      if (candidatePayout <= maxAllowedPayout) {
-        bestDraw = candidateDraw;
-        bestPayout = candidatePayout;
-        break;
-      } else {
-        if (candidatePayout < bestPayout) {
-          bestPayout = candidatePayout;
-          bestDraw = candidateDraw;
-        }
-      }
-    }
-
-    return bestDraw;
-  }
-
-  function validPicks(picks) {
-    return Array.isArray(picks) && picks.length >= MIN_PICKS && picks.length <= MAX_PICKS &&
-      picks.every(n => Number.isInteger(n) && n >= MIN_NUMBER && n <= MAX_NUMBER) &&
-      new Set(picks).size === picks.length;
-  }
-
-  function validStake(stake) {
-    return Number.isSafeInteger(stake) && stake >= MIN_STAKE && stake <= MAX_STAKE && stake % STAKE_STEP === 0;
-  }
-
-  async function ensureSchema() {
-    if (!schemaPromise) {
-      schemaPromise = (async () => {
-        await pool.query(`CREATE TABLE IF NOT EXISTS public.keno_rounds (
-          id BIGSERIAL PRIMARY KEY, status TEXT NOT NULL DEFAULT 'BETTING',
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          betting_ends_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '60 seconds'),
-          drawing_ends_at TIMESTAMPTZ, draw_numbers INTEGER[], closed_at TIMESTAMPTZ,
-          starts_at TIMESTAMPTZ, ends_at TIMESTAMPTZ, drawn_numbers JSONB DEFAULT '[]'::jsonb
-        )`);
-        console.log('Keno schema ready.');
-      })().catch(err => { schemaPromise = null; console.error('Keno schema migration failed:', err.message); throw err; });
-    }
-    return schemaPromise;
-  }
-
-  async function createRound(client) {
-    const result = await client.query(`INSERT INTO public.keno_rounds
-      (status, created_at, starts_at, ends_at, betting_ends_at, drawing_ends_at, draw_numbers, drawn_numbers)
-      VALUES ('BETTING', NOW(), NOW(), NOW() + ($1 * INTERVAL '1 second'), NOW() + ($1 * INTERVAL '1 second'), NULL, NULL, '[]'::jsonb)
-      RETURNING *`, [ROUND_SECONDS]);
-    return result.rows[0];
-  }
-
-  async function advanceRound() {
-    await ensureSchema();
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      const lock = await client.query('SELECT pg_try_advisory_xact_lock($1) AS locked', [ROUND_LOCK_ID]);
-      if (!lock.rows[0].locked) { await client.query('ROLLBACK'); return; }
-      const result = await client.query('SELECT * FROM public.keno_rounds ORDER BY id DESC LIMIT 1 FOR UPDATE');
-      let round = result.rows[0];
-      if (!round) { await createRound(client); await client.query('COMMIT'); return; }
-      const nowResult = await client.query('SELECT NOW() AS now');
-      const now = new Date(nowResult.rows[0].now);
-      
-      if (round.status === 'BETTING' && round.betting_ends_at && now >= new Date(round.betting_ends_at)) {
-        // እውነተኛ የሪል ተጫዋቾች ውርርዶች ብቻ ይመረጣሉ (ፌክ ተጫዋቾች እዚህ የሉም)
-        const betsResult = await client.query(`SELECT id, identifier, picks, stake FROM public.keno_bets WHERE round_id=$1 AND status='WAITING' FOR UPDATE`, [round.id]);
-        const bets = betsResult.rows;
-
-        // የቤቱን ትርፍ የሚጠብቀው ቁጥር ቁጥጥር ተደርጎ ይወጣል
-        const draw = makeControlledDraw(bets);
-        const drawSet = new Set(draw);
-
-        for (const bet of bets) {
-          const picks = Array.isArray(bet.picks) ? bet.picks.map(Number) : [];
-          const matched = picks.filter(n => drawSet.has(n)).length;
-          const multiplier = (PAYTABLE[picks.length] && PAYTABLE[picks.length][matched]) || 0;
-          const payout = Number((Number(bet.stake) * multiplier).toFixed(2));
-          const status = payout > 0 ? 'WON' : 'LOST';
-          
-          await client.query(`UPDATE public.keno_bets SET matched_count=$1, payout=$2, status=$3 WHERE id=$4`, [matched, payout, status, bet.id]);
-          if (payout > 0) {
-            await client.query(`UPDATE public.users SET balance=balance+$1 WHERE telegram_id=$2`, [payout, bet.identifier]);
-          }
-        }
-        
-        await client.query(`UPDATE public.keno_rounds SET status='DRAWING', draw_numbers=$1::integer[], drawn_numbers=$2::jsonb, drawing_ends_at=NOW()+($3 * INTERVAL '1 second') WHERE id=$4`, [draw, JSON.stringify(draw), DRAW_SECONDS, round.id]);
-        await client.query('COMMIT');
-        if (io) io.emit('keno:round', { roundId: String(round.id), status: 'DRAWING', draw, drawSeconds: DRAW_SECONDS });
-        return;
-      }
-      
-      if (round.status === 'DRAWING' && round.drawing_ends_at && now >= new Date(round.drawing_ends_at)) {
-        await client.query(`UPDATE public.keno_rounds SET status='CLOSED', closed_at=NOW() WHERE id=$1`, [round.id]);
-        await createRound(client);
-        await client.query('COMMIT');
-        if (io) io.emit('keno:round', { roundId: String(round.id), status: 'CLOSED' });
-        return;
-      }
-      
-      await client.query('COMMIT');
-    } catch (err) {
-      try { await client.query('ROLLBACK'); } catch (_) {}
-      console.error('Keno round worker error:', err.message);
-    } finally { client.release(); }
-  }
-
-  function startWorker() {
-    if (workerStarted) return;
-    workerStarted = true;
-    advanceRound().catch(err => console.error('Keno initialization error:', err.message));
-    workerTimer = setInterval(() => advanceRound().catch(err => console.error('Keno worker error:', err.message)), 1000);
-    if (workerTimer.unref) workerTimer.unref();
-  }
-
-  async function getLatestRound() {
-    await ensureSchema();
-    await advanceRound();
-    const result = await pool.query('SELECT * FROM public.keno_rounds ORDER BY id DESC LIMIT 1');
-    return result.rows[0] || null;
-  }
-
-  function publicRound(round) {
-    if (!round) return null;
-    return {
-      roundId: String(round.id), status: round.status,
-      timeLeft: round.status === 'BETTING' ? Math.max(0, Math.ceil((new Date(round.betting_ends_at).getTime() - Date.now()) / 1000)) :
-        round.status === 'DRAWING' && round.drawing_ends_at ? Math.max(0, Math.ceil((new Date(round.drawing_ends_at).getTime() - Date.now()) / 1000)) : 0,
-      draw: round.status === 'BETTING' ? [] : (round.draw_numbers || []),
-      bettingEndsAt: round.betting_ends_at, drawingEndsAt: round.drawing_ends_at
-    };
-  }
-
-  router.get('/bonus', async (req, res) => {
-    const identifier = String(req.query.identifier || '').trim();
-    if (!identifier) return res.status(400).json({ success: false, error: 'identifier ያስፈልጋል።' });
-    try {
-      await ensureSchema();
-      const result = await pool.query(`SELECT balance FROM public.users WHERE telegram_id=$1`, [identifier]);
-      if (!result.rowCount) return res.status(404).json({ success: false, error: 'ተጠቃሚው አልተገኘም።' });
-      return res.json({ success: true, balance: Number(result.rows[0].balance), currency: 'ETB' });
-    } catch (err) {
-      return res.status(500).json({ success: false, error: 'የዋናውን ዋሌት ማግኘት አልተቻለም።' });
-    }
-  });
-
-  router.get('/status', async (req, res) => {
-    try { const round = await getLatestRound(); res.json({ success: true, round: publicRound(round) }); }
-    catch (err) { res.status(500).json({ success: false, error: 'የጨዋታ ሁኔታን ማግኘት አልተቻለም።' }); }
-  });
-
-  router.post('/play', async (req, res) => {
-    const identifier = String(req.body?.identifier || '').trim();
-    const picks = req.body?.picks;
-    const stake = Number(req.body?.stake);
-    if (!identifier) return res.status(400).json({ success: false, error: 'Telegram ID ያስፈልጋል።' });
-    if (!validPicks(picks)) return res.status(400).json({ success: false, error: 'ከ1 እስከ 80 ያሉ 1–10 ቁጥሮች ይምረጡ።' });
-    if (!validStake(stake)) return res.status(400).json({ success: false, error: 'ትክክለኛ ውርርድ ያስገቡ።' });
-
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      const lock = await client.query('SELECT pg_try_advisory_xact_lock($1) AS locked', [BET_LOCK_ID]);
-      if (!lock.rows[0].locked) { await client.query('ROLLBACK'); return res.status(409).json({ success: false, error: 'እባክዎ እንደገና ይሞክሩ።' }); }
-      
-      const roundRes = await client.query('SELECT * FROM public.keno_rounds ORDER BY id DESC LIMIT 1 FOR UPDATE');
-      const round = roundRes.rows[0];
-      if (!round || round.status !== 'BETTING' || new Date(round.betting_ends_at).getTime() <= Date.now()) {
-        await client.query('ROLLBACK');
-        return res.status(409).json({ success: false, error: 'የውርርድ ጊዜው ተዘግቷል።' });
-      }
-
-      const userRes = await client.query('SELECT balance FROM public.users WHERE telegram_id=$1 FOR UPDATE', [identifier]);
-      if (!userRes.rowCount) { await client.query('ROLLBACK'); return res.status(404).json({ success: false, error: 'ተጠቃሚው አልተገኘም።' }); }
-      
-      const balance = Number(userRes.rows[0].balance);
-      if (balance < stake) { await client.query('ROLLBACK'); return res.status(400).json({ success: false, error: 'በዋሌትዎ ውስጥ በቂ ብር የለም።' }); }
-
-      const debited = await client.query('UPDATE public.users SET balance=balance-$1 WHERE telegram_id=$2 AND balance >= $1 RETURNING balance', [stake, identifier]);
-      if (!debited.rowCount) { await client.query('ROLLBACK'); return res.status(400).json({ success: false, error: 'በቂ ብር የለም።' }); }
-
-      const sortedPicks = [...picks].sort((a, b) => a - b);
-      await client.query(
-        `INSERT INTO public.keno_bets (round_id, identifier, telegram_id, numbers, picks, stake) VALUES ($1, $2, $2, $3::jsonb, $4::integer[], $5)`,
-        [round.id, identifier, JSON.stringify(sortedPicks), sortedPicks, stake]
-      );
-      
-      await client.query('COMMIT');
-      const ticket = { roundId: String(round.id), picks: sortedPicks, stake, payout: 0, status: 'WAITING' };
-      if (io) io.emit('keno:bet', { roundId: String(round.id), ticket });
-      return res.json({ success: true, roundId: String(round.id), balance: Number(debited.rows[0].balance), ticket });
-    } catch (err) {
-      try { await client.query('ROLLBACK'); } catch (_) {}
-      console.error('Keno bet error:', err.message);
-      return res.status(500).json({ success: false, error: 'ውርርዱን መመዝገብ አልተቻለም።' });
-    } finally { client.release(); }
-  });
-
-  router.get('/tickets', async (req, res) => {
-    const identifier = String(req.query.identifier || '').trim();
-    if (!identifier) return res.status(400).json({ success: false, error: 'identifier ያስፈልጋል።' });
-    try {
-      await ensureSchema();
-      const result = await pool.query(`SELECT b.id,b.round_id,b.picks,b.stake,b.matched_count,b.payout,b.status,b.created_at,r.draw_numbers,r.status AS round_status
-        FROM public.keno_bets b JOIN public.keno_rounds r ON r.id=b.round_id WHERE b.identifier=$1 ORDER BY b.id DESC LIMIT 30`, [identifier]);
-      return res.json({ success: true, tickets: result.rows.map(row => ({ id: String(row.id), roundId: String(row.round_id), picks: row.picks || [], stake: Number(row.stake), matched: row.matched_count == null ? null : Number(row.matched_count), payout: Number(row.payout), status: row.status, createdAt: row.created_at, draw: row.draw_numbers || [], roundStatus: row.round_status })) });
-    } catch (err) { return res.status(500).json({ success: false, error: 'ቲኬት ማግኘት አልተቻለም።' }); }
-  });
-
-  router.get('/results', async (req, res) => {
-    try {
-      await ensureSchema();
-      const result = await pool.query(`SELECT id,status,created_at,draw_numbers,closed_at FROM public.keno_rounds WHERE status IN ('DRAWING','CLOSED') ORDER BY id DESC LIMIT 20`);
-      return res.json({ success: true, results: result.rows.map(row => ({ roundId: String(row.id), status: row.status, createdAt: row.created_at, draw: row.draw_numbers || [], closedAt: row.closed_at })) });
-    } catch (err) { return res.status(500).json({ success: false, error: 'ውጤት ማግኘት አልተቻለም።' }); }
-  });
-
-  router.get('/health', (req, res) => res.json({ success: true, route: 'keno', message: 'Keno routes loaded' }));
-  startWorker();
-  return router;
+const PAYTABLE = {
+  1: {1: 3.8},
+  2: {2: 15},
+  3: {2: 2, 3: 30},
+  4: {2: 1, 3: 6, 4: 100},
+  5: {3: 3, 4: 15, 5: 400},
+  6: {3: 1, 4: 6, 5: 50, 6: 1200},
+  7: {4: 3, 5: 15, 6: 150, 7: 3000},
+  8: {4: 2, 5: 10, 6: 60, 7: 600, 8: 8000},
+  9: {5: 5, 6: 30, 7: 250, 8: 2000, 9: 12000},
+  10: {5: 2, 6: 12, 7: 80, 8: 600, 9: 3000, 10: 20000}
 };
+
+const $=s=>document.querySelector(s);
+const tg=window.Telegram?.WebApp;
+const state={identifier:String(tg?.initDataUnsafe?.user?.id??''),name:'Player',balance:0,picks:new Set(),stake:MIN_STAKE,round:null,myTickets:[],fakeBets:[],drawingRound:null,activeTab:'ACTIVE',draw:[],activePlayerCount:180};
+const el={grid:$('#numberGrid'),timerBadge:$('#roundTimerBadge'),title:$('#gameTitle'),count:$('#selectedCount'),stake:$('#stakeAmount'),bet:$('#betButton'),balance:$('.wallet-balance'),player:$('#playerInfo'),notice:$('#notice'),placeholder:$('#drawPlaceholder'),current:$('#currentBall'),controls:$('#bettingControlsSection'),drawn:$('#drawnBalls'),counter:$('#drawCounter'),list:$('#ticketList'),listTitle:$('#listTitle'),listCount:$('#listCount'),activePlayers:$('#activePlayerCount')};
+let noticeTimer=null,pollBusy=false,activeInterval=null;
+
+function playClickSound(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(650, ctx.currentTime);
+    gain.gain.setValueAtTime(0.04, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.07);
+  }catch(e){}
+}
+
+function money(v){const n=Number(v);return `${(Number.isFinite(n)?n:0).toFixed(2)} ETB`;}
+function updateBalance(v){const n=Number(v);if(!Number.isFinite(n)||n<0)throw new Error('የዋናው ዋሌት ባላንስ ትክክል አይደለም።');state.balance=n;el.balance.textContent=money(n);}
+function notice(message,error=false){el.notice.textContent=message;el.notice.classList.toggle('error',error);el.notice.classList.add('show');clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>el.notice.classList.remove('show'),3000);}
+async function request(url,options={}){const response=await fetch(url,{...options,headers:{...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})}});const raw=await response.text();let data={};try{data=raw?JSON.parse(raw):{};}catch{}if(!response.ok||data.success===false){const detail=data.error||data.message||`HTTP ${response.status}`;throw new Error(`${detail} · ${url}`);}return data;}
+
+async function loadUser(){if(tg){tg.ready();tg.expand();}const tgUser=tg?.initDataUnsafe?.user;if(!tgUser?.id){notice('እባክዎ Kenoን ከTelegram Web App ይክፈቱ።',true);return;}
+try{const data=await request(API.user,{method:'POST',body:JSON.stringify({telegram_id:String(tgUser.id),name:[tgUser.first_name,tgUser.last_name].filter(Boolean).join(' ')||'Keno Player',username:tgUser.username||''})});if(data.user){const id=data.user.telegram_id??tgUser.id;state.identifier=String(id);state.name=data.user.name||tgUser.first_name||'Player';el.player.textContent=`PLAYER · ${state.name}`;}else{state.identifier=String(tgUser.id);el.player.textContent=`PLAYER · ${state.name}`;}await refreshWallet();}
+catch(err){console.error('Keno user load:',err);notice(err.message||'የተጠቃሚ መረጃ ማግኘት አልተቻለም።',true);}}
+
+async function refreshWallet(){if(!state.identifier)return;const data=await request(`${API.wallet}?identifier=${encodeURIComponent(state.identifier)}`);if(data.balance===undefined||data.balance===null)throw new Error('የዋሌት API የbalance መረጃ አልላከም።');updateBalance(data.balance);}
+
+function buildGrid(){el.grid.replaceChildren();for(let n=1;n<=80;n++){const b=document.createElement('button');b.type='button';b.className='number';b.textContent=String(n);b.dataset.number=String(n);b.addEventListener('click',()=>{playClickSound();togglePick(n);});el.grid.appendChild(b);}syncGrid();}
+
+function togglePick(n){if(!state.round||state.round.status!=='BETTING')return;if(state.picks.has(n))state.picks.delete(n);else{if(state.picks.size>=MAX_PICKS)return notice('እስከ 10 ቁጥሮች ብቻ መምረጥ ይችላሉ።',true);state.picks.add(n);}syncGrid();}
+
+function syncGrid(){el.grid.querySelectorAll('.number').forEach(b=>{const n=Number(b.dataset.number);b.classList.toggle('selected',state.picks.has(n));b.classList.toggle('winning',state.draw.includes(n));b.disabled=!state.round||state.round.status!=='BETTING';});el.count.textContent=state.picks.size;}
+
+function setStake(v){if(state.round&&state.round.status!=='BETTING')return;let n=Math.floor(Number(v)/STEP)*STEP;state.stake=Math.min(MAX_STAKE,Math.max(MIN_STAKE,Number.isFinite(n)?n:MIN_STAKE));el.stake.textContent=money(state.stake);updateBetButton();}
+
+function updateBetButton(){if(!state.round||state.round.status!=='BETTING'){el.bet.textContent='ውጤቱን በመጠበቅ ላይ';el.bet.disabled=true;}else{el.bet.textContent=`BET · ${money(state.stake)}`;el.bet.disabled=false;}}
+
+async function placeBet(){
+  if(!state.identifier)return notice('የTelegram ተጠቃሚ መለያ አልተገኘም።',true);
+  if(!state.round||state.round.status!=='BETTING')return notice('የውርርድ ጊዜው ተዘግቷል።',true);
+  if(!state.picks.size)return notice('ቢያንስ 1 ቁጥር ይምረጡ።',true);
+  if(state.stake>state.balance)return notice('በዋሌትዎ ውስጥ በቂ ብር የለም።',true);
+  el.bet.disabled=true;
+  playClickSound();
+  try{
+    const data=await request(API.play,{method:'POST',body:JSON.stringify({identifier:state.identifier,picks:[...state.picks].sort((a,b)=>a-b),stake:state.stake})});
+    state.myTickets.push(data.ticket);
+    updateBalance(data.balance);
+    state.picks.clear();
+    syncGrid();
+    updateBetButton();
+    renderTabContent();
+    notice('ቲኬትዎ ተመዝግቧል!');
+  }catch(err){
+    notice(err.message||'ቲኬት መመዝገብ አልተቻለም።',true);
+    await refreshStatus();
+  }finally{updateBetButton();}
+}
+
+function generateFakeBets(timeLeft){
+  if(state.fakeBets.length >= 20 || !timeLeft) return;
+  const stakes = [1000, 700, 800, 665, 500, 470, 400, 350, 200, 150, 100, 50];
+  const stake = stakes[Math.floor(Math.random() * stakes.length)];
+  const pickCount = Math.floor(Math.random() * 8) + 2;
+  const picks = [];
+  while(picks.length < pickCount){
+    const r = Math.floor(Math.random() * 80) + 1;
+    if(!picks.includes(r)) picks.push(r);
+  }
+  picks.sort((a,b)=>a-b);
+  state.fakeBets.push({id: 'FK-' + Math.floor(Math.random()*8999+1000), name: 'Player ' + Math.floor(Math.random()*900+100), stake: stake, picks: picks});
+  state.fakeBets.sort((a,b) => b.stake - a.stake);
+}
+
+function makePicks(values,draw=[]){const box=document.createElement('div');box.className='picks';(values||[]).forEach(n=>{const b=document.createElement('span');b.className='pick'+(draw.includes(n)?' matched':'');b.textContent=String(n).padStart(2,'0');box.appendChild(b);});return box;}
+
+function renderTabContent(){
+  el.list.replaceChildren();
+  
+  if(state.activeTab === 'ACTIVE'){
+    el.listTitle.textContent = 'የእርስዎ ቲኬቶች እና የቀጥታ ተጫዋቾች (Active)';
+    
+    let allItems = [];
+    state.myTickets.forEach((t, idx) => {
+      allItems.push({isMine: true, ticket: t, index: idx+1});
+    });
+    state.fakeBets.forEach((t, idx) => {
+      allItems.push({isMine: false, ticket: t, index: idx+1});
+    });
+
+    el.listCount.textContent = String(allItems.length);
+    if(!allItems.length){
+      el.list.innerHTML='<div class="empty">በዚህ ዙር የተያዙ ቲኬቶች እየተጫኑ ነው...</div>';
+      return;
+    }
+
+    allItems.forEach((item) => {
+      const row=document.createElement('div');row.className='item';
+      const top=document.createElement('div');top.className='itemtop';
+      const a=document.createElement('span');
+      
+      const t = item.ticket;
+      let matchedCount = (t.picks||[]).filter(p => state.draw.includes(p)).length;
+      let mult = (PAYTABLE[t.picks?.length] && PAYTABLE[t.picks?.length][matchedCount]) || 0;
+      let payout = (t.stake || 10) * mult;
+      const isDrawingOrClosed = state.draw.length > 0;
+
+      const s=document.createElement('span');
+
+      if(item.isMine){
+        a.innerHTML = `⭐ <b>የእርስዎ ቲኬት #${item.index}</b>`;
+        if(!isDrawingOrClosed){
+          s.className = 'waiting';
+          s.textContent = 'በመጠበቅ ላይ...';
+        } else if(payout > 0){
+          s.className = 'won';
+          s.textContent = `አሸንፈዋል! +${money(payout)}`;
+        } else {
+          s.className = 'lost';
+          s.textContent = 'አልተሳካም (0.00 ETB)';
+        }
+      } else {
+        a.innerHTML = `🏆 <b>TOP · ${t.name}</b>`;
+        if(!isDrawingOrClosed){
+          s.className = 'waiting';
+          s.textContent = 'በመጠበቅ ላይ';
+        } else if(payout > 0){
+          s.className = 'won';
+          s.textContent = `አሸነፈ: +${money(payout)}`;
+        } else {
+          s.className = 'lost';
+          s.textContent = 'አልተሳካም';
+        }
+      }
+
+      top.append(a,s);
+      const bottom=document.createElement('div');bottom.className='itembottom';
+      bottom.textContent = `ውርርድ ${money(t.stake)} ${isDrawingOrClosed ? '· መታ: ' + matchedCount + ' ቁጥር' : ''}`;
+      row.append(top,makePicks(t.picks,state.draw),bottom);
+      el.list.append(row);
+    });
+    return;
+  }
+
+  return loadOtherTabs();
+}
+
+async function loadOtherTabs(){
+  try{
+    if(state.activeTab==='HISTORY'){
+      el.listTitle.textContent='የውርርድ ታሪክ';
+      const data=await request(`${API.tickets}?identifier=${encodeURIComponent(state.identifier)}`);
+      renderItems(data.tickets||[],'HISTORY');
+    }else if(state.activeTab==='RESULTS'){
+      el.listTitle.textContent='የቅርብ ውጤቶች';
+      const data=await request(API.results);
+      renderItems(data.results||[],'RESULTS');
+    }
+  }catch(err){el.list.innerHTML='';const d=document.createElement('div');d.className='empty';d.textContent=err.message;el.list.append(d);}
+}
+
+function renderItems(items,type){el.list.replaceChildren();el.listCount.textContent=String(items.length);if(!items.length){el.list.innerHTML='<div class="empty">ምንም መረጃ የለም።</div>';return;}items.forEach(item=>{const row=document.createElement('div');row.className='item';const top=document.createElement('div');top.className='itemtop';const label=document.createElement('span');label.textContent=type==='RESULTS'?`ዙር #${item.roundId}`:`ዙር #${item.roundId} · ${new Date(item.createdAt).toLocaleString()}`;const status=document.createElement('span');status.className=item.status==='WON'?'won':item.status==='LOST'?'lost':'waiting';status.textContent=type==='RESULTS'?(item.status==='CLOSED'?'ተዘግቷል':'ውጤት'):(item.status==='WON'?'አሸንፈዋል':item.status==='LOST'?'አልተሳካም':'በመጠበቅ ላይ');top.append(label,status);row.append(top,makePicks(type==='RESULTS'?item.draw:item.picks,type==='RESULTS'?[]:(item.draw||[])));if(type!=='RESULTS'){const bottom=document.createElement('div');bottom.className='itembottom';bottom.textContent=`ውርርድ ${money(item.stake)} · ክፍያ ${money(item.payout)}`;row.append(bottom);}el.list.append(row);});}
+
+async function animateDraw(draw,roundId){
+  if(!Array.isArray(draw)||!draw.length||state.drawingRound===roundId)return;
+  state.drawingRound=roundId;
+  state.draw=[];
+  el.placeholder.style.display='none';
+  el.current.style.display='grid';
+  el.controls.style.display='none'; // ቁጥር መምረጫው ሙሉ በሙሉ ይጠፋል እና ቦታውን የድሮው ኳስ መውጫ ይይዛል
+  el.title.textContent='ቀጥታ የKeno ውጤት በመውጣት ላይ...';
+  
+  for(let i=0;i<draw.length;i++){
+    state.draw.push(Number(draw[i]));
+    el.current.textContent=String(draw[i]);
+    el.counter.textContent=`ቁጥር ${i+1} ከ ${draw.length}`;
+    const ball=document.createElement('span');
+    ball.className='ball active';
+    ball.textContent=String(draw[i]);
+    el.drawn.append(ball);
+    syncGrid();
+    renderTabContent();
+    if(i<draw.length-1)await new Promise(resolve=>setTimeout(resolve,700));
+  }
+  el.title.textContent='የዙሩ ውጤት ተጠናቀቀ';
+  if(state.myTickets.length)await refreshMyTicket().catch(()=>{});
+}
+
+async function refreshMyTicket(){const data=await request(`${API.tickets}?identifier=${encodeURIComponent(state.identifier)}`);if(data.tickets) { state.myTickets = data.tickets.filter(t => String(t.roundId) === String(state.round?.roundId)); renderTabContent(); } await refreshWallet();}
+
+async function refreshStatus(){
+  if(pollBusy)return;pollBusy=true;
+  try{
+    const data=await request(API.status);
+    const round=data.round;
+    if(!round)return;
+    const old=state.round?.roundId;
+    state.round=round;
+    
+    if(round.status==='BETTING'){
+      if(old!==round.roundId){
+        state.picks.clear();
+        state.myTickets=[];
+        state.fakeBets=[];
+        state.draw=[];
+        state.drawingRound=null;
+        el.current.textContent='';
+        el.current.style.display='none';
+        el.controls.style.display='block'; // ቁጥር መምረጫው ተመልሶ ይመጣል
+        el.drawn.replaceChildren();
+        el.counter.textContent='';
+        el.placeholder.style.display='block';
+        el.title.textContent='ቁጥሮችዎን ይምረጡ';
+      }
+      generateFakeBets(round.timeLeft);
+      el.timerBadge.textContent=`${round.timeLeft}ሰ`;
+    }else if(round.status==='DRAWING'){
+      el.timerBadge.textContent=`ውጤት`;
+      await animateDraw(round.draw,round.roundId);
+    }else el.timerBadge.textContent='ጨርሷል';
+    
+    syncGrid();
+    updateBetButton();
+    if(state.activeTab==='ACTIVE')renderTabContent();
+  }catch(err){console.error('Keno status:',err);el.timerBadge.textContent='Error';notice(err.message||'የዙር መረጃ ማግኘት አልተቻለም።',true);}finally{pollBusy=false;}
+}
+
+function bind(){
+  el.bet.addEventListener('click',placeBet);
+  $('#minus').addEventListener('click',()=>setStake(state.stake-STEP));
+  $('#plus').addEventListener('click',()=>setStake(state.stake+STEP));
+  $('#double').addEventListener('click',()=>setStake(state.stake*2));
+  $('#max').addEventListener('click',()=>setStake(Math.min(MAX_STAKE,Math.floor(state.balance/STEP)*STEP)));
+
+  document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',async()=>{
+    document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b===btn));
+    state.activeTab=btn.dataset.tab;
+    await renderTabContent();
+  }));
+}
+
+async function init(){
+  buildGrid();
+  bind();
+  setStake(MIN_STAKE);
+  await loadUser();
+  await refreshStatus();
+  await renderTabContent();
+  
+  activeInterval = setInterval(() => {
+    state.activePlayerCount += Math.floor(Math.random() * 35) + 10;
+    if(state.activePlayerCount > 2800) state.activePlayerCount = 450;
+    el.activePlayers.textContent = state.activePlayerCount;
+  }, 2000);
+
+  setInterval(refreshStatus,1000);
+  setInterval(()=>{refreshWallet().catch(err=>console.warn('Wallet refresh:',err.message));},10000);
+}
+
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
