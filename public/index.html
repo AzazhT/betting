@@ -1003,18 +1003,6 @@
     }
 
     connectTelegram();
-
-    // Open Wallet/Profile modal when returning from another game page.
-    // Supported URLs: /?open=wallet and /?open=profile
-    (function openRequestedSection() {
-      const params = new URLSearchParams(window.location.search);
-      const section = params.get('open');
-      if (section === 'wallet' || section === 'profile') {
-        openSection(section);
-        // Remove the query parameter so refresh does not reopen the modal.
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
-    })();
   </script>
 </body>
 </html>
