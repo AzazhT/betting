@@ -89,10 +89,11 @@ module.exports = function createLotteryRouter(pool, options = {}) {
   });
 
   router.post('/purchase', async (req, res) => {
-    let client, notice, buyerMessage;
+    let client, notice, buyerMessage, telegramId;
     try {
       await ensureSchema();
       const u = verifiedUser(req.get('x-telegram-init-data'));
+      telegramId = u.id;
       const n = Number(req.body?.ticketNumber), phone = String(req.body?.phone||'').trim();
       
       if(!Number.isInteger(n) || n < 1 || n > TOTAL) return res.status(400).json({success: false, message: 'ከ1 እስከ 3000 ያለ ትክክለኛ ቁጥር ይምረጡ።'});
@@ -169,16 +170,20 @@ module.exports = function createLotteryRouter(pool, options = {}) {
     }
 
     // ለገዢው እና ለአድሚን ማሳወቂያ ላክ።
-    if (notifyBuyer && buyerMessage) {
-      notifyBuyer(u.id, buyerMessage).catch(err => {
-        console.error('Lottery buyer notification failed:', err.message);
-      });
+    if (notifyBuyer && buyerMessage && telegramId) {
+      try {
+        await notifyBuyer(telegramId, buyerMessage);
+      } catch (err) {
+        console.error('Lottery buyer notification failed:', err);
+      }
     }
 
-    if (notice && notifyAdmin) {
-      notifyAdmin(notice).catch(err => {
-        console.error('Lottery admin notification failed:', err.message);
-      });
+    if (notifyAdmin && notice) {
+      try {
+        await notifyAdmin(notice);
+      } catch (err) {
+        console.error('Lottery admin notification failed:', err);
+      }
     }
   });
 
