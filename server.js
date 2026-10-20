@@ -88,7 +88,21 @@ const bingoRoutes = require('./routes/bingo')(pool, io);
 const kenoRoutes = require('./routes/keno')(pool, io);
 const aviatorRoutes = require('./routes/aviator')(pool);
 
+const lotteryRoutes = require('./routes/lottery')(pool, {
+  notifyAdmin: async (message) => {
+    if (!bot) {
+      throw new Error('Telegram bot is not initialized');
+    }
+
+    await bot.sendMessage(ADMIN_ID, message, {
+      parse_mode: 'HTML'
+    });
+  }
+});
+
+
 app.use('/api/aviator', aviatorRoutes);
+app.use('/api/lottery', lotteryRoutes);
 app.use('/api/keno', kenoRoutes);
 app.use('/api/bingo', bingoRoutes);
 app.use('/api/wallet', walletRoutes);
