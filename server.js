@@ -97,6 +97,20 @@ const lotteryRoutes = require('./routes/lottery')(pool, {
     await bot.sendMessage(ADMIN_ID, message, {
       parse_mode: 'HTML'
     });
+  },
+
+  notifyBuyer: async (telegramId, message) => {
+    if (!bot) {
+      throw new Error('Telegram bot is not initialized');
+    }
+
+    console.log('Sending lottery receipt to Telegram ID:', telegramId);
+
+    await bot.sendMessage(String(telegramId), message, {
+      parse_mode: 'HTML'
+    });
+
+    console.log('Lottery receipt sent successfully to:', telegramId);
   }
 });
 
