@@ -18,7 +18,10 @@ const PAYTABLE = {
 };
 
 const $=s=>document.querySelector(s);
-const tg=window.Telegram?.WebApp;
+const tg =
+  typeof window !== 'undefined'
+    ? window.Telegram?.WebApp
+    : null;
 const state={identifier:String(tg?.initDataUnsafe?.user?.id??''),name:'Player',balance:0,picks:new Set(),stake:MIN_STAKE,round:null,myTickets:[],fakeBets:[],drawingRound:null,activeTab:'ACTIVE',draw:[],activePlayerCount:180};
 const el={grid:$('#numberGrid'),timerBadge:$('#roundTimerBadge'),title:$('#gameTitle'),count:$('#selectedCount'),stake:$('#stakeAmount'),bet:$('#betButton'),balance:$('.wallet-balance'),player:$('#playerInfo'),notice:$('#notice'),placeholder:$('#drawPlaceholder'),current:$('#currentBall'),controls:$('#bettingControlsSection'),drawn:$('#drawnBalls'),counter:$('#drawCounter'),list:$('#ticketList'),listTitle:$('#listTitle'),listCount:$('#listCount'),activePlayers:$('#activePlayerCount')};
 let noticeTimer=null,pollBusy=false,activeInterval=null;
