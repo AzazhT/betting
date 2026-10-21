@@ -4,8 +4,8 @@
   'use strict';
 
   const API = {
-    user: '/api/wallet/sync',
-    wallet: '/api/wallet/sync',
+    user: '/api/wal/sync',
+    wallet: '/api/wal/sync',
     status: '/api/keno/status',
     play: '/api/keno/play',
     tickets: '/api/keno/tickets',
