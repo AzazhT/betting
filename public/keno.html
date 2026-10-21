@@ -192,7 +192,7 @@
     <small id="drawCounter" class="muted"></small>
   </div>
 
-  <!-- ቁጥር መምረጫ እና ውርርድ ክፍል (በውጤት ሰዓት ሙሉ በሙሉ ይዘጋል/ይተካል) -->
+  <!-- ቁጥር መምረጫ እና ውርርድ ክፍል -->
   <div id="bettingControlsSection">
     <div class="head">
       <h2>1–80 ቁጥሮች ይምረጡ</h2>
@@ -301,19 +301,15 @@ function togglePick(n){if(!state.round||state.round.status!=='BETTING')return;if
 
 function updatePayoutPreview() {
   const count = state.picks.size;
-
   if (count === 0) {
     el.previewDetails.textContent = 'ቁጥሮችን ይምረጡ';
     return;
   }
-
   const table = PAYTABLE[count];
-
   if (!table) {
     el.previewDetails.textContent = 'ሽልማት አልተገኘም';
     return;
   }
-
   const tiers = Object.entries(table)
     .map(([matches, multiplier]) => ({
       matches: Number(matches),
@@ -324,7 +320,6 @@ function updatePayoutPreview() {
   el.previewDetails.textContent = tiers
     .map(tier => {
       const payout = state.stake * tier.multiplier;
-
       return `${tier.matches} ቢመታ → ${money(payout)}`;
     })
     .join(' · ');
@@ -378,10 +373,8 @@ function makePicks(values,draw=[]){const box=document.createElement('div');box.c
 
 function renderTabContent(){
   el.list.replaceChildren();
-  
   if(state.activeTab === 'ACTIVE'){
     el.listTitle.textContent = 'የእርስዎ ቲኬቶች እና የቀጥታ ተጫዋቾች (Active)';
-    
     let allItems = [];
     state.myTickets.forEach((t, idx) => {
       allItems.push({isMine: true, ticket: t, index: idx+1});
@@ -400,13 +393,11 @@ function renderTabContent(){
       const row=document.createElement('div');row.className='item';
       const top=document.createElement('div');top.className='itemtop';
       const a=document.createElement('span');
-      
       const t = item.ticket;
       let matchedCount = (t.picks||[]).filter(p => state.draw.includes(p)).length;
       let mult = (PAYTABLE[t.picks?.length] && PAYTABLE[t.picks?.length][matchedCount]) || 0;
       let payout = (t.stake || 10) * mult;
       const isDrawingOrClosed = state.draw.length > 0;
-
       const s=document.createElement('span');
 
       if(item.isMine){
@@ -469,7 +460,7 @@ async function animateDraw(draw,roundId){
   state.draw=[];
   el.placeholder.style.display='none';
   el.current.style.display='grid';
-  el.controls.style.display='none'; // ቁጥር መምረጫው ሙሉ በሙሉ ይጠፋል እና ቦታውን የድሮው ኳስ መውጫ ይይዛል
+  el.controls.style.display='none';
   el.title.textContent='ቀጥታ የKeno ውጤት በመውጣት ላይ...';
   
   for(let i=0;i<draw.length;i++){
@@ -509,7 +500,7 @@ async function refreshStatus(){
         state.drawingRound=null;
         el.current.textContent='';
         el.current.style.display='none';
-        el.controls.style.display='block'; // ቁጥር መምረጫው ተመልሶ ይመጣል
+        el.controls.style.display='block';
         el.drawn.replaceChildren();
         el.counter.textContent='';
         el.placeholder.style.display='block';
@@ -546,18 +537,26 @@ async function init(){
   buildGrid();
   bind();
   setStake(MIN_STAKE);
+
+  // ጨዋታውን ወዲያውኑ አሳይ
+  refreshStatus();
+
+  // የተጠቃሚና ዋሌት መረጃን ጫን
   await loadUser();
+
   await refreshStatus();
   await renderTabContent();
-  
+
   activeInterval = setInterval(() => {
     state.activePlayerCount += Math.floor(Math.random() * 35) + 10;
     if(state.activePlayerCount > 2800) state.activePlayerCount = 450;
     el.activePlayers.textContent = state.activePlayerCount;
   }, 2000);
 
-  setInterval(refreshStatus,1000);
-  setInterval(()=>{refreshWallet().catch(err=>console.warn('Wallet refresh:',err.message));},10000);
+  setInterval(refreshStatus, 1000);
+  setInterval(() => {
+    refreshWallet().catch(err => console.warn('Wallet refresh:', err.message));
+  }, 10000);
 }
 
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
