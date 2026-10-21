@@ -20,7 +20,7 @@
 
   const $ = selector => document.querySelector(selector);
 
-  const tg = window.Telegram?.WebApp || null;
+ 
 
   const state = {
     identifier: '',
